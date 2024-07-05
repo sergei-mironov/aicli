@@ -1,0 +1,62 @@
+{
+  "nodes": {
+    "litrepl": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1719949781,
+        "narHash": "sha256-NIaKd5mKRJ5IGRjkG1BAy2cyv8Ekjys0bz6pVX4VzQw=",
+        "ref": "refs/heads/main",
+        "rev": "9290c113fdd14c9bc1ccfc84bf53e176ba23fe96",
+        "revCount": 313,
+        "type": "git",
+        "url": "file:/home/grwlf/proj/litrepl.vim/"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:/home/grwlf/proj/litrepl.vim/"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1719420079,
+        "narHash": "sha256-lGqaOuxLGT6/MUd/w3epHDCr3stOoVge06zI0fmPhr0=",
+        "owner": "grwlf",
+        "repo": "nixpkgs",
+        "rev": "d7fdc02f1e36ecb6545bdd55bc02e5b0dd9e12cf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grwlf",
+        "ref": "local17",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1719420079,
+        "narHash": "sha256-lGqaOuxLGT6/MUd/w3epHDCr3stOoVge06zI0fmPhr0=",
+        "owner": "grwlf",
+        "repo": "nixpkgs",
+        "rev": "d7fdc02f1e36ecb6545bdd55bc02e5b0dd9e12cf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grwlf",
+        "ref": "local17",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "litrepl": "litrepl",
+        "nixpkgs": "nixpkgs_2"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
