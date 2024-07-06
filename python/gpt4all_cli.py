@@ -99,7 +99,6 @@ def ask1(gpt4all_instance, message:str) -> str|None:
 
     def _signal_handler(signum,frame):
       nonlocal break_request
-      print(f"Handling SIGINT")
       break_request = True
 
     def _model_callback(*args, **kwargs):
