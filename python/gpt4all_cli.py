@@ -79,11 +79,6 @@ def parse_args():
   )
   return parser.parse_args()
 
-# MESSAGES = [
-#   {"role": "system", "content": "You are a helpful assistant."},
-#   {"role": "user", "content": "Hello there."},
-#   {"role": "assistant", "content": "Hi, how can I help you?"},
-# ]
 
 @contextmanager
 def with_sigint(_handler):

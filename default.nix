@@ -90,10 +90,10 @@ let
     });
 
 
-    # TODO: complete the package
     gpt4all-cli = (py: py.pkgs.buildPythonApplication rec {
       pname = "gpt4all-cli";
       version = "0.0.1";
+      format = "setuptools";
       src = ./python;
       propagatedBuildInputs = [(gpt4all-bindings py.pkgs) py.pkgs.gnureadline];
     });
