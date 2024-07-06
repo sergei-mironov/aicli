@@ -90,12 +90,12 @@ let
     });
 
 
-    gpt4all-cli = (py: py.pkgs.buildPythonApplication rec {
+    gpt4all-cli = (pp: pp.buildPythonApplication rec {
       pname = "gpt4all-cli";
       version = "0.0.1";
       format = "setuptools";
       src = ./python;
-      propagatedBuildInputs = [(gpt4all-bindings py.pkgs) py.pkgs.gnureadline];
+      propagatedBuildInputs = [(gpt4all-bindings pp) pp.gnureadline];
       doCheck = false;
     });
 
@@ -115,7 +115,7 @@ let
       ]
     );
 
-    python-gpt4all-cli = gpt4all-cli python;
+    python-gpt4all-cli = gpt4all-cli python.pkgs;
 
     shell = pkgs.mkShell {
       name = "shell";
