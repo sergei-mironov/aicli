@@ -20,20 +20,6 @@ let
       ]
     );
 
-    shell = pkgs.mkShell {
-      name = "shell";
-      buildInputs = [
-        cmake
-        fmt
-        shaderc
-        vulkan-headers
-        vulkan-loader
-        wayland
-        pkg-config
-        python-dev
-      ];
-    };
-
     gpt4all-backend = stdenv.mkDerivation (finalAttrs: {
       pname = "gpt4all-backend";
       inherit (pkgs.gpt4all) version src;
@@ -105,11 +91,11 @@ let
 
 
     # TODO: complete the package
-    gpt4all-cli = (py: py.buildPythonApplication rec {
+    gpt4all-cli = (py: py.pkgs.buildPythonApplication rec {
       pname = "gpt4all-cli";
-      inherit (pkgs.gpt4all) version src;
-
-      propagatedBuildInputs = [(gpt4all-bindings py.pkgs)];
+      version = "0.0.1";
+      src = ./python;
+      propagatedBuildInputs = [(gpt4all-bindings py.pkgs) py.pkgs.gnureadline];
     });
 
 
@@ -124,12 +110,35 @@ let
         ipython
         (gpt4all-bindings pp)
         typer
+        gnureadline
       ]
     );
 
+    python-gpt4all-cli = gpt4all-cli python;
+
+    shell = pkgs.mkShell {
+      name = "shell";
+      buildInputs = [
+        cmake
+        fmt
+        shaderc
+        vulkan-headers
+        vulkan-loader
+        wayland
+        pkg-config
+        python-gpt4all-bindings-dev
+      ];
+
+      shellHook = with pkgs; ''
+        if test -f ./env.sh ; then
+          . ./env.sh
+        fi
+      '';
+    };
+
     collection = rec {
       inherit shell gpt4all-src gpt4all-backend python-gpt4all-bindings
-              python-gpt4all-bindings-dev;
+              python-gpt4all-bindings-dev python-gpt4all-cli;
     };
   };
 
