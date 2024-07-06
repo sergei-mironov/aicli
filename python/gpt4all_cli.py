@@ -79,6 +79,8 @@ def parse_args():
     help="Device to use for chatbot, e.g. gpu, amd, nvidia, intel. Defaults to CPU.",
     default=None
   )
+
+  parser.add_argument('--no-prompts',action='store_true',help='Disable prompts')
   return parser.parse_args()
 
 
@@ -133,12 +135,13 @@ def main():
   args = parse_args()
   gpt4all_instance = GPT4All(args.model, device=args.device)
   adjust_thread_count(gpt4all_instance, args.n_threads)
+  prompts = ['', ''] if args.no_prompts else [">>> ", "... "]
 
   with gpt4all_instance.chat_session():
     exit_request = False
     while not exit_request:
       buffer = []
-      for line in read_multiline_input():
+      for line in read_multiline_input(*prompts):
         if line.strip() == "ask":
           message = '\n'.join(buffer)
           ask1(gpt4all_instance, message)
