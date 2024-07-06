@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import io
 from gnureadline import parse_and_bind, set_completer
 from gpt4all import GPT4All

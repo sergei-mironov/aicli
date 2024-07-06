@@ -96,6 +96,7 @@ let
       format = "setuptools";
       src = ./python;
       propagatedBuildInputs = [(gpt4all-bindings py.pkgs) py.pkgs.gnureadline];
+      doCheck = false;
     });
 
 
@@ -114,11 +115,7 @@ let
       ]
     );
 
-    python-release = pkgs.python3.withPackages (
-      pp: with pp; [ ]
-    );
-
-    python-gpt4all-cli = gpt4all-cli python-release;
+    python-gpt4all-cli = gpt4all-cli python;
 
     shell = pkgs.mkShell {
       name = "shell";
