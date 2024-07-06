@@ -1,0 +1,15 @@
+
+update_pathvar() {
+    case "$(eval echo \"\$$1\")" in
+        *$2:*) ;;
+        *)
+            echo "Adding into $1 value $2"
+            eval "export $1=$2:\$$1";;
+    esac
+}
+
+export PROJECT_SOURCE=`pwd`
+update_pathvar "PYTHONPATH" "$PROJECT_SOURCE/python"
+update_pathvar "PATH" "$PROJECT_SOURCE/sh"
+
+alias ipython=ipython.sh
