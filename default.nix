@@ -8,6 +8,8 @@ let
 
     python = pkgs.python3;
 
+    gpt4all-src = pkgs.gpt4all.src;
+
     python-dev = python.withPackages (
       pp:  with pp; [
         tqdm
@@ -126,7 +128,8 @@ let
     );
 
     collection = rec {
-      inherit shell gpt4all-backend python-gpt4all-bindings python-gpt4all-bindings-dev;
+      inherit shell gpt4all-src gpt4all-backend python-gpt4all-bindings
+              python-gpt4all-bindings-dev;
     };
   };
 
