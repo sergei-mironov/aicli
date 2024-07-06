@@ -138,7 +138,7 @@ let
     };
 
     collection = rec {
-      inherit shell gpt4all-src gpt4all-backend python-gpt4all-bindings
+      inherit shell gpt4all-src gpt4all-backend gpt4all-cli python-gpt4all-bindings
               python-gpt4all-bindings-dev python-gpt4all-cli;
     };
   };
