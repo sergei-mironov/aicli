@@ -114,7 +114,11 @@ let
       ]
     );
 
-    python-gpt4all-cli = gpt4all-cli python;
+    python-release = pkgs.python3.withPackages (
+      pp: with pp; [ ]
+    );
+
+    python-gpt4all-cli = gpt4all-cli python-release;
 
     shell = pkgs.mkShell {
       name = "shell";
