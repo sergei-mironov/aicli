@@ -124,8 +124,7 @@ def ask1(gpt4all, message:str) -> str|None:
 
   finally:
     response.close()
-    if break_request:
-      print()
+    print()
   return response
 
 CMDNAMES = r'|'.join(set(COMMANDS)-{CMD_MODEL,CMD_NTHREADS}).replace('/','\\/')
