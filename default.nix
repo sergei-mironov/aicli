@@ -94,8 +94,8 @@ let
       pname = "gpt4all-cli";
       version = "0.0.1";
       format = "setuptools";
-      src = ./python;
-      propagatedBuildInputs = [(gpt4all-bindings pp) pp.gnureadline];
+      src = ./.;
+      propagatedBuildInputs = [(gpt4all-bindings pp) pp.gnureadline pp.lark];
       doCheck = false;
     });
 
