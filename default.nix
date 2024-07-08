@@ -112,6 +112,7 @@ let
         (gpt4all-bindings pp)
         typer
         gnureadline
+        lark
       ]
     );
 

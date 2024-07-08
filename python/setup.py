@@ -7,7 +7,7 @@ setup(
   package_dir={'':'.'},
   packages=find_packages(where='.'),
   install_requires=['gpt4all-bindings', 'gnureadline'],
-  scripts=['./gpt4all_cli.py'],
+  scripts=['./gpt4all-cli'],
   python_requires='>=3.6',
   author="Sergei Mironov",
   author_email="sergei.v.mironov@proton.me",

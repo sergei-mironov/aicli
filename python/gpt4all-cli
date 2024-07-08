@@ -1,0 +1,299 @@
+#!/usr/bin/env python
+
+import io
+import re
+from gnureadline import parse_and_bind, set_completer
+from argparse import ArgumentParser
+from contextlib import contextmanager
+from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
+from textwrap import dedent
+
+from lark import Lark
+from lark.visitors import Interpreter
+from gpt4all import GPT4All
+
+
+CMD_HELP = "/help"
+CMD_ASK  = "/ask"
+CMD_EXIT = "/exit"
+CMD_ECHO = "/echo"
+CMD_MODEL = "/model"
+CMD_NTHREADS = "/nthreads"
+
+COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS]
+
+def _get_cmd_prefix():
+  prefices = list({c[0] for c in COMMANDS if len(c)>0})
+  assert len(prefices) == 1
+  return prefices[0]
+
+CMDPREFIX = _get_cmd_prefix()
+
+def completer(text, state):
+  options = [cmd for cmd in COMMANDS if cmd.startswith(text)]
+  if state < len(options):
+    return options[state]
+  else:
+    return None
+
+def read_multiline_input(initial_prompt=">>> ", intermediate_prompt="... "):
+  lines = []
+  prompt = initial_prompt
+  while True:
+    try:
+      line = input(prompt)
+      lines.append(line)
+      if line=='' or (len(line)>0 and line[0] in CMDPREFIX):
+        break
+      prompt = intermediate_prompt
+    except EOFError:
+      break
+  return lines
+
+ARG_PARSER = ArgumentParser(description="Command-line arguments")
+ARG_PARSER.add_argument(
+  "--model", "-m",
+  type=str,
+  help="Model to use for chatbot",
+  # FIXME:
+  # default="mistral-7b-instruct-v0.1.Q4_0.gguf",
+  default='/home/grwlf/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf'
+)
+ARG_PARSER.add_argument(
+  "--num-threads", "-t",
+  type=int,
+  help="Number of threads to use for chatbot",
+  default=None
+)
+ARG_PARSER.add_argument(
+  "--device", "-d",
+  type=str,
+  help="Device to use for chatbot, e.g. gpu, amd, nvidia, intel. Defaults to CPU.",
+  default=None
+)
+ARG_PARSER.add_argument(
+  "--readline-ctrl-enter",
+  type=str,
+  help="Terminal code to treat as Ctrl+Enter (default: \\C-k)",
+  default="\\C-k"
+)
+ARG_PARSER.add_argument('--no-prompts',action='store_true',help='Disable prompts')
+
+
+@contextmanager
+def with_sigint(_handler):
+  """ A Not very correct singal handler. One also needs to mask signals during switching handlers """
+  prev=signal(SIGINT,_handler)
+  try:
+    yield
+  finally:
+    signal(SIGINT,prev)
+
+
+def ask1(gpt4all, message:str) -> str|None:
+  response = io.StringIO()
+  break_request = False
+  try:
+    def _signal_handler(signum,frame):
+      nonlocal break_request
+      break_request = True
+
+    def _model_callback(*args, **kwargs):
+      return not break_request
+
+    response_generator = gpt4all.generate(
+      message,
+      # preferential kwargs for chat ux
+      max_tokens=200,
+      temp=0.9,
+      top_k=40,
+      top_p=0.9,
+      min_p=0.0,
+      repeat_penalty=1.1,
+      repeat_last_n=64,
+      n_batch=9,
+      # required kwargs for cli ux (incremental response)
+      streaming=True,
+      callback=_model_callback
+    )
+
+    with with_sigint(_signal_handler):
+      for token in response_generator:
+        print(token, end='', flush=True)
+        response.write(token)
+
+  finally:
+    response.close()
+    if break_request:
+      print()
+  return response
+
+CMDNAMES = r'|'.join(set(COMMANDS)-{CMD_MODEL,CMD_NTHREADS}).replace('/','\\/')
+
+GRAMMAR = fr"""
+  start: (command | escape | text)? (command | escape | text)*
+  escape.3: /\\./
+  command.2: /{CMDNAMES}/ | /\/model/ / +/ string | /\/nthreads/ / +/ number
+  string: /"[^\"]+"/ | /""/
+  number: /[1-9][0-9]*/
+  text: /(.(?!\/|\\))*./s
+"""
+
+PARSER = Lark(GRAMMAR, start='start')
+
+
+def test_parser():
+  def _assert(a, tb):
+    ta = re.sub(r"^[ \t]+$", '', PARSER.parse(a).pretty().strip().replace('\t', ' '*7), flags=re.MULTILINE)
+    tb = re.sub(r"^[ \t]+$", '', dedent(tb).strip().replace('\t', ' '*7), flags=re.MULTILINE)
+    assert ta == tb, f"\nExpected:\n{tb}\nGot:\n{ta}"
+
+  _assert(r'\a', r'''
+    start
+      escape       \a
+  ''')
+  _assert('/echo ', '''
+    start
+      command       /echo
+      text
+  ''')
+  _assert('/echo', '''
+    start
+      command       /echo
+  ''')
+  _assert('a/echo', '''
+    start
+      text       a
+      command       /echo
+  ''')
+  _assert('/echoa', '''
+    start
+      command       /echo
+      text       a
+  ''')
+  _assert(r'\/echo', r'''
+    start
+      escape       \/
+      text       echo
+  ''')
+  _assert(r'/echo/echo', r'''
+    start
+      command       /echo
+      command       /echo
+  ''')
+  _assert('/echo/echoxx', r'''
+    start
+      command       /echo
+      command       /echo
+      text       xx
+  ''')
+  _assert('/model "aaa"', r'''
+    start
+      command
+        /model
+
+        string       "aaa"
+  ''')
+  _assert(r'/echo\a', r'''
+    start
+      command       /echo
+      escape       \a
+  ''')
+  _assert(r'', r'''
+    start
+  ''')
+  _assert(r'/nthreads 3', r'''
+    start
+      command
+        /nthreads
+
+        number       3
+  ''')
+
+def print_help():
+  print(f"Commands: {' '.join(COMMANDS)}")
+
+
+def main(cmdline=None):
+  test_parser()
+  args = ARG_PARSER.parse_args(cmdline)
+  prompts = ['', ''] if args.no_prompts else [">>> ", "... "]
+
+  parse_and_bind('tab: complete')
+  parse_and_bind(f'"{args.readline_ctrl_enter}": "{CMD_ASK}\n"')
+  set_completer(completer)
+  old_model = None
+  gpt4all = None
+
+  def _apply():
+    nonlocal gpt4all, old_model
+    if args.model is None:
+      if gpt4all is not None:
+        # FIXME:: Probably, incorrect. One needs to call .reset() or alike.
+        del gpt4all
+    else:
+      if old_model != args.model:
+        gpt4all = GPT4All(args.model, device=args.device)
+        old_model = args.model
+      if args.num_threads != gpt4all.model.thread_count():
+        if args.num_threads is not None:
+          gpt4all.model.set_thread_count(args.num_threads)
+          print(f"Num threads:", gpt4all.model.thread_count())
+
+  class Repl(Interpreter):
+    def __init__(self):
+      self.in_echo = False
+      self.message = ""
+      self.exit_request = False
+    def command(self, tree):
+      if self.in_echo:
+        print()
+      self.in_echo = False
+      command = tree.children[0].value
+      if command == CMD_ECHO:
+        self.in_echo = True
+      elif command == CMD_ASK:
+        if gpt4all is None:
+          _apply()
+        if gpt4all is None:
+          raise RuntimeError("Gpt4all is inactive")
+        ask1(gpt4all, self.message)
+        self.message = ""
+      elif command == CMD_HELP:
+        print_help()
+      elif command == CMD_EXIT:
+        self.exit_request = True
+      elif command == CMD_MODEL:
+        args.model = tree.children[2].value[1:-1]
+        _apply()
+      elif command == CMD_NTHREADS:
+        args.num_threads = int(tree.children[2].children[0].value)
+        _apply()
+      else:
+        print(f"Unknown command: {command}")
+    def text(self, tree):
+      text = tree.children[0].value
+      if self.in_echo:
+        print(text, end='')
+      else:
+        self.message += text
+    def escape(self, tree):
+      text = tree.children[0].value[1:]
+      if self.in_echo:
+        print(text, end='')
+      else:
+        self.message += text
+
+  _apply()
+  assert gpt4all is not None, "Model should be set using cmdline args"
+
+  with gpt4all.chat_session():
+    repl = Repl()
+    while not repl.exit_request:
+      try:
+        repl.visit(PARSER.parse(input(prompts[0])))
+      except RuntimeError as err:
+        print(err)
+
+if __name__ == "__main__":
+  main()
