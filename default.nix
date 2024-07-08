@@ -10,18 +10,6 @@ let
 
     gpt4all-src = pkgs.gpt4all.src;
 
-    python-dev = pp: with pp; [
-      tqdm
-      requests
-      typing-extensions
-      importlib-resources
-      setuptools
-      pytest
-      ipython
-      gnureadline
-      lark-parser
-    ];
-
     gpt4all-backend = stdenv.mkDerivation (finalAttrs: {
       pname = "gpt4all-backend";
       inherit (pkgs.gpt4all) version src;
@@ -97,7 +85,7 @@ let
       version = "0.0.1";
       format = "setuptools";
       src = ./.;
-      propagatedBuildInputs = with pp ; [(gpt4all-bindings pp) gnureadline lark];
+      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark];
       doCheck = false;
     });
 
@@ -105,14 +93,6 @@ let
     python-gpt4all-bindings = python.withPackages (
       pp:  with pp; [
         (gpt4all-bindings pp)
-      ]
-    );
-
-    python-gpt4all-cli-dev = python.withPackages (
-      pp:  with pp; [
-        typer
-        (gpt4all-bindings pp)
-        (python-dev pp)
       ]
     );
 
@@ -128,7 +108,7 @@ let
         vulkan-loader
         wayland
         pkg-config
-        python-gpt4all-cli-dev
+        python-gpt4all-cli
       ];
 
       shellHook = with pkgs; ''
@@ -140,7 +120,7 @@ let
 
     collection = rec {
       inherit shell gpt4all-src gpt4all-backend gpt4all-cli python-gpt4all-bindings
-              python-gpt4all-bindings-dev python-gpt4all-cli;
+              python-gpt4all-cli;
     };
   };
 
