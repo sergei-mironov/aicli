@@ -294,6 +294,9 @@ def main(cmdline=None):
         repl.visit(PARSER.parse(input(prompts[0])))
       except RuntimeError as err:
         print(err)
+      except EOFError:
+        print()
+        break
 
 if __name__ == "__main__":
   main()
