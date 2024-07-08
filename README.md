@@ -2,7 +2,7 @@ Usage
 -----
 
 ``` sh
-$ nix build '.#gpt4all-src' --out-link result-src
-$ nix build '.#python-gpt4all-bindings-dev'
-$ ./result/bin/python ./result-src/gpt4all-bindings/cli/app.py repl [--model=path/to/model ]
+$ nix develop
+[ gpt4all-cli ~/proj/gpt4all-cli ]$ gpt4all-cli --model=~/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf
 ```
+
