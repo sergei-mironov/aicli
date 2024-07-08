@@ -1,6 +1,43 @@
 {
   "nodes": {
+    "gpt4all-cli": {
+      "inputs": {
+        "litrepl": "litrepl_2",
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1720289115,
+        "narHash": "sha256-j0D0YKBQrtWXwlz6dErJlU77D0Ta5wty3m+nWKIrHsU=",
+        "owner": "sergei-mironov",
+        "repo": "nix-gpt4all-cli",
+        "rev": "a3352f609731f984e904bd40804c321cab4aa3af",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sergei-mironov",
+        "repo": "nix-gpt4all-cli",
+        "type": "github"
+      }
+    },
     "litrepl": {
+      "inputs": {
+        "gpt4all-cli": "gpt4all-cli",
+        "nixpkgs": "nixpkgs_3"
+      },
+      "locked": {
+        "dirtyRev": "b725273fbd6e7527fa5145df50792a60b0d31901-dirty",
+        "dirtyShortRev": "b725273-dirty",
+        "lastModified": 1720288659,
+        "narHash": "sha256-lKXRJylf/igVD1cjmuMPWaXMqunis3/OKOZic0KltPg=",
+        "type": "git",
+        "url": "file:/home/grwlf/proj/litrepl.vim/"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:/home/grwlf/proj/litrepl.vim/"
+      }
+    },
+    "litrepl_2": {
       "inputs": {
         "nixpkgs": "nixpkgs"
       },
@@ -50,10 +87,42 @@
         "type": "github"
       }
     },
+    "nixpkgs_3": {
+      "locked": {
+        "lastModified": 1719420079,
+        "narHash": "sha256-lGqaOuxLGT6/MUd/w3epHDCr3stOoVge06zI0fmPhr0=",
+        "owner": "grwlf",
+        "repo": "nixpkgs",
+        "rev": "d7fdc02f1e36ecb6545bdd55bc02e5b0dd9e12cf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grwlf",
+        "ref": "local17",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_4": {
+      "locked": {
+        "lastModified": 1719420079,
+        "narHash": "sha256-lGqaOuxLGT6/MUd/w3epHDCr3stOoVge06zI0fmPhr0=",
+        "owner": "grwlf",
+        "repo": "nixpkgs",
+        "rev": "d7fdc02f1e36ecb6545bdd55bc02e5b0dd9e12cf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grwlf",
+        "ref": "local17",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "litrepl": "litrepl",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_4"
       }
     }
   },
