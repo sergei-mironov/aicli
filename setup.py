@@ -1,4 +1,7 @@
+from os import environ
 from setuptools import setup, find_packages
+
+gpt4all = 'gpt4all-bindings' if 'NIX_PATH' in environ else 'gpt4all >= 2.7.0'
 
 setup(
   name="gpt4all-cli",
@@ -6,8 +9,8 @@ setup(
   version="0.0.1",
   package_dir={'':'.'},
   packages=find_packages(where='.'),
-  install_requires=['gpt4all-bindings', 'gnureadline'],
-  scripts=['./gpt4all-cli'],
+  install_requires=[gpt4all, 'gnureadline', 'lark'],
+  scripts=['./python//gpt4all-cli'],
   python_requires='>=3.6',
   author="Sergei Mironov",
   author_email="sergei.v.mironov@proton.me",
