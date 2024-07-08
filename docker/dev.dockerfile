@@ -41,5 +41,5 @@ ARG git_email
 COPY install_user_git.sh /install/install_user_git.sh
 RUN sh /install/install_user_git.sh "$user_name" "$git_name" "$git_email"
 
-RUN sudo -iu $user_name python3 -m pip install gpt4all
+RUN sudo -iu $user_name python3 -m pip install gpt4all setuptools
 RUN apt-get update && apt-get install -y libcudart12 libcublas12
