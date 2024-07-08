@@ -85,7 +85,9 @@ let
       version = "0.0.1";
       format = "setuptools";
       src = ./.;
-      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark];
+      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark
+        # FIXME: remove from here
+        setuptools pytest wheel twine];
       doCheck = false;
     });
 
