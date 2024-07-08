@@ -11,5 +11,6 @@ update_pathvar() {
 export PROJECT_SOURCE=`pwd`
 update_pathvar "PYTHONPATH" "$PROJECT_SOURCE/python"
 update_pathvar "PATH" "$PROJECT_SOURCE/sh"
+update_pathvar "PATH" "$PROJECT_SOURCE/python"
 
 alias ipython=ipython.sh
