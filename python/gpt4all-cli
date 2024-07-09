@@ -66,7 +66,7 @@ ARG_PARSER.add_argument(
   default=None
 )
 ARG_PARSER.add_argument(
-  "--readline-ctrl-enter",
+  "--readline-key-send",
   type=str,
   help="Terminal code to treat as Ctrl+Enter (default: \\C-k)",
   default="\\C-k"
@@ -213,8 +213,8 @@ def main(cmdline=None):
   prompts = ['', ''] if args.no_prompts else [">>> ", "... "]
 
   parse_and_bind('tab: complete')
-  parse_and_bind(f'"{args.readline_ctrl_enter}": "{CMD_ASK}\n"')
-  hint = args.readline_ctrl_enter.replace('\\', '')
+  parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
+  hint = args.readline_key_send.replace('\\', '')
   print(f"Type /help or a question followed by the /ask command (or by pressing "
         f"`{hint}` key).")
   old_model = None
