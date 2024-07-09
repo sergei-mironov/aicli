@@ -65,6 +65,7 @@ options:
 [ gpt4all-cli ]$ gpt4all-cli --model=~/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf
 ```
 ``` txt
+Type /help or a question followed by the /ask command (or by pressing `C-k` key).
 >>> Hi!
 >>> /ask
 Hello! I'm happy to help you. What's on your mind?^C
