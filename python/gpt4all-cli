@@ -30,13 +30,6 @@ def _get_cmd_prefix():
 
 CMDPREFIX = _get_cmd_prefix()
 
-def completer(text, state):
-  options = [cmd for cmd in COMMANDS if cmd.startswith(text)]
-  if state < len(options):
-    return options[state]
-  else:
-    return None
-
 def read_multiline_input(initial_prompt=">>> ", intermediate_prompt="... "):
   lines = []
   prompt = initial_prompt
@@ -221,8 +214,9 @@ def main(cmdline=None):
 
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_ctrl_enter}": "{CMD_ASK}\n"')
-  print("Type /help or a question followed by the /ask command.")
-  set_completer(completer)
+  hint = args.readline_ctrl_enter.replace('\\', '')
+  print(f"Type /help or a question followed by the /ask command (or by pressing "
+        f"`{hint}` key).")
   old_model = None
   gpt4all = None
 
