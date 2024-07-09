@@ -19,8 +19,9 @@ CMD_EXIT = "/exit"
 CMD_ECHO = "/echo"
 CMD_MODEL = "/model"
 CMD_NTHREADS = "/nthreads"
+CMD_RESET = "/reset"
 
-COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS]
+COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET]
 
 def _get_cmd_prefix():
   prefices = list({c[0] for c in COMMANDS if len(c)>0})
@@ -127,12 +128,12 @@ def ask1(gpt4all, message:str) -> str|None:
     print()
   return response
 
-CMDNAMES = r'|'.join(set(COMMANDS)-{CMD_MODEL,CMD_NTHREADS}).replace('/','\\/')
+CMDNAMES = r'|'.join(set(COMMANDS)-{CMD_ECHO,CMD_MODEL,CMD_NTHREADS}).replace('/','\\/')
 
 GRAMMAR = fr"""
   start: (command | escape | text)? (command | escape | text)*
   escape.3: /\\./
-  command.2: /{CMDNAMES}/ | /\/model/ / +/ string | /\/nthreads/ / +/ number
+  command.2: /{CMDNAMES}/ | /\/model/ / +/ string | /\/nthreads/ / +/ number | /\/echo/ | /\/echo/ / /
   string: /"[^\"]+"/ | /""/
   number: /[1-9][0-9]*/
   text: /(.(?!\/|\\))*./s
@@ -220,6 +221,7 @@ def main(cmdline=None):
 
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_ctrl_enter}": "{CMD_ASK}\n"')
+  print("Type /help or a question followed by the /ask command.")
   set_completer(completer)
   old_model = None
   gpt4all = None
@@ -244,10 +246,13 @@ def main(cmdline=None):
       self.in_echo = False
       self.message = ""
       self.exit_request = False
-    def command(self, tree):
+      self.reset_request = False
+    def _finish_echo(self):
       if self.in_echo:
         print()
       self.in_echo = False
+    def command(self, tree):
+      self._finish_echo()
       command = tree.children[0].value
       if command == CMD_ECHO:
         self.in_echo = True
@@ -264,10 +269,12 @@ def main(cmdline=None):
         self.exit_request = True
       elif command == CMD_MODEL:
         args.model = tree.children[2].value[1:-1]
-        _apply()
+        self.reset_request = True
       elif command == CMD_NTHREADS:
         args.num_threads = int(tree.children[2].children[0].value)
-        _apply()
+        self.reset_request = True
+      elif command == CMD_RESET:
+        self.reset_request = True
       else:
         print(f"Unknown command: {command}")
     def text(self, tree):
@@ -283,14 +290,16 @@ def main(cmdline=None):
       else:
         self.message += text
 
-  _apply()
-  assert gpt4all is not None, "Model should be set using cmdline args"
-
-  with gpt4all.chat_session():
-    repl = Repl()
-    while not repl.exit_request:
+  repl = Repl()
+  while not repl.exit_request:
+    _apply()
+    assert gpt4all is not None, "Model should be set using cmdline args"
+    repl.reset_request = False
+    with gpt4all.chat_session():
       try:
-        repl.visit(PARSER.parse(input(prompts[0])))
+        while all([not repl.exit_request, not repl.reset_request]):
+          repl.visit(PARSER.parse(input(prompts[0])))
+          repl._finish_echo()
       except RuntimeError as err:
         print(err)
       except EOFError:
