@@ -40,8 +40,8 @@ Usage
 -->
 ``` result
 usage: gpt4all-cli [-h] [--model MODEL] [--num-threads NUM_THREADS]
-                   [--device DEVICE]
-                   [--readline-ctrl-enter READLINE_CTRL_ENTER] [--no-prompts]
+                   [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
+                   [--no-prompts]
 
 Command-line arguments
 
@@ -54,7 +54,7 @@ options:
   --device DEVICE, -d DEVICE
                         Device to use for chatbot, e.g. gpu, amd, nvidia,
                         intel. Defaults to CPU.
-  --readline-ctrl-enter READLINE_CTRL_ENTER
+  --readline-key-send READLINE_KEY_SEND
                         Terminal code to treat as Ctrl+Enter (default: \C-k)
   --no-prompts          Disable prompts
 ```
