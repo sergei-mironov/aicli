@@ -1,5 +1,6 @@
 { pkgs
 , stdenv ? pkgs.stdenv
+, litrepl
 } :
 let
   local = rec {
@@ -85,15 +86,24 @@ let
       version = "0.0.1";
       format = "setuptools";
       src = ./.;
-      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark
-        # FIXME: remove from here
-        setuptools pytest wheel twine];
+      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark];
       doCheck = false;
     });
 
 
-    python-gpt4all-bindings = python.withPackages (
+    python-dev = python.withPackages (
       pp:  with pp; [
+        tqdm
+        requests
+        typing-extensions
+        importlib-resources
+        setuptools
+        pytest
+        wheel
+        twine
+        gnureadline
+        lark
+        ipython
         (gpt4all-bindings pp)
       ]
     );
@@ -110,7 +120,8 @@ let
         vulkan-loader
         wayland
         pkg-config
-        python-gpt4all-cli
+        python-dev
+        # litrepl.litrepl-release
       ];
 
       shellHook = with pkgs; ''
@@ -121,8 +132,7 @@ let
     };
 
     collection = rec {
-      inherit shell gpt4all-src gpt4all-backend gpt4all-cli python-gpt4all-bindings
-              python-gpt4all-cli;
+      inherit shell gpt4all-src gpt4all-backend gpt4all-cli python-dev python-gpt4all-cli;
     };
   };
 
