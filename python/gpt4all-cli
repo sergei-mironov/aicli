@@ -71,7 +71,13 @@ ARG_PARSER.add_argument(
   help="Terminal code to treat as Ctrl+Enter (default: \\C-k)",
   default="\\C-k"
 )
-ARG_PARSER.add_argument('--no-prompts',action='store_true',help='Disable prompts')
+ARG_PARSER.add_argument(
+  '--readline-prompt',
+  type=str,
+  help="Input prompt (default: >>>)",
+  default=">>> "
+)
+
 
 
 @contextmanager
@@ -126,7 +132,10 @@ CMDNAMES = r'|'.join(set(COMMANDS)-{CMD_ECHO,CMD_MODEL,CMD_NTHREADS}).replace('/
 GRAMMAR = fr"""
   start: (command | escape | text)? (command | escape | text)*
   escape.3: /\\./
-  command.2: /{CMDNAMES}/ | /\/model/ / +/ string | /\/nthreads/ / +/ number | /\/echo/ | /\/echo/ / /
+  command.2: /{CMDNAMES}/ | \
+             /\/model/ / +/ string | \
+             /\/nthreads/ / +/ number | \
+             /\/echo/ | /\/echo/ / /
   string: /"[^\"]+"/ | /""/
   number: /[1-9][0-9]*/
   text: /(.(?!\/|\\))*./s
@@ -210,7 +219,6 @@ def print_help():
 def main(cmdline=None):
   test_parser()
   args = ARG_PARSER.parse_args(cmdline)
-  prompts = ['', ''] if args.no_prompts else [">>> ", "... "]
 
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
@@ -292,7 +300,7 @@ def main(cmdline=None):
     with gpt4all.chat_session():
       try:
         while all([not repl.exit_request, not repl.reset_request]):
-          repl.visit(PARSER.parse(input(prompts[0])))
+          repl.visit(PARSER.parse(input(args.readline_prompt)))
           repl._finish_echo()
       except RuntimeError as err:
         print(err)
