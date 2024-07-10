@@ -1,11 +1,14 @@
 A simple GNU readline-based command-line application for interaction with GPT model using
 [GPT4All](https://www.nomic.ai/gpt4all) Python bindings.
 
+Contents
+--------
+
 <!-- vim-markdown-toc GFM -->
 
 * [Install](#install)
-    * [Using Pip](#using-pip)
-    * [Using Nix](#using-nix)
+    * [Pip](#pip)
+    * [Nix](#nix)
 * [Usage](#usage)
     * [Example session](#example-session)
 
@@ -16,16 +19,19 @@ Install
 
 The following installation options are available:
 
-### Using Pip
+### Pip
 
 ```sh
-$ pip install gpt4all-cli
+$ pip install git+https://github.com/sergei-mironov/gpt4all-cli.git
 ```
 
-### Using Nix
+Note: `pip install gpt4all-cli` might also work, but the `git+https` would bring the most recent
+version.
+
+### Nix
 
 ```sh
-$ git clone https://github.com/sergei-mironov/gpt4all-cli
+$ git clone --depth=1 https://github.com/sergei-mironov/gpt4all-cli
 $ cd gpt4all-cli
 $ nix profile install ".#python-gpt4all-cli"
 ```
@@ -41,7 +47,7 @@ Usage
 ``` result
 usage: gpt4all-cli [-h] [--model MODEL] [--num-threads NUM_THREADS]
                    [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
-                   [--no-prompts]
+                   [--readline-prompt READLINE_PROMPT]
 
 Command-line arguments
 
@@ -56,7 +62,8 @@ options:
                         intel. Defaults to CPU.
   --readline-key-send READLINE_KEY_SEND
                         Terminal code to treat as Ctrl+Enter (default: \C-k)
-  --no-prompts          Disable prompts
+  --readline-prompt READLINE_PROMPT
+                        Input prompt (default: >>>)
 ```
 
 ### Example session
