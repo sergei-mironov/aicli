@@ -25,8 +25,8 @@ The following installation options are available:
 $ pip install git+https://github.com/sergei-mironov/gpt4all-cli.git
 ```
 
-Note: `pip install gpt4all-cli` might also work, but the `git+https` would bring the most recent
-version.
+Note: `pip install gpt4all-cli` might also work, but the `git+https` method would bring the most
+recent version.
 
 ### Nix
 
