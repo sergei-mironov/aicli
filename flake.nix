@@ -20,7 +20,7 @@
     let
       defaults = (import ./default.nix) {
         pkgs = import nixpkgs { system = "x86_64-linux"; };
-        litrepl = litrepl.outputs.packages."x86_64-linux";
+        revision = if self ? rev then self.rev else null;
       };
     in {
       packages = {

@@ -47,7 +47,7 @@ Usage
 ``` result
 usage: gpt4all-cli [-h] [--model MODEL] [--num-threads NUM_THREADS]
                    [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
-                   [--readline-prompt READLINE_PROMPT]
+                   [--readline-prompt READLINE_PROMPT] [--revision]
 
 Command-line arguments
 
@@ -64,6 +64,7 @@ options:
                         Terminal code to treat as Ctrl+Enter (default: \C-k)
   --readline-prompt READLINE_PROMPT
                         Input prompt (default: >>>)
+  --revision            Print the revision
 ```
 
 ### Example session

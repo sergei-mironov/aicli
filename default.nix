@@ -1,6 +1,7 @@
 { pkgs
 , stdenv ? pkgs.stdenv
-, litrepl
+# , litrepl
+, revision ? null
 } :
 let
   local = rec {
@@ -88,6 +89,8 @@ let
       src = ./.;
       propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark];
       doCheck = false;
+      GPT4ALLCLI_REVISION = revision;
+      GPT4ALLCLI_ROOT = src;
     });
 
 
