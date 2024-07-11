@@ -2,6 +2,7 @@
 
 import io
 import re
+from os import environ
 from gnureadline import parse_and_bind, set_completer
 from argparse import ArgumentParser
 from contextlib import contextmanager
@@ -12,6 +13,21 @@ from lark import Lark
 from lark.visitors import Interpreter
 from gpt4all import GPT4All
 
+REVISION:str|None
+try:
+  REVISION=environ["GPT4ALLCLI_REVISION"]
+except Exception:
+  try:
+    from subprocess import check_output, DEVNULL
+    REVISION=check_output(['git', 'rev-parse', 'HEAD'],
+                          cwd=environ['GPT4ALLCLI_ROOT'],
+                          stderr=DEVNULL).decode().strip()
+  except Exception:
+    try:
+      from gpt4all_cli.revision import REVISION as __rv__
+      REVISION = __rv__
+    except ImportError:
+      REVISION = None
 
 CMD_HELP = "/help"
 CMD_ASK  = "/ask"
@@ -76,6 +92,11 @@ ARG_PARSER.add_argument(
   type=str,
   help="Input prompt (default: >>>)",
   default=">>> "
+)
+ARG_PARSER.add_argument(
+  '--revision',
+  action='store_true',
+  help="Print the revision",
 )
 
 
@@ -217,8 +238,12 @@ def print_help():
 
 
 def main(cmdline=None):
-  test_parser()
   args = ARG_PARSER.parse_args(cmdline)
+  if args.revision:
+    print(REVISION)
+    return 0
+
+  test_parser()
 
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
