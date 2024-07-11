@@ -1,4 +1,4 @@
-A simple GNU readline-based command-line application for interaction with GPT model using
+A simple GNU Readline-based application for interaction with chat-oriented AI models using
 [GPT4All](https://www.nomic.ai/gpt4all) Python bindings.
 
 Contents
