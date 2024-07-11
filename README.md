@@ -31,8 +31,8 @@ recent version.
 ### Nix
 
 ```sh
-$ git clone --depth=1 https://github.com/sergei-mironov/gpt4all-cli
-$ cd gpt4all-cli
+$ git clone --depth=1 https://github.com/sergei-mironov/gpt4all-cli && cd gpt4all-cli
+# Optionally, change the 'nixpkgs' input of the flake.nix to a more suitable
 $ nix profile install ".#python-gpt4all-cli"
 ```
 
