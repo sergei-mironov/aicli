@@ -27,17 +27,23 @@ if REVISION:
 
 gpt4all = 'gpt4all-bindings' if 'NIX_PATH' in environ else 'gpt4all >= 2.7.0'
 
+with open("README.md", "r") as f:
+  long_description = f.read()
+
 setup(
   name="gpt4all-cli",
   zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
-  version="0.0.1",
+  version="1.0.0",
   package_dir={'':'python'},
   packages=find_packages(where='.'),
+  long_description=long_description,
+  long_description_content_type="text/markdown",
   install_requires=[gpt4all, 'gnureadline', 'lark'],
   scripts=[join('.','python','gpt4all-cli')],
   python_requires='>=3.6',
   author="Sergei Mironov",
   author_email="sergei.v.mironov@proton.me",
+  url='https://github.com/sergei-mironov/gpt4all-cli',
   description="Command-line interface using GPT4ALL bindings",
   classifiers=[
     "Programming Language :: Python :: 3",

@@ -3,11 +3,13 @@
 import io
 import re
 from os import environ
+from os.path import join, isfile, realpath, expanduser
 from gnureadline import parse_and_bind, set_completer
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from textwrap import dedent
+from glob import glob
 
 from lark import Lark
 from lark.visitors import Interpreter
@@ -62,12 +64,18 @@ def read_multiline_input(initial_prompt=">>> ", intermediate_prompt="... "):
 
 ARG_PARSER = ArgumentParser(description="Command-line arguments")
 ARG_PARSER.add_argument(
+  "--model-dir",
+  type=str,
+  help="Model directory to prepend to model file names",
+  default=None
+)
+ARG_PARSER.add_argument(
   "--model", "-m",
   type=str,
   help="Model to use for chatbot",
-  # FIXME:
   # default="mistral-7b-instruct-v0.1.Q4_0.gguf",
-  default='/home/grwlf/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf'
+  # default='/home/grwlf/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf'
+  default=None
 )
 ARG_PARSER.add_argument(
   "--num-threads", "-t",
@@ -236,6 +244,18 @@ def test_parser():
 def print_help():
   print(f"Commands: {' '.join(COMMANDS)}")
 
+@contextmanager
+def chat_session(gpt4all):
+  if gpt4all is None:
+    yield
+  else:
+    with gpt4all.chat_session():
+      yield
+
+def model_locations(args, model)->list[str]:
+  for path in [model] + [join(args.model_dir,model)] if args.model_dir else []:
+    for match in glob(expanduser(path)):
+      yield realpath(match)
 
 def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
@@ -255,14 +275,15 @@ def main(cmdline=None):
 
   def _apply():
     nonlocal gpt4all, old_model
-    if args.model is None:
-      if gpt4all is not None:
-        # FIXME:: Probably, incorrect. One needs to call .reset() or alike.
-        del gpt4all
-    else:
-      if old_model != args.model:
+    if old_model != args.model:
+      if args.model is not None:
         gpt4all = GPT4All(args.model, device=args.device)
-        old_model = args.model
+      else:
+        if gpt4all:
+          del gpt4all
+        gpt4all = None
+      old_model = args.model
+    if gpt4all is not None:
       if args.num_threads != gpt4all.model.thread_count():
         if args.num_threads is not None:
           gpt4all.model.set_thread_count(args.num_threads)
@@ -285,9 +306,7 @@ def main(cmdline=None):
         self.in_echo = True
       elif command == CMD_ASK:
         if gpt4all is None:
-          _apply()
-        if gpt4all is None:
-          raise RuntimeError("Gpt4all is inactive")
+          raise RuntimeError("No model is active, use /model first")
         ask1(gpt4all, self.message)
         self.message = ""
       elif command == CMD_HELP:
@@ -295,7 +314,17 @@ def main(cmdline=None):
       elif command == CMD_EXIT:
         self.exit_request = True
       elif command == CMD_MODEL:
-        args.model = tree.children[2].value[1:-1]
+        matched = False
+        argument = tree.children[2].children[0].value[1:-1]
+        for model in model_locations(args, argument):
+          if isfile(model):
+            args.model = model
+            self.reset_request = True
+            matched = True
+            break
+        if not matched:
+          args.model = argument if len(argument)>0 else None
+        print(f"Setting {args.model}")
         self.reset_request = True
       elif command == CMD_NTHREADS:
         args.num_threads = int(tree.children[2].children[0].value)
@@ -303,7 +332,7 @@ def main(cmdline=None):
       elif command == CMD_RESET:
         self.reset_request = True
       else:
-        print(f"Unknown command: {command}")
+        raise ValueError(f"Unknown command: {command}")
     def text(self, tree):
       text = tree.children[0].value
       if self.in_echo:
@@ -320,14 +349,14 @@ def main(cmdline=None):
   repl = Repl()
   while not repl.exit_request:
     _apply()
-    assert gpt4all is not None, "Model should be set using cmdline args"
+    # assert gpt4all is not None, "Model should be set using cmdline args"
     repl.reset_request = False
-    with gpt4all.chat_session():
+    with chat_session(gpt4all):
       try:
         while all([not repl.exit_request, not repl.reset_request]):
           repl.visit(PARSER.parse(input(args.readline_prompt)))
           repl._finish_echo()
-      except RuntimeError as err:
+      except (ValueError,RuntimeError) as err:
         print(err)
       except EOFError:
         print()
