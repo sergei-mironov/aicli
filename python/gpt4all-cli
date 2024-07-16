@@ -324,7 +324,6 @@ def main(cmdline=None):
             break
         if not matched:
           args.model = argument if len(argument)>0 else None
-        print(f"Setting {args.model}")
         self.reset_request = True
       elif command == CMD_NTHREADS:
         args.num_threads = int(tree.children[2].children[0].value)
