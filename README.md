@@ -70,10 +70,11 @@ options:
 ### Example session
 
 ``` sh
-[ gpt4all-cli ]$ gpt4all-cli --model=~/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf
+$ gpt4all-cli
 ```
 ``` txt
 Type /help or a question followed by the /ask command (or by pressing `C-k` key).
+>>> /model "~/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf"
 >>> Hi!
 >>> /ask
 Hello! I'm happy to help you. What's on your mind?^C
