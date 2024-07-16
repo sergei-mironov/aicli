@@ -253,7 +253,7 @@ def chat_session(gpt4all):
       yield
 
 def model_locations(args, model)->list[str]:
-  for path in [model] + [join(args.model_dir,model)] if args.model_dir else []:
+  for path in [model] + ([join(args.model_dir,model)] if args.model_dir else []):
     for match in glob(expanduser(path)):
       yield realpath(match)
 
