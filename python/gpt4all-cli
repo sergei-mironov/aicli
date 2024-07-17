@@ -125,6 +125,7 @@ def ask1(gpt4all, message:str) -> str|None:
   try:
     def _signal_handler(signum,frame):
       nonlocal break_request
+      print("Interrupt!")
       break_request = True
 
     def _model_callback(*args, **kwargs):
