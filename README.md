@@ -11,6 +11,7 @@ Contents
     * [Nix](#nix)
 * [Usage](#usage)
     * [Example session](#example-session)
+* [Vim integration](#vim-integration)
 
 <!-- vim-markdown-toc -->
 
