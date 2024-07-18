@@ -113,3 +113,4 @@ Vim integration
 
 Gpt4all-cli is supported by the [Litrepl](https://github.com/sergei-mironov/litrepl) text processor.
 
+![Peek 2024-07-19 00-11](https://github.com/user-attachments/assets/7e5e59ea-bb96-4ebe-988f-726e83929dab)
