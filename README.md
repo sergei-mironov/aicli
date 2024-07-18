@@ -108,3 +108,8 @@ Hello! I'm happy to help you. What's on your mind?^C
 I don't really have a personal name, but you can call me "Assistant"
 ```
 
+Vim integration
+---------------
+
+Gpt4all-cli is supported by the [Litrepl](https://github.com/sergei-mironov/litrepl) text processor.
+
