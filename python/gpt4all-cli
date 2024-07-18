@@ -15,6 +15,8 @@ from lark import Lark
 from lark.visitors import Interpreter
 from gpt4all import GPT4All
 
+from gpt4all_cli import *
+
 REVISION:str|None
 try:
   REVISION=environ["GPT4ALLCLI_REVISION"]
@@ -30,16 +32,6 @@ except Exception:
       REVISION = __rv__
     except ImportError:
       REVISION = None
-
-CMD_HELP = "/help"
-CMD_ASK  = "/ask"
-CMD_EXIT = "/exit"
-CMD_ECHO = "/echo"
-CMD_MODEL = "/model"
-CMD_NTHREADS = "/nthreads"
-CMD_RESET = "/reset"
-
-COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET]
 
 def _get_cmd_prefix():
   prefices = list({c[0] for c in COMMANDS if len(c)>0})
@@ -156,20 +148,6 @@ def ask1(gpt4all, message:str) -> str|None:
     response.close()
     print()
   return response
-
-CMDNAMES = r'|'.join(set(COMMANDS)-{CMD_ECHO,CMD_MODEL,CMD_NTHREADS}).replace('/','\\/')
-
-GRAMMAR = fr"""
-  start: (command | escape | text)? (command | escape | text)*
-  escape.3: /\\./
-  command.2: /{CMDNAMES}/ | \
-             /\/model/ / +/ string | \
-             /\/nthreads/ / +/ number | \
-             /\/echo/ | /\/echo/ / /
-  string: /"[^\"]+"/ | /""/
-  number: /[1-9][0-9]*/
-  text: /(.(?!\/|\\))*./s
-"""
 
 PARSER = Lark(GRAMMAR, start='start')
 

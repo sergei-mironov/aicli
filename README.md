@@ -45,14 +45,17 @@ Usage
 ```
 -->
 ``` result
-usage: gpt4all-cli [-h] [--model MODEL] [--num-threads NUM_THREADS]
-                   [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
+usage: gpt4all-cli [-h] [--model-dir MODEL_DIR] [--model MODEL]
+                   [--num-threads NUM_THREADS] [--device DEVICE]
+                   [--readline-key-send READLINE_KEY_SEND]
                    [--readline-prompt READLINE_PROMPT] [--revision]
 
 Command-line arguments
 
 options:
   -h, --help            show this help message and exit
+  --model-dir MODEL_DIR
+                        Model directory to prepend to model file names
   --model MODEL, -m MODEL
                         Model to use for chatbot
   --num-threads NUM_THREADS, -t NUM_THREADS
@@ -65,6 +68,28 @@ options:
   --readline-prompt READLINE_PROMPT
                         Input prompt (default: >>>)
   --revision            Print the revision
+```
+
+The console accepts language defined by the following grammar:
+
+<!--
+``` python
+from gpt4all_cli import GRAMMAR
+from textwrap import dedent
+print(dedent(GRAMMAR).strip())
+```
+-->
+
+``` result
+start: (command | escape | text)? (command | escape | text)*
+escape.3: /\\./
+command.2: /\/reset|\/ask|\/help|\/exit/ | \
+           /\/model/ / +/ string | \
+           /\/nthreads/ / +/ number | \
+           /\/echo/ | /\/echo/ / /
+string: /"[^\"]+"/ | /""/
+number: /[1-9][0-9]*/
+text: /(.(?!\/|\\))*./s
 ```
 
 ### Example session
