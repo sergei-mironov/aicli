@@ -47,7 +47,8 @@ Usage
 -->
 ``` result
 usage: gpt4all-cli [-h] [--model-dir MODEL_DIR] [--model MODEL]
-                   [--num-threads NUM_THREADS] [--device DEVICE]
+                   [--num-threads NUM_THREADS]
+                   [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
                    [--readline-key-send READLINE_KEY_SEND]
                    [--readline-prompt READLINE_PROMPT] [--revision]
 
@@ -61,6 +62,8 @@ options:
                         Model to use for chatbot
   --num-threads NUM_THREADS, -t NUM_THREADS
                         Number of threads to use for chatbot
+  --model-temperature MODEL_TEMPERATURE
+                        Temperature parameter of the model
   --device DEVICE, -d DEVICE
                         Device to use for chatbot, e.g. gpu, amd, nvidia,
                         intel. Defaults to CPU.
@@ -84,12 +87,15 @@ print(dedent(GRAMMAR).strip())
 ``` result
 start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
-command.2: /\/exit|\/ask|\/help|\/reset/ | \
+command.2: /\/reset|\/exit|\/help|\/ask/ | \
            /\/model/ / +/ string | \
-           /\/nthreads/ / +/ number | \
+           /\/nthreads/ / +/ (number | def) | \
+           /\/temp/ / +/ (float | def ) | \
            /\/echo/ | /\/echo/ / /
 string: /"[^\"]+"/ | /""/
-number: /[1-9][0-9]*/
+number: /[0-9]+/
+float: /[0-9]+\.[0-9]*/
+def: "default"
 text: /(.(?!\/|\\))*./s
 ```
 
