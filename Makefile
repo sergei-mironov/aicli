@@ -28,8 +28,16 @@ wheel: $(WHEEL)
 version:
 	@echo $(VERSION)
 
+.stamp_readme: $(PY)
+	cp README.md _README.md.in
+	cat _README.md.in | litrepl --foreground --exception-exit=100 eval-sections >README.md
+	touch $@
+
+.PHONY: readme # Update code sections in the README.md
+readme: .stamp_readme
+
 .PHONY: upload # Upload wheel to Pypi.org (./_token.pypi is required)
-upload: $(WHEEL)
+upload: $(WHEEL) .stamp_readme
 	twine upload \
 		--username __token__ \
 		--password $(shell cat _token.pypi) \
