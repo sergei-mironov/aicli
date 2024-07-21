@@ -33,9 +33,9 @@ with open("README.md", "r") as f:
 setup(
   name="gpt4all-cli",
   zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
-  version="1.1.3",
+  version="1.1.4",
   package_dir={'':'python'},
-  packages=find_packages(where='.'),
+  packages=find_packages(where='python'),
   long_description=long_description,
   long_description_content_type="text/markdown",
   install_requires=[gpt4all, 'gnureadline', 'lark'],
