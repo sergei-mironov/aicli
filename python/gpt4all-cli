@@ -309,8 +309,11 @@ def main(cmdline=None):
       elif command == CMD_ASK:
         if gpt4all is None:
           raise RuntimeError("No model is active, use /model first")
-        ask1(args, gpt4all, self.message)
-        self.message = ""
+        if len(self.message.strip()) == 0:
+          raise RuntimeError("Empty message buffer, write something first")
+        else:
+          ask1(args, gpt4all, self.message)
+          self.message = ""
       elif command == CMD_HELP:
         print_help()
       elif command == CMD_EXIT:
