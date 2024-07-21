@@ -293,6 +293,8 @@ def main(cmdline=None):
 
   class Repl(Interpreter):
     def __init__(self):
+      self.reset()
+    def reset(self):
       self.in_echo = False
       self.message = ""
       self.exit_request = False
@@ -358,8 +360,7 @@ def main(cmdline=None):
   repl = Repl()
   while not repl.exit_request:
     _apply()
-    # assert gpt4all is not None, "Model should be set using cmdline args"
-    repl.reset_request = False
+    repl.reset()
     with chat_session(gpt4all):
       try:
         while all([not repl.exit_request, not repl.reset_request]):

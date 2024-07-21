@@ -87,7 +87,7 @@ print(dedent(GRAMMAR).strip())
 ``` result
 start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
-command.2: /\/reset|\/exit|\/help|\/ask/ | \
+command.2: /\/reset|\/help|\/ask|\/exit/ | \
            /\/model/ / +/ string | \
            /\/nthreads/ / +/ (number | def) | \
            /\/temp/ / +/ (float | def ) | \
