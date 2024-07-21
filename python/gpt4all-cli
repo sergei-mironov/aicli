@@ -366,7 +366,7 @@ def main(cmdline=None):
           repl.visit(PARSER.parse(input(args.readline_prompt)))
           repl._finish_echo()
       except (ValueError,RuntimeError) as err:
-        print(err)
+        print(f"<{err}>")
       except EOFError:
         print()
         break
