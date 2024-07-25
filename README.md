@@ -50,7 +50,8 @@ usage: gpt4all-cli [-h] [--model-dir MODEL_DIR] [--model MODEL]
                    [--num-threads NUM_THREADS]
                    [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
                    [--readline-key-send READLINE_KEY_SEND]
-                   [--readline-prompt READLINE_PROMPT] [--revision]
+                   [--readline-prompt READLINE_PROMPT]
+                   [--readline-history FILE] [--revision]
 
 Command-line arguments
 
@@ -71,6 +72,9 @@ options:
                         Terminal code to treat as Ctrl+Enter (default: \C-k)
   --readline-prompt READLINE_PROMPT
                         Input prompt (default: >>>)
+  --readline-history FILE
+                        History file name (default is '_gpt4all_cli_history';
+                        set empty to disable)
   --revision            Print the revision
 ```
 
@@ -87,7 +91,7 @@ print(dedent(GRAMMAR).strip())
 ``` result
 start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
-command.2: /\/reset|\/help|\/ask|\/exit/ | \
+command.2: /\/help|\/reset|\/exit|\/ask/ | \
            /\/model/ / +/ string | \
            /\/nthreads/ / +/ (number | def) | \
            /\/temp/ / +/ (float | def ) | \
