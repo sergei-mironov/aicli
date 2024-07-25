@@ -294,29 +294,35 @@ def main(cmdline=None):
     if old_model != args.model:
       if args.model is not None:
         gpt4all = GPT4All(args.model, device=args.device)
-        print_aux(args, "Model initialized")
+        print_aux(args, "Model is now initialized")
       else:
         if gpt4all:
-          print_aux(args, "Model destroyed")
+          print_aux(args, "Model is now destroyed")
           del gpt4all
         gpt4all = None
       old_model = args.model
     if gpt4all is not None:
       num_threads = as_int(args.num_threads, None)
+      old_num_threads = gpt4all.model.thread_count()
       if num_threads is not None:
         gpt4all.model.set_thread_count(num_threads)
-        print_aux(args, f"Num threads: {gpt4all.model.thread_count()}")
+        new_num_threads = gpt4all.model.thread_count()
+        if old_num_threads != new_num_threads:
+          print_aux(args, f"Num threads is now {new_num_threads}")
 
   class Repl(Interpreter):
     def __init__(self):
-      self.reset(verbose=False)
-    def reset(self, verbose=True):
+      self._reset()
+    def _reset(self):
       self.in_echo = False
       self.message = ""
       self.exit_request = False
       self.reset_request = False
-      if verbose:
-        print_aux(args, "Message buffer is cleared")
+    def reset(self):
+      old_message = self.message
+      self._reset()
+      if len(old_message)>0:
+        print_aux(args, "Message buffer is now empty")
     def _finish_echo(self):
       if self.in_echo:
         print()
@@ -349,14 +355,17 @@ def main(cmdline=None):
             break
         if not matched:
           args.model = argument if len(argument)>0 else None
+        print_aux(args, f"Model will be set to '{args.model}'")
         self.reset_request = True
       elif command == CMD_NTHREADS:
         args.num_threads = tree.children[2].children[0].value
+        print_aux(args, f"Num threads will be set to '{args.num_threads}'")
         self.reset_request = True
       elif command == CMD_TEMP:
         args.model_temperature = tree.children[2].children[0].value
-        print_aux(args, f"Temperature is now '{args.model_temperature}'")
+        print_aux(args, f"Temperature will be set to '{args.model_temperature}'")
       elif command == CMD_RESET:
+        print_aux(args, "Message buffer will be cleared")
         self.reset_request = True
       else:
         raise ValueError(f"Unknown command: {command}")
