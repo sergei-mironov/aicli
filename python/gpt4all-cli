@@ -4,7 +4,7 @@ import io
 import re
 from os import environ
 from os.path import join, isfile, realpath, expanduser
-from gnureadline import parse_and_bind, set_completer
+from gnureadline import parse_and_bind, set_completer, read_history_file, write_history_file
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
@@ -98,6 +98,14 @@ ARG_PARSER.add_argument(
   type=str,
   help="Input prompt (default: >>>)",
   default=">>> "
+)
+HISTORY_DEF="_gpt4all_cli_history"
+ARG_PARSER.add_argument(
+  '--readline-history',
+  type=str,
+  metavar='FILE',
+  help=f"History file name (default is '{HISTORY_DEF}'; set empty to disable)",
+  default=HISTORY_DEF
 )
 ARG_PARSER.add_argument(
   '--revision',
@@ -247,6 +255,12 @@ def test_parser():
 def print_help():
   print(f"Commands: {' '.join(COMMANDS)}")
 
+def print_aux(args, s:str)->None:
+  print(f"INFO: {s}")
+
+def print_aux_err(args, s:str)->None:
+  print(f"ERROR: {s}")
+
 @contextmanager
 def chat_session(gpt4all):
   if gpt4all is None:
@@ -269,6 +283,7 @@ def main(cmdline=None):
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
   hint = args.readline_key_send.replace('\\', '')
+
   print(f"Type /help or a question followed by the /ask command (or by pressing "
         f"`{hint}` key).")
   old_model = None
@@ -279,26 +294,29 @@ def main(cmdline=None):
     if old_model != args.model:
       if args.model is not None:
         gpt4all = GPT4All(args.model, device=args.device)
+        print_aux(args, "Model initialized")
       else:
         if gpt4all:
+          print_aux(args, "Model destroyed")
           del gpt4all
         gpt4all = None
       old_model = args.model
     if gpt4all is not None:
       num_threads = as_int(args.num_threads, None)
-      if num_threads != gpt4all.model.thread_count():
-        if num_threads is not None:
-          gpt4all.model.set_thread_count(num_threads)
-          print(f"Num threads:", gpt4all.model.thread_count())
+      if num_threads is not None:
+        gpt4all.model.set_thread_count(num_threads)
+        print_aux(args, f"Num threads: {gpt4all.model.thread_count()}")
 
   class Repl(Interpreter):
     def __init__(self):
-      self.reset()
-    def reset(self):
+      self.reset(verbose=False)
+    def reset(self, verbose=True):
       self.in_echo = False
       self.message = ""
       self.exit_request = False
       self.reset_request = False
+      if verbose:
+        print_aux(args, "Message buffer is cleared")
     def _finish_echo(self):
       if self.in_echo:
         print()
@@ -337,6 +355,7 @@ def main(cmdline=None):
         self.reset_request = True
       elif command == CMD_TEMP:
         args.model_temperature = tree.children[2].children[0].value
+        print_aux(args, f"Temperature is now '{args.model_temperature}'")
       elif command == CMD_RESET:
         self.reset_request = True
       else:
@@ -348,7 +367,7 @@ def main(cmdline=None):
       else:
         for cmd in COMMANDS:
           if cmd in text:
-            print(f"Warning: '{cmd}' was parsed as a text")
+            print_aux(args, f"Warning: '{cmd}' was parsed as a text")
         self.message += text
     def escape(self, tree):
       text = tree.children[0].value[1:]
@@ -356,6 +375,15 @@ def main(cmdline=None):
         print(text, end='')
       else:
         self.message += text
+
+  if args.readline_history:
+    try:
+      read_history_file(args.readline_history)
+      print_aux(args, f"History file loaded")
+    except FileNotFoundError:
+      print_aux(args, f"History file not loaded")
+  else:
+    print_aux(args, f"History file is not used")
 
   repl = Repl()
   while not repl.exit_request:
@@ -366,8 +394,10 @@ def main(cmdline=None):
         while all([not repl.exit_request, not repl.reset_request]):
           repl.visit(PARSER.parse(input(args.readline_prompt)))
           repl._finish_echo()
+          if args.readline_history:
+            write_history_file(args.readline_history)
       except (ValueError,RuntimeError) as err:
-        print(f"<{err}>")
+        print_aux_err(args, err)
       except EOFError:
         print()
         break

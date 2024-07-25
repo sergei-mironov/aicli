@@ -33,7 +33,7 @@ with open("README.md", "r") as f:
 setup(
   name="gpt4all-cli",
   zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
-  version="1.1.5",
+  version="1.2.0",
   package_dir={'':'python'},
   packages=find_packages(where='python'),
   long_description=long_description,
