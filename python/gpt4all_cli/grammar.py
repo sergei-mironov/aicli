@@ -9,7 +9,7 @@ CMD_TEMP = "/temp"
 
 COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET, CMD_TEMP]
 COMMANDS_ARG = [CMD_ECHO,CMD_MODEL,CMD_NTHREADS,CMD_TEMP]
-COMMANDS_NOARG = r'|'.join(set(COMMANDS)-set(COMMANDS_ARG)).replace('/','\\/')
+COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 
 GRAMMAR = fr"""
   start: (command | escape | text)? (command | escape | text)*
