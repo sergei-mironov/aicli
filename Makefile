@@ -15,7 +15,7 @@ help:
 	@echo Build targets:
 	@cat Makefile | sed -n 's@^.PHONY: \([a-z]\+\) # \(.*\)@    \1:   \2@p' | column -t -l2
 
-$(WHEEL): $(PY) Makefile
+$(WHEEL): $(PY) Makefile .stamp_readme
 	test -n "$(VERSION)"
 	rm -rf build dist || true
 	python3 setup.py sdist bdist_wheel
@@ -37,7 +37,7 @@ version:
 readme: .stamp_readme
 
 .PHONY: upload # Upload wheel to Pypi.org (./_token.pypi is required)
-upload: $(WHEEL) .stamp_readme
+upload: $(WHEEL)
 	twine upload \
 		--username __token__ \
 		--password $(shell cat _token.pypi) \

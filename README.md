@@ -91,7 +91,7 @@ print(dedent(GRAMMAR).strip())
 ``` result
 start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
-command.2: /\/exit|\/reset|\/help|\/ask/ | \
+command.2: /\/ask|\/exit|\/help|\/reset/ | \
            /\/model/ / +/ string | \
            /\/nthreads/ / +/ (number | def) | \
            /\/temp/ / +/ (float | def ) | \
