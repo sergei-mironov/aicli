@@ -1,2 +1,2 @@
-from .types import *
+from .grammar import *
 from .revision import *
