@@ -1,3 +1,6 @@
 from .grammar import *
-from .revision import *
 from .parser import *
+try:
+  from .revision import REVISION
+except ImportError:
+  REVISION = None
