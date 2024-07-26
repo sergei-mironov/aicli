@@ -87,10 +87,17 @@ let
       version = "0.0.1";
       format = "setuptools";
       src = ./.;
+      nativeBuildInputs = with pp; [ pkgs.git ];
       propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark];
-      doCheck = false;
       GPT4ALLCLI_REVISION = revision;
       GPT4ALLCLI_ROOT = src;
+      doCheck = true;
+      nativeCheckInputs = with pp; [
+        pytestCheckHook
+      ];
+      pythonImportsCheck = [
+        "gpt4all_cli"
+      ];
     });
 
 

@@ -1,5 +1,5 @@
 import sys
-from os import environ
+from os import environ, system
 from os.path import join, dirname
 from setuptools import setup, find_packages
 from logging import getLogger
@@ -12,12 +12,14 @@ try:
   REVISION=environ["GPT4ALLCLI_REVISION"]
 except Exception as e:
   warning("Couldn't read GPT4ALLCLI_REVISION, trying `git rev-parse`")
+  cmd = ['git', 'rev-parse', 'HEAD']
+  cwd = None
   try:
-    REVISION=check_output(['git', 'rev-parse', 'HEAD'],
-                           cwd=dirname(__file__)).decode().strip()
+    cwd = dirname(__file__) or '.'
+    REVISION=check_output(cmd, cwd=cwd).decode().strip()
   except Exception as e:
     warning(e)
-    warning("Couldn't use `git rev-parse`, no revision metadata will be set")
+    warning(f"Couldn't use `{cmd}` in `{cwd}`, no revision metadata will be set")
     REVISION=None
 
 if REVISION:
