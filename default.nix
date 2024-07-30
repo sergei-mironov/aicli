@@ -6,7 +6,7 @@
 let
   local = rec {
 
-    inherit (pkgs) cmake fmt shaderc vulkan-headers vulkan-loader wayland pkg-config;
+    inherit (pkgs) cmake fmt shaderc vulkan-headers vulkan-loader wayland pkg-config expect;
 
     python = pkgs.python3;
 
@@ -137,6 +137,7 @@ let
         wayland
         pkg-config
         python-dev
+        expect
         # litrepl.litrepl-release
       ];
 
