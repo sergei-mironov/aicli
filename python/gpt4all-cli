@@ -50,7 +50,8 @@ ARG_PARSER.add_argument(
 ARG_PARSER.add_argument(
   "--model", "-m",
   type=str,
-  help="Model to use for chatbot",
+  help="Model to use. STR1 is 'gpt4all' (the default) or 'openai'. STR2 is the model name",
+  metavar="[STR1:]STR2",
   # default="mistral-7b-instruct-v0.1.Q4_0.gguf",
   # default='/home/grwlf/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf'
   default=None
@@ -58,13 +59,13 @@ ARG_PARSER.add_argument(
 ARG_PARSER.add_argument(
   "--num-threads", "-t",
   type=int,
-  help="Number of threads to use for chatbot",
+  help="Number of threads to use",
   default=None
 )
 ARG_PARSER.add_argument(
   '--model-apikey',
   type=str,
-  help="API KEY",
+  help="Model provider-specific API key",
   metavar="STR",
   default=None
 )
@@ -77,7 +78,7 @@ ARG_PARSER.add_argument(
 ARG_PARSER.add_argument(
   "--device", "-d",
   type=str,
-  help="Device to use for chatbot, e.g. gpu, amd, nvidia, intel. Defaults to CPU.",
+  help="Device to use for chatbot, e.g. gpu, amd, nvidia, intel. Defaults to CPU",
   default=None
 )
 ARG_PARSER.add_argument(
