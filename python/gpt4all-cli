@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from textwrap import dedent
 from glob import glob
+from functools import partial
 
 from lark import Lark
 from lark.visitors import Interpreter
@@ -58,6 +59,13 @@ ARG_PARSER.add_argument(
   "--num-threads", "-t",
   type=int,
   help="Number of threads to use for chatbot",
+  default=None
+)
+ARG_PARSER.add_argument(
+  '--model-apikey',
+  type=str,
+  help="API KEY",
+  metavar="STR",
   default=None
 )
 ARG_PARSER.add_argument(
@@ -114,7 +122,7 @@ def as_float(val:str, default:float|None)->float|None:
 def as_int(val:str, default:int|None)->int|None:
   return int(val) if val not in {None,"default"} else default
 
-def ask1(args, model:Model, message:str) -> str|None:
+def ask1(args, model:ModelProvider, message:str) -> str|None:
   response = io.StringIO()
   try:
     def _signal_handler(signum,frame):
@@ -144,7 +152,7 @@ def print_aux_err(args, s:str)->None:
   print(f"ERROR: {s}")
 
 @contextmanager
-def with_chat_session(model:Model):
+def with_chat_session(model:ModelProvider):
   if model is None:
     yield
   else:
@@ -155,6 +163,20 @@ def model_locations(args, model)->list[str]:
   for path in [model] + ([join(args.model_dir,model)] if args.model_dir else []):
     for match in glob(expanduser(path)):
       yield realpath(match)
+
+def parse_modelname(args) -> tuple[callable,str]:
+  pair = args.model.split(':')
+  if len(pair) == 1:
+    return partial(GPT4AllModelProvider, device=args.device), pair[0]
+  elif len(pair) == 2:
+    if pair[0] == 'gpt4all':
+      return partial(GPT4AllModelProvider, device=args.device), pair[1]
+    elif pair[0] == 'openai':
+      return partial(OpenAIModelProvider, api_key=args.model_apikey), pair[1]
+    else:
+      raise ValueError(f"Invalid model provider '{pair[0]}'")
+  else:
+    raise ValueError(f"Invalid model name '{pair}'")
 
 def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
@@ -174,7 +196,8 @@ def main(cmdline=None):
     nonlocal model, old_model
     if old_model != args.model:
       if args.model is not None:
-        model = GPT4AllModel(args.model, device=args.device)
+        ctr, modelname = parse_modelname(args)
+        model = ctr(modelname)
         print_aux(args, "Model is now initialized")
       else:
         if model:
@@ -248,6 +271,11 @@ def main(cmdline=None):
         print_aux(args, f"Temperature will be set to '{args.model_temperature}'")
       elif command == CMD_RESET:
         print_aux(args, "Message buffer will be cleared")
+        self.reset_request = True
+      elif command == CMD_APIKEY:
+        argument = tree.children[2].children[0].value[1:-1]
+        print_aux(args, f"Model API key will be set to \"{argument}\"")
+        args.model_apikey = argument
         self.reset_request = True
       else:
         raise ValueError(f"Unknown command: {command}")

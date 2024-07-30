@@ -1,40 +1,14 @@
 from contextlib import contextmanager
 from gpt4all import GPT4All
 
+from .base import ModelProvider
 
-class Model:
-  def __init__(self, model:str, *args, **kargs):
-    raise NotImplementedError()
-
-  def stream(message:str, *args, **kwargs):
-    raise NotImplementedError()
-
-  def interrupt(self)->None:
-    raise NotImplementedError()
-
-  def get_thread_count()->int|None:
-    raise NotImplementedError()
-
-  def set_thread_count(n:int|None)->None:
-    raise NotImplementedError()
-
-  def get_temperature(self)->float|None:
-    raise NotImplementedError()
-
-  def set_temperature(self, t:float|None)->None:
-    raise NotImplementedError()
-
-  def with_chat_session():
-    raise NotImplementedError()
-
-
-
-class GPT4AllModel(Model):
+class GPT4AllModelProvider(ModelProvider):
   temp_default = 0.9
 
   def __init__(self, *args, **kwargs):
     self.gpt4all = GPT4All(*args, **kwargs)
-    self.temp = GPT4AllModel.temp_default
+    self.temp = GPT4AllModelProvider.temp_default
     self.break_request = False
 
   def stream(self, message, *args, **kwargs):
@@ -75,7 +49,7 @@ class GPT4AllModel(Model):
     return self.temp
 
   def set_temperature(self, t:float|None)->None:
-    self.temp = t if t is not None else GPT4AllModel.temp_default
+    self.temp = t if t is not None else GPT4AllModelProvider.temp_default
 
   @contextmanager
   def with_chat_session(self):

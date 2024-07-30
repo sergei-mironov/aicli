@@ -6,9 +6,11 @@ CMD_MODEL = "/model"
 CMD_NTHREADS = "/nthreads"
 CMD_RESET = "/reset"
 CMD_TEMP = "/temp"
+CMD_APIKEY = "/apikey"
 
-COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET, CMD_TEMP]
-COMMANDS_ARG = [CMD_ECHO,CMD_MODEL,CMD_NTHREADS,CMD_TEMP]
+COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET, CMD_TEMP,
+            CMD_APIKEY]
+COMMANDS_ARG = [CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_TEMP, CMD_APIKEY]
 COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 
 GRAMMAR = fr"""
@@ -16,6 +18,7 @@ GRAMMAR = fr"""
   escape.3: /\\./
   command.2: /{COMMANDS_NOARG}/ | \
              /\/model/ / +/ string | \
+             /\/apikey/ / +/ string | \
              /\/nthreads/ / +/ (number | def) | \
              /\/temp/ / +/ (float | def ) | \
              /\/echo/ | /\/echo/ / /
