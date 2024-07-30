@@ -115,6 +115,7 @@ let
         lark
         ipython
         (gpt4all-bindings pp)
+        openai
       ]
     );
 

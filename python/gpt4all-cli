@@ -13,7 +13,6 @@ from glob import glob
 
 from lark import Lark
 from lark.visitors import Interpreter
-from gpt4all import GPT4All
 
 from gpt4all_cli import *
 
@@ -39,20 +38,6 @@ def _get_cmd_prefix():
   return prefices[0]
 
 CMDPREFIX = _get_cmd_prefix()
-
-def read_multiline_input(initial_prompt=">>> ", intermediate_prompt="... "):
-  lines = []
-  prompt = initial_prompt
-  while True:
-    try:
-      line = input(prompt)
-      lines.append(line)
-      if line=='' or (len(line)>0 and line[0] in CMDPREFIX):
-        break
-      prompt = intermediate_prompt
-    except EOFError:
-      break
-  return lines
 
 ARG_PARSER = ArgumentParser(description="Command-line arguments")
 ARG_PARSER.add_argument(
@@ -129,33 +114,15 @@ def as_float(val:str, default:float|None)->float|None:
 def as_int(val:str, default:int|None)->int|None:
   return int(val) if val not in {None,"default"} else default
 
-def ask1(args, gpt4all, message:str) -> str|None:
+def ask1(args, model:Model, message:str) -> str|None:
   response = io.StringIO()
-  break_request = False
   try:
     def _signal_handler(signum,frame):
-      nonlocal break_request
+      model.interrupt()
       print("\n<Keyboard interrupt>")
-      break_request = True
 
-    def _model_callback(*args, **kwargs):
-      return not break_request
-
-    response_generator = gpt4all.generate(
-      message,
-      # preferential kwargs for chat ux
-      max_tokens=200,
-      temp=as_float(args.model_temperature,0.9),
-      top_k=40,
-      top_p=0.9,
-      min_p=0.0,
-      repeat_penalty=1.1,
-      repeat_last_n=64,
-      n_batch=9,
-      # required kwargs for cli ux (incremental response)
-      streaming=True,
-      callback=_model_callback
-    )
+    model.set_temperature(as_float(args.model_temperature,None))
+    response_generator = model.stream(message)
 
     with with_sigint(_signal_handler):
       for token in response_generator:
@@ -177,11 +144,11 @@ def print_aux_err(args, s:str)->None:
   print(f"ERROR: {s}")
 
 @contextmanager
-def chat_session(gpt4all):
-  if gpt4all is None:
+def with_chat_session(model:Model):
+  if model is None:
     yield
   else:
-    with gpt4all.chat_session():
+    with model.with_chat_session():
       yield
 
 def model_locations(args, model)->list[str]:
@@ -201,26 +168,26 @@ def main(cmdline=None):
   print(f"Type /help or a question followed by the /ask command (or by pressing "
         f"`{hint}` key).")
   old_model = None
-  gpt4all = None
+  model = None
 
   def _apply():
-    nonlocal gpt4all, old_model
+    nonlocal model, old_model
     if old_model != args.model:
       if args.model is not None:
-        gpt4all = GPT4All(args.model, device=args.device)
+        model = GPT4AllModel(args.model, device=args.device)
         print_aux(args, "Model is now initialized")
       else:
-        if gpt4all:
+        if model:
           print_aux(args, "Model is now destroyed")
-          del gpt4all
-        gpt4all = None
+          del model
+        model = None
       old_model = args.model
-    if gpt4all is not None:
+    if model is not None:
       num_threads = as_int(args.num_threads, None)
-      old_num_threads = gpt4all.model.thread_count()
+      old_num_threads = model.get_thread_count()
       if num_threads is not None:
-        gpt4all.model.set_thread_count(num_threads)
-        new_num_threads = gpt4all.model.thread_count()
+        model.set_thread_count(num_threads)
+        new_num_threads = model.get_thread_count()
         if old_num_threads != new_num_threads:
           print_aux(args, f"Num threads is now {new_num_threads}")
 
@@ -242,17 +209,18 @@ def main(cmdline=None):
         print()
       self.in_echo = False
     def command(self, tree):
+      nonlocal model
       self._finish_echo()
       command = tree.children[0].value
       if command == CMD_ECHO:
         self.in_echo = True
       elif command == CMD_ASK:
-        if gpt4all is None:
+        if model is None:
           raise RuntimeError("No model is active, use /model first")
         if len(self.message.strip()) == 0:
           raise RuntimeError("Empty message buffer, write something first")
         else:
-          ask1(args, gpt4all, self.message)
+          ask1(args, model, self.message)
           self.message = ""
       elif command == CMD_HELP:
         print_help()
@@ -312,7 +280,7 @@ def main(cmdline=None):
   while not repl.exit_request:
     _apply()
     repl.reset()
-    with chat_session(gpt4all):
+    with with_chat_session(model):
       try:
         while all([not repl.exit_request, not repl.reset_request]):
           repl.visit(PARSER.parse(input(args.readline_prompt)))
