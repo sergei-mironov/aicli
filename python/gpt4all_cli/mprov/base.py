@@ -3,7 +3,7 @@ class ModelProvider:
   def __init__(self, model:str, *args, **kargs):
     raise NotImplementedError()
 
-  def stream(message:str, *args, **kwargs):
+  def stream(self, message:str, *args, **kwargs):
     """ Return a token generator object, responding the message. """
     raise NotImplementedError()
 
@@ -11,10 +11,10 @@ class ModelProvider:
     """ Interrupt the token generation started by `stream`. Might be called from a signal. """
     raise NotImplementedError()
 
-  def get_thread_count()->int|None:
+  def get_thread_count(self)->int|None:
     raise NotImplementedError()
 
-  def set_thread_count(n:int|None)->None:
+  def set_thread_count(self, n:int|None)->None:
     raise NotImplementedError()
 
   def get_temperature(self)->float|None:
@@ -23,7 +23,7 @@ class ModelProvider:
   def set_temperature(self, t:float|None)->None:
     raise NotImplementedError()
 
-  def with_chat_session():
+  def with_chat_session(self):
     """ A context manager doing arbitrary initialization """
     raise NotImplementedError()
 

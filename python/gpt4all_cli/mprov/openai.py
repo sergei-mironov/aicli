@@ -1,6 +1,5 @@
-import openai
 from contextlib import contextmanager
-from openai import OpenAI, OpenAIError, NotFoundError
+from openai import OpenAI, OpenAIError
 
 from .base import ModelProvider
 
@@ -26,7 +25,7 @@ class OpenAIModelProvider(ModelProvider):
       for chunk in response:
         if chunk['choices'][0].get('delta'):
           yield chunk['choices'][0]['delta'].get('content', '')
-    except NotFoundError as err:
+    except OpenAIError as err:
       raise ValueError(str(err)) from err
 
   def interrupt(self) -> None:

@@ -102,7 +102,12 @@ let
 
 
     python-dev = python.withPackages (
-      pp:  with pp; [
+      pp: let
+        pylsp = pp.python-lsp-server;
+        pylsp-mypy = pp.pylsp-mypy.override { python-lsp-server=pylsp; };
+      in with pp; [
+        pylsp
+        pylsp-mypy
         tqdm
         requests
         typing-extensions
