@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from gpt4all import GPT4All
 
-from .base import ModelProvider
+from .base import ModelProvider, Options
 
 class GPT4AllModelProvider(ModelProvider):
   temp_default = 0.9
@@ -11,7 +11,7 @@ class GPT4AllModelProvider(ModelProvider):
     self.temp = GPT4AllModelProvider.temp_default
     self.break_request = False
 
-  def stream(self, message, *args, **kwargs):
+  def stream(self, message, *args, opt:Options|None=None, **kwargs):
     self.break_request = False
 
     def _model_callback(*args, **kwargs):

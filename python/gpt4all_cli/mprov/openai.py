@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 from openai import OpenAI, OpenAIError
+from json import loads as json_loads, dumps as json_dumps
 
-from .base import ModelProvider
+from .base import ModelProvider, Options
 
 class OpenAIModelProvider(ModelProvider):
   def __init__(self, model: str, api_key: str, *args, **kwargs):
@@ -10,11 +11,13 @@ class OpenAIModelProvider(ModelProvider):
       self.model = model
       self.temperature = kwargs.get('temperature', 1.0)
       self.thread_count = kwargs.get('thread_count', None)
+      self.interrupt_request = False
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  def stream(self, message: str, *args, **kwargs):
+  def stream(self, message: str, *args, opt:Options|None=None, **kwargs):
     try:
+      self.interrupt_request = False
       response = self.client.chat.completions.create(
         model=self.model,
         messages=[{"role": "user", "content": message}],
@@ -22,14 +25,18 @@ class OpenAIModelProvider(ModelProvider):
         temperature=self.temperature,
         **kwargs
       )
+      if opt and opt.verbose>0:
+        print(response)
       for chunk in response:
-        if chunk['choices'][0].get('delta'):
-          yield chunk['choices'][0]['delta'].get('content', '')
+        if self.interrupt_request:
+          break
+        if c := chunk.choices[0].delta.content:
+          yield c
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
   def interrupt(self) -> None:
-    raise NotImplementedError("Interrupting a streaming request is not directly supported by the OpenAI API.")
+    self.interrupt_request = True
 
   def get_thread_count(self) -> int | None:
     return self.thread_count

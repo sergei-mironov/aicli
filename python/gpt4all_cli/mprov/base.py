@@ -1,9 +1,14 @@
+from dataclasses import dataclass
+
+@dataclass
+class Options:
+  verbose:int=0
 
 class ModelProvider:
   def __init__(self, model:str, *args, **kargs):
     raise NotImplementedError()
 
-  def stream(self, message:str, *args, **kwargs):
+  def stream(self, message:str, *args, opts:Options|None=None, **kwargs):
     """ Return a token generator object, responding the message. """
     raise NotImplementedError()
 
