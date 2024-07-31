@@ -46,12 +46,12 @@ Usage
 ```
 -->
 ``` result
-usage: gpt4all-cli [-h] [--model-dir MODEL_DIR] [--model MODEL]
-                   [--num-threads NUM_THREADS]
+usage: gpt4all-cli [-h] [--model-dir MODEL_DIR] [--model [STR1:]STR2]
+                   [--num-threads NUM_THREADS] [--model-apikey STR]
                    [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
                    [--readline-key-send READLINE_KEY_SEND]
                    [--readline-prompt READLINE_PROMPT]
-                   [--readline-history FILE] [--revision]
+                   [--readline-history FILE] [--verbose NUM] [--revision]
 
 Command-line arguments
 
@@ -59,15 +59,17 @@ options:
   -h, --help            show this help message and exit
   --model-dir MODEL_DIR
                         Model directory to prepend to model file names
-  --model MODEL, -m MODEL
-                        Model to use for chatbot
+  --model [STR1:]STR2, -m [STR1:]STR2
+                        Model to use. STR1 is 'gpt4all' (the default) or
+                        'openai'. STR2 is the model name
   --num-threads NUM_THREADS, -t NUM_THREADS
-                        Number of threads to use for chatbot
+                        Number of threads to use
+  --model-apikey STR    Model provider-specific API key
   --model-temperature MODEL_TEMPERATURE
                         Temperature parameter of the model
   --device DEVICE, -d DEVICE
                         Device to use for chatbot, e.g. gpu, amd, nvidia,
-                        intel. Defaults to CPU.
+                        intel. Defaults to CPU
   --readline-key-send READLINE_KEY_SEND
                         Terminal code to treat as Ctrl+Enter (default: \C-k)
   --readline-prompt READLINE_PROMPT
@@ -75,6 +77,7 @@ options:
   --readline-history FILE
                         History file name (default is '_gpt4all_cli_history';
                         set empty to disable)
+  --verbose NUM         Set the verbosity level 0-no,1-full
   --revision            Print the revision
 ```
 
@@ -93,7 +96,9 @@ start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
 command.2: /\/ask|\/exit|\/help|\/reset/ | \
            /\/model/ / +/ string | \
+           /\/apikey/ / +/ string | \
            /\/nthreads/ / +/ (number | def) | \
+           /\/verbose/ / +/ (number | def) | \
            /\/temp/ / +/ (float | def ) | \
            /\/echo/ | /\/echo/ / /
 string: /"[^\"]+"/ | /""/
