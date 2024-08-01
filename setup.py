@@ -33,9 +33,9 @@ with open("README.md", "r") as f:
   long_description = f.read()
 
 setup(
-  name="gpt4all-cli",
+  name="aicon",
   zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
-  version="1.3.0",
+  version="1.4.0",
   package_dir={'':'python'},
   packages=find_packages(where='python'),
   long_description=long_description,
