@@ -88,7 +88,7 @@ let
       format = "setuptools";
       src = ./.;
       nativeBuildInputs = with pp; [ pkgs.git ];
-      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark];
+      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark openai];
       GPT4ALLCLI_REVISION = revision;
       GPT4ALLCLI_ROOT = src;
       doCheck = true;
