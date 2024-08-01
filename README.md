@@ -1,5 +1,9 @@
-A simple GNU Readline-based application for interaction with chat-oriented AI models using
-[GPT4All](https://www.nomic.ai/gpt4all) Python bindings.
+A (yet another) GNU Readline-based application for interaction with chat-oriented AI models.
+
+Supported model providers:
+
+* [OpenAI](https://www.openai.com) via REST API
+* [GPT4All](https://www.nomic.ai/gpt4all) via Python bindings
 
 Contents
 --------

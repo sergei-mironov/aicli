@@ -35,7 +35,7 @@ with open("README.md", "r") as f:
 setup(
   name="sm-aicli",
   zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
-  version="1.4.0",
+  version="1.5.0",
   package_dir={'':'python'},
   packages=find_packages(where='python'),
   long_description=long_description,
