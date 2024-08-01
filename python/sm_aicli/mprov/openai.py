@@ -21,16 +21,17 @@ class OpenAIModelProvider(ModelProvider):
     answer = StringIO()
     try:
       self.interrupt_request = False
+      messages = self.messages
+      messages.append({"role":"user", "content":str(message)})
       response = self.client.chat.completions.create(
         model=self.model,
-        messages=self.messages + [
-          {"role":"user", "content":str(message)}
-        ],
+        messages=messages,
         stream=True,
         temperature=self.temperature,
         **kwargs
       )
       if opt and opt.verbose>0:
+        print(messages)
         print(response)
 
       for chunk in response:
@@ -39,8 +40,9 @@ class OpenAIModelProvider(ModelProvider):
         if c := chunk.choices[0].delta.content:
           answer.write(c)
           yield c
-      self.messages.append({'role':'user', 'content':str(message)})
-      self.messages.append({'role':'assistant', 'content':str(answer)})
+
+      messages.append({"role":"assistant", "content":str(answer.getvalue())})
+      self.messages = messages
     except OpenAIError as err:
       raise ValueError(str(err)) from err
     finally:
@@ -66,7 +68,7 @@ class OpenAIModelProvider(ModelProvider):
   def with_chat_session(self):
     old = self.messages
     try:
-      self.messages = []
+      self.messages = [{"role": "system", "content": "You are a helpful assistant."}]
       yield
     finally:
       self.messages = old
