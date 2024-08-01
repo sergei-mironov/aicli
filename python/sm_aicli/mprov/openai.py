@@ -5,9 +5,9 @@ from json import loads as json_loads, dumps as json_dumps
 from .base import ModelProvider, Options
 
 class OpenAIModelProvider(ModelProvider):
-  def __init__(self, model: str, api_key: str, *args, **kwargs):
+  def __init__(self, model: str, apikey: str, *args, **kwargs):
     try:
-      self.client = OpenAI(api_key=api_key)
+      self.client = OpenAI(api_key=apikey)
       self.model = model
       self.temperature = kwargs.get('temperature', 1.0)
       self.thread_count = kwargs.get('thread_count', None)

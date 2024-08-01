@@ -93,7 +93,7 @@ ARG_PARSER.add_argument(
   help="Input prompt (default: >>>)",
   default=">>> "
 )
-HISTORY_DEF="_gpt4all_cli_history"
+HISTORY_DEF="_sm_aicli_history"
 ARG_PARSER.add_argument(
   '--readline-history',
   type=str,
@@ -172,6 +172,22 @@ def model_locations(args, model)->list[str]:
     for match in glob(expanduser(path)):
       yield realpath(match)
 
+def parse_apikey(apikey:str)->str:
+  parts = apikey.split(':')
+  if len(parts) == 1:
+    protocol,val = 'verbatim',parts[0]
+  elif len(parts) == 2:
+    protocol,val = parts[0],parts[1]
+  else:
+    raise ValueError(f"Unsupported APIKEY format: '{apikey}'")
+  if protocol=="verbatim":
+    return val
+  elif protocol=="file":
+    with open(val) as f:
+      return f.read()
+  else:
+    raise ValueError(f"Unsupported APIKEY protocol '{protocol}'")
+
 def parse_modelname(args) -> tuple[callable,str]:
   pair = args.model.split(':')
   if len(pair) == 1:
@@ -180,7 +196,11 @@ def parse_modelname(args) -> tuple[callable,str]:
     if pair[0] == 'gpt4all':
       return partial(GPT4AllModelProvider, device=args.device), pair[1]
     elif pair[0] == 'openai':
-      return partial(OpenAIModelProvider, api_key=args.model_apikey), pair[1]
+      apikey = parse_apikey(args.model_apikey)
+      return partial(OpenAIModelProvider, apikey=apikey), pair[1]
+    elif pair[0] == 'dummy':
+      apikey = parse_apikey(args.model_apikey)
+      return partial(DummyModelProvider, apikey=apikey), pair[1]
     else:
       raise ValueError(f"Invalid model provider '{pair[0]}'")
   else:
