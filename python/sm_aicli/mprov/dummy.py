@@ -8,7 +8,7 @@ class DummyModelProvider(ModelProvider):
   def __init__(self, model: str, apikey: str, *args, **kwargs):
     self.apikey = apikey
     self.model = model
-    print(f"Dummy model '{model}' apikey '{apikey}")
+    print(f"Dummy model '{model}' apikey '{apikey}'")
 
   def interrupt(self)->None:
     pass

@@ -184,7 +184,7 @@ def parse_apikey(apikey:str)->str:
     return val
   elif protocol=="file":
     with open(val) as f:
-      return f.read()
+      return f.read().strip()
   else:
     raise ValueError(f"Unsupported APIKEY protocol '{protocol}'")
 
