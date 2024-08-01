@@ -96,7 +96,7 @@ let
         pytestCheckHook
       ];
       pythonImportsCheck = [
-        "gpt4all_cli"
+        "sm_aicli"
       ];
     });
 
