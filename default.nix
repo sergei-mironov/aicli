@@ -82,8 +82,8 @@ let
     });
 
 
-    gpt4all-cli = (pp: pp.buildPythonApplication rec {
-      pname = "gpt4all-cli";
+    aicli = (pp: pp.buildPythonApplication rec {
+      pname = "aicli";
       version = "0.0.1";
       format = "setuptools";
       src = ./.;
@@ -124,7 +124,7 @@ let
       ]
     );
 
-    python-gpt4all-cli = gpt4all-cli python.pkgs;
+    python-aicli = aicli python.pkgs;
 
     shell = pkgs.mkShell {
       name = "shell";
@@ -149,7 +149,7 @@ let
     };
 
     collection = rec {
-      inherit shell gpt4all-src gpt4all-backend gpt4all-cli python-dev python-gpt4all-cli;
+      inherit shell gpt4all-src gpt4all-backend aicli python-dev python-aicli;
     };
   };
 

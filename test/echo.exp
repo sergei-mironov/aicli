@@ -4,7 +4,7 @@
 set timeout 2
 
 # Start the console application
-spawn gpt4all-cli
+spawn aicli
 
 # Wait for the prompt (assuming it's a '> ' prompt)
 expect {

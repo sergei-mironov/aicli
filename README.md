@@ -23,18 +23,15 @@ The following installation options are available:
 ### Pip
 
 ```sh
-$ pip install git+https://github.com/sergei-mironov/gpt4all-cli.git
+$ pip install sm_aicli
 ```
-
-Note: `pip install gpt4all-cli` might also work, but the `git+https` method would bring the most
-recent version.
 
 ### Nix
 
 ```sh
-$ git clone --depth=1 https://github.com/sergei-mironov/gpt4all-cli && cd gpt4all-cli
+$ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd gpt4all-cli
 # Optionally, change the 'nixpkgs' input of the flake.nix to a more suitable
-$ nix profile install ".#python-gpt4all-cli"
+$ nix profile install ".#python-aicli"
 ```
 
 Usage
@@ -42,16 +39,16 @@ Usage
 
 <!--
 ``` python
-!gpt4all-cli --help
+!aicli --help
 ```
 -->
 ``` result
-usage: gpt4all-cli [-h] [--model-dir MODEL_DIR] [--model [STR1:]STR2]
-                   [--num-threads NUM_THREADS] [--model-apikey STR]
-                   [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
-                   [--readline-key-send READLINE_KEY_SEND]
-                   [--readline-prompt READLINE_PROMPT]
-                   [--readline-history FILE] [--verbose NUM] [--revision]
+usage: aicli [-h] [--model-dir MODEL_DIR] [--model [STR1:]STR2]
+             [--num-threads NUM_THREADS] [--model-apikey STR]
+             [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
+             [--readline-key-send READLINE_KEY_SEND]
+             [--readline-prompt READLINE_PROMPT] [--readline-history FILE]
+             [--verbose NUM] [--revision]
 
 Command-line arguments
 
@@ -85,7 +82,7 @@ The console accepts language defined by the following grammar:
 
 <!--
 ``` python
-from gpt4all_cli import GRAMMAR
+from sm_aicli import GRAMMAR
 from textwrap import dedent
 print(dedent(GRAMMAR).strip())
 ```

@@ -8,9 +8,9 @@ spawn aicli
 
 # Wait for the prompt (assuming it's a '> ' prompt)
 expect {
-    "> " {
-        # Prompt received, proceed with sending the /temp command
-        send "/temp 25.5\r"
+    ">>> " {
+        # Prompt received, proceed with sending the /echo command
+        send "/verbose 10\r"
     }
     timeout {
         # Exit with error if prompt is not received within timeout
@@ -19,23 +19,18 @@ expect {
     }
 }
 
-# Expect the output related to the /temp command
-# Assuming that the console should output the new temperature setting
+# Expect the echoed output
 expect {
-    "Temperature will be set to '25.5'" {
+    "INFO: Verbosity will be set to '10'" {
         # Expected output received, proceed with exiting the application
         send "/exit\r"
     }
     timeout {
         # Exit with error if expected output is not received within timeout
-        puts "Error: Did not receive expected output for /temp command"
+        puts "Error: Did not receive expected output"
         exit 1
     }
 }
 
-# Expect the console application to exit
 expect eof
-
-# Exit with success
 exit 0
-

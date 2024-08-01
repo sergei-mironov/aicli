@@ -15,7 +15,7 @@ from functools import partial
 from lark import Lark
 from lark.visitors import Interpreter
 
-from gpt4all_cli import *
+from sm_aicli import *
 
 REVISION:str|None
 try:

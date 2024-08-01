@@ -2,7 +2,7 @@
   description = "GPT4all cli project";
 
   nixConfig = {
-    bash-prompt = "\[ gpt4all-cli \\w \]$ ";
+    bash-prompt = "\[ aicli \\w \]$ ";
   };
 
   inputs = {

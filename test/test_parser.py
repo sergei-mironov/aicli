@@ -1,7 +1,7 @@
 import re
 from textwrap import dedent
 
-from gpt4all_cli import *
+from sm_aicli import *
 
 
 def test_parser():

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL = all
 VERSION = $(shell python3 setup.py --version 2>/dev/null)
-WHEEL = dist/sm-aicli-$(VERSION)-py3-none-any.whl
+WHEEL = dist/sm_aicli-$(VERSION)-py3-none-any.whl
 PY = $(shell find -name '*\.py' | grep -v semver.py | grep -v revision.py)
 TESTS = ./sh/test.sh
 
