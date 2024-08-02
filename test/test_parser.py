@@ -48,13 +48,6 @@ def test_parser():
       command       /echo
       text       xx
   ''')
-  _assert('/model "aaa"', r'''
-    start
-      command
-        /model
-
-        string       "aaa"
-  ''')
   _assert(r'/echo\a', r'''
     start
       command       /echo
@@ -104,7 +97,7 @@ def test_apikey():
 
         "
         apikey_string
-          apikey_schema_file
+          as_file
           apikey_value       keyfile
         "
   ''')
@@ -115,7 +108,19 @@ def test_apikey():
 
         "
         apikey_string
-          apikey_schema_verbatim
+          as_verbatim
           apikey_value       keydata
         "
+  ''')
+
+def test_model():
+  _assert('/model "aaa"', r'''
+   start
+     command
+       /model
+
+       "
+       model_string
+         model_name       aaa
+       "
   ''')

@@ -96,15 +96,17 @@ print(dedent(GRAMMAR).strip())
 start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
 command.2: /\/ask|\/exit|\/help|\/reset/ | \
-           /\/model/ / +/ string | \
+           /\/model/ / +/ (/"/ model_string /"/ | /"/ /"/) | \
            /\/apikey/ / +/ (/"/ apikey_string /"/ | /"/ /"/) | \
            /\/nthreads/ / +/ (number | def) | \
            /\/verbose/ / +/ (number | def) | \
            /\/temp/ / +/ (float | def ) | \
            /\/echo/ | /\/echo/ / /
-string: /"[^\"]+"/ | /""/
+model_string: (model_provider ":")? model_name
+model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
+model_name: /[^"]+/
 apikey_string: (apikey_schema ":")? apikey_value
-apikey_schema: "verbatim" -> apikey_schema_verbatim | "file" -> apikey_schema_file
+apikey_schema: "verbatim" -> as_verbatim | "file" -> as_file
 apikey_value: /[^"]+/
 number: /[0-9]+/
 float: /[0-9]+\.[0-9]*/

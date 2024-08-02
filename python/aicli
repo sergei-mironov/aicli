@@ -173,35 +173,45 @@ def ensure_quoted(s:str)->str:
     s = s + '"'
   return s
 
-def parse_apikey(schema:str, val:str)->str:
-  if schema=="verbatim":
-    return val
-  elif schema=="file":
-    try:
-      with open(val) as f:
-        return f.read().strip()
-    except Exception as err:
-      raise ValueError(str(err)) from err
+def parse_apikey(args)->str|None:
+  if args.model_apikey is None:
+    return None
   else:
-    raise ValueError(f"Unsupported APIKEY schema '{schema}'")
-
-def parse_modelname(args) -> tuple[callable,str]:
-  pair = args.model.split(':')
-  if len(pair) == 1:
-    return partial(GPT4AllModelProvider, device=args.device), pair[0]
-  elif len(pair) == 2:
-    if pair[0] == 'gpt4all':
-      return partial(GPT4AllModelProvider, device=args.device), pair[1]
-    elif pair[0] == 'openai':
-      apikey = parse_apikey(*args.model_apikey)
-      return partial(OpenAIModelProvider, apikey=apikey), pair[1]
-    elif pair[0] == 'dummy':
-      apikey = parse_apikey(*args.model_apikey)
-      return partial(DummyModelProvider, apikey=apikey), pair[1]
+    schema,val = args.model_apikey
+    if schema=="verbatim":
+      return val
+    elif schema=="file":
+      try:
+        with open(val) as f:
+          return f.read().strip()
+      except Exception as err:
+        raise ValueError(str(err)) from err
     else:
-      raise ValueError(f"Invalid model provider '{pair[0]}'")
+      raise ValueError(f"Unsupported APIKEY schema '{schema}'")
+
+def parse_model(args) -> ModelProvider | None:
+  if args.model is None:
+    return None
   else:
-    raise ValueError(f"Invalid model name '{pair}'")
+    mprov,mname = args.model
+    if mprov == 'gpt4all':
+      filename = None
+      for model in model_locations(args, mname):
+        if isfile(model):
+          filename = model
+          break
+      mname = filename if filename is not None else mname
+      return GPT4AllModelProvider(mname, device=args.device)
+    elif mprov == 'openai':
+      apikey = parse_apikey(args)
+      if apikey is None:
+        raise ValueError("OpenAI models require apikey")
+      return OpenAIModelProvider(model=mname, apikey=apikey)
+    elif mprov == 'dummy':
+      apikey = parse_apikey(args)
+      return DummyModelProvider(model=mname, apikey=apikey)
+    else:
+      raise ValueError(f"Invalid model provider '{mprov}'")
 
 def main(cmdline=None):
   header = StringIO()
@@ -211,6 +221,8 @@ def main(cmdline=None):
     return 0
   if args.model_apikey is not None:
     header.write(f"/apikey {ensure_quoted(args.model_apikey)}\n")
+  if args.model is not None:
+    header.write(f"/model {ensure_quoted(args.model)}\n")
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
   hint = args.readline_key_send.replace('\\', '')
@@ -224,8 +236,7 @@ def main(cmdline=None):
     nonlocal model, old_model
     if old_model != args.model:
       if args.model is not None:
-        ctr, modelname = parse_modelname(args)
-        model = ctr(modelname)
+        model = parse_model(args)
         print_aux(args, "Model is now initialized")
       else:
         if model:
@@ -259,15 +270,28 @@ def main(cmdline=None):
       if self.in_echo:
         print()
       self.in_echo = False
-    def apikey_schema_verbatim(self, tree):
+    def as_verbatim(self, tree):
       return "verbatim"
-    def apikey_schema_file(self, tree):
+    def as_file(self, tree):
       return "file"
     def apikey_value(self, tree):
       return tree.children[0].value
     def apikey_string(self, tree):
       val = self.visit_children(tree)
       return tuple(val) if len(val)==2 else ("verbatim",val[0])
+    def mp_gpt4all(self, tree):
+      return "gpt4all"
+    def mp_openai(self, tree):
+      return "openai"
+    def mp_dummy(self, tree):
+      return "dummy"
+    def model_provider(self, tree):
+      return tree.children[0].value
+    def model_name(self, tree):
+      return tree.children[0].value
+    def model_string(self, tree):
+      val = self.visit_children(tree)
+      return tuple(val) if len(val)==2 else ("gpt4all",val[0])
     def command(self, tree):
       nonlocal model
       self._finish_echo()
@@ -287,17 +311,14 @@ def main(cmdline=None):
       elif command == CMD_EXIT:
         self.exit_request = True
       elif command == CMD_MODEL:
-        matched = False
-        argument = tree.children[2].children[0].value[1:-1]
-        for model in model_locations(args, argument):
-          if isfile(model):
-            args.model = model
-            self.reset_request = True
-            matched = True
-            break
-        if not matched:
-          args.model = argument if len(argument)>0 else None
-        print_aux(args, f"Model will be set to '{args.model}'")
+        res = self.visit_children(tree)
+        if len(res)>2:
+          mprov,mname = res[3]
+          args.model = (mprov,mname)
+          print_aux(args, f"Will use provider '{mprov}' name '{mname}'")
+        else:
+          args.model = None
+          print_aux(args, f"Will deinitialize model ")
         self.reset_request = True
       elif command == CMD_NTHREADS:
         args.num_threads = tree.children[2].children[0].value
@@ -311,6 +332,8 @@ def main(cmdline=None):
         self.reset_request = True
       elif command == CMD_APIKEY:
         res = self.visit_children(tree)
+        if len(res)<3:
+          raise ValueError("API key should not be empty")
         schema,arg = res[3]
         print_aux(args, f"Model API schema \"{schema}\" value \"{arg}\"")
         args.model_apikey = (schema,arg)
