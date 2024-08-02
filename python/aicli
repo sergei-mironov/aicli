@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import io
 import re
+from io import StringIO
 from os import environ
 from os.path import join, isfile, realpath, expanduser
 from gnureadline import parse_and_bind, set_completer, read_history_file, write_history_file
@@ -166,24 +166,24 @@ def model_locations(args, model)->list[str]:
     for match in glob(expanduser(path)):
       yield realpath(match)
 
-def parse_apikey(apikey:str)->str:
-  parts = apikey.split(':')
-  if len(parts) == 1:
-    protocol,val = 'verbatim',parts[0]
-  elif len(parts) == 2:
-    protocol,val = parts[0],parts[1]
-  else:
-    raise ValueError(f"Unsupported APIKEY format: '{apikey}'")
-  if protocol=="verbatim":
+def ensure_quoted(s:str)->str:
+  if not (len(s)>0 and s[0]=='"'):
+    s = '"' + s
+  if not (len(s)>0 and s[-1]=='"'):
+    s = s + '"'
+  return s
+
+def parse_apikey(schema:str, val:str)->str:
+  if schema=="verbatim":
     return val
-  elif protocol=="file":
+  elif schema=="file":
     try:
       with open(val) as f:
         return f.read().strip()
     except Exception as err:
       raise ValueError(str(err)) from err
   else:
-    raise ValueError(f"Unsupported APIKEY protocol '{protocol}'")
+    raise ValueError(f"Unsupported APIKEY schema '{schema}'")
 
 def parse_modelname(args) -> tuple[callable,str]:
   pair = args.model.split(':')
@@ -193,10 +193,10 @@ def parse_modelname(args) -> tuple[callable,str]:
     if pair[0] == 'gpt4all':
       return partial(GPT4AllModelProvider, device=args.device), pair[1]
     elif pair[0] == 'openai':
-      apikey = parse_apikey(args.model_apikey)
+      apikey = parse_apikey(*args.model_apikey)
       return partial(OpenAIModelProvider, apikey=apikey), pair[1]
     elif pair[0] == 'dummy':
-      apikey = parse_apikey(args.model_apikey)
+      apikey = parse_apikey(*args.model_apikey)
       return partial(DummyModelProvider, apikey=apikey), pair[1]
     else:
       raise ValueError(f"Invalid model provider '{pair[0]}'")
@@ -204,10 +204,13 @@ def parse_modelname(args) -> tuple[callable,str]:
     raise ValueError(f"Invalid model name '{pair}'")
 
 def main(cmdline=None):
+  header = StringIO()
   args = ARG_PARSER.parse_args(cmdline)
   if args.revision:
     print(REVISION)
     return 0
+  if args.model_apikey is not None:
+    header.write(f"/apikey {ensure_quoted(args.model_apikey)}\n")
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
   hint = args.readline_key_send.replace('\\', '')
@@ -256,6 +259,15 @@ def main(cmdline=None):
       if self.in_echo:
         print()
       self.in_echo = False
+    def apikey_schema_verbatim(self, tree):
+      return "verbatim"
+    def apikey_schema_file(self, tree):
+      return "file"
+    def apikey_value(self, tree):
+      return tree.children[0].value
+    def apikey_string(self, tree):
+      val = self.visit_children(tree)
+      return tuple(val) if len(val)==2 else ("verbatim",val[0])
     def command(self, tree):
       nonlocal model
       self._finish_echo()
@@ -298,9 +310,10 @@ def main(cmdline=None):
         print_aux(args, "Message buffer will be cleared")
         self.reset_request = True
       elif command == CMD_APIKEY:
-        argument = tree.children[2].children[0].value[1:-1]
-        print_aux(args, f"Model API key will be set to \"{argument}\"")
-        args.model_apikey = argument
+        res = self.visit_children(tree)
+        schema,arg = res[3]
+        print_aux(args, f"Model API schema \"{schema}\" value \"{arg}\"")
+        args.model_apikey = (schema,arg)
         self.reset_request = True
       elif command == CMD_VERBOSE:
         args.verbose = tree.children[2].children[0].value
@@ -333,6 +346,7 @@ def main(cmdline=None):
     print_aux(args, f"History file is not used")
 
   repl = Repl()
+  repl.visit(PARSER.parse(header.getvalue()))
   while not repl.exit_request:
     _apply()
     repl.reset()

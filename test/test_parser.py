@@ -3,13 +3,12 @@ from textwrap import dedent
 
 from sm_aicli import *
 
+def _assert(a, tb):
+  ta = re.sub(r"^[ \t]+$", '', PARSER.parse(a).pretty().strip().replace('\t', ' '*7), flags=re.MULTILINE)
+  tb = re.sub(r"^[ \t]+$", '', dedent(tb).strip().replace('\t', ' '*7), flags=re.MULTILINE)
+  assert ta == tb, f"\nExpected:\n{tb}\nGot:\n{ta}"
 
 def test_parser():
-  def _assert(a, tb):
-    ta = re.sub(r"^[ \t]+$", '', PARSER.parse(a).pretty().strip().replace('\t', ' '*7), flags=re.MULTILINE)
-    tb = re.sub(r"^[ \t]+$", '', dedent(tb).strip().replace('\t', ' '*7), flags=re.MULTILINE)
-    assert ta == tb, f"\nExpected:\n{tb}\nGot:\n{ta}"
-
   _assert(r'\a', r'''
     start
       escape       \a
@@ -84,4 +83,39 @@ def test_parser():
         /temp
 
         def
+  ''')
+
+
+def test_apikey():
+  _assert('/apikey "keydata"', r'''
+    start
+      command
+        /apikey
+
+        "
+        apikey_string
+          apikey_value       keydata
+        "
+  ''')
+  _assert('/apikey "file:keyfile"', r'''
+    start
+      command
+        /apikey
+
+        "
+        apikey_string
+          apikey_schema_file
+          apikey_value       keyfile
+        "
+  ''')
+  _assert('/apikey "verbatim:keydata"', r'''
+    start
+      command
+        /apikey
+
+        "
+        apikey_string
+          apikey_schema_verbatim
+          apikey_value       keydata
+        "
   ''')

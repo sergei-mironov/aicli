@@ -1,0 +1,29 @@
+#!/usr/bin/env expect-f.sh
+
+# Set timeout for the expect script
+set timeout 2
+
+spawn aicli --model-apikey=file:test/testkey.txt
+
+expect {
+    ">>> " {
+        send "/model \"dummy:dummy\"\r"
+    }
+    timeout {
+        puts "Error: Did not receive prompt"
+        exit 1
+    }
+}
+
+expect {
+    "THISISTESTAPIKEY" {
+        send "/exit\r"
+    }
+    timeout {
+        puts "Error: Did not receive expected output"
+        exit 1
+    }
+}
+
+expect eof
+exit 0

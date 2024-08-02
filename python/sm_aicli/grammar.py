@@ -19,12 +19,15 @@ GRAMMAR = fr"""
   escape.3: /\\./
   command.2: /{COMMANDS_NOARG}/ | \
              /\/model/ / +/ string | \
-             /\/apikey/ / +/ string | \
+             /\/apikey/ / +/ (/"/ apikey_string /"/ | /"/ /"/) | \
              /\/nthreads/ / +/ (number | def) | \
              /\/verbose/ / +/ (number | def) | \
              /\/temp/ / +/ (float | def ) | \
              /\/echo/ | /\/echo/ / /
   string: /"[^\"]+"/ | /""/
+  apikey_string: (apikey_schema ":")? apikey_value
+  apikey_schema: "verbatim" -> apikey_schema_verbatim | "file" -> apikey_schema_file
+  apikey_value: /[^"]+/
   number: /[0-9]+/
   float: /[0-9]+\.[0-9]*/
   def: "default"

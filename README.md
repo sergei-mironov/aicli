@@ -76,8 +76,8 @@ options:
   --readline-prompt READLINE_PROMPT
                         Input prompt (default: >>>)
   --readline-history FILE
-                        History file name (default is '_gpt4all_cli_history';
-                        set empty to disable)
+                        History file name (default is '_sm_aicli_history'; set
+                        empty to disable)
   --verbose NUM         Set the verbosity level 0-no,1-full
   --revision            Print the revision
 ```
@@ -97,12 +97,15 @@ start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
 command.2: /\/ask|\/exit|\/help|\/reset/ | \
            /\/model/ / +/ string | \
-           /\/apikey/ / +/ string | \
+           /\/apikey/ / +/ (/"/ apikey_string /"/ | /"/ /"/) | \
            /\/nthreads/ / +/ (number | def) | \
            /\/verbose/ / +/ (number | def) | \
            /\/temp/ / +/ (float | def ) | \
            /\/echo/ | /\/echo/ / /
 string: /"[^\"]+"/ | /""/
+apikey_string: (apikey_schema ":")? apikey_value
+apikey_schema: "verbatim" -> apikey_schema_verbatim | "file" -> apikey_schema_file
+apikey_value: /[^"]+/
 number: /[0-9]+/
 float: /[0-9]+\.[0-9]*/
 def: "default"
