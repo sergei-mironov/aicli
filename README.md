@@ -33,7 +33,7 @@ $ pip install sm_aicli
 ### Nix
 
 ```sh
-$ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd gpt4all-cli
+$ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 # Optionally, change the 'nixpkgs' input of the flake.nix to a more suitable
 $ nix profile install ".#python-aicli"
 ```
@@ -117,7 +117,7 @@ text: /(.(?!\/|\\))*./s
 ### Example session
 
 ``` sh
-$ gpt4all-cli
+$ aicli
 ```
 ``` txt
 Type /help or a question followed by the /ask command (or by pressing `C-k` key).
@@ -133,6 +133,6 @@ I don't really have a personal name, but you can call me "Assistant"
 Vim integration
 ---------------
 
-Gpt4all-cli is supported by the [Litrepl](https://github.com/sergei-mironov/litrepl) text processor.
+Aicli is supported by the [Litrepl](https://github.com/sergei-mironov/litrepl) text processor.
 
 ![Peek 2024-07-19 00-11](https://github.com/user-attachments/assets/7e5e59ea-bb96-4ebe-988f-726e83929dab)
