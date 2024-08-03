@@ -84,7 +84,7 @@ let
 
     aicli = (pp: pp.buildPythonApplication rec {
       pname = "aicli";
-      version = "0.0.1";
+      version = lib.fileContents "${src}/semver.txt";
       format = "setuptools";
       src = ./.;
       nativeBuildInputs = with pp; [ pkgs.git ];
