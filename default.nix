@@ -7,6 +7,7 @@ let
   local = rec {
 
     inherit (pkgs) cmake fmt shaderc vulkan-headers vulkan-loader wayland pkg-config expect;
+    inherit (pkgs.lib) fileContents;
 
     python = pkgs.python3;
 
@@ -84,7 +85,7 @@ let
 
     aicli = (pp: pp.buildPythonApplication rec {
       pname = "aicli";
-      version = lib.fileContents "${src}/semver.txt";
+      version = fileContents "${src}/semver.txt";
       format = "setuptools";
       src = ./.;
       nativeBuildInputs = with pp; [ pkgs.git ];
