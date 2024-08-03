@@ -89,8 +89,8 @@ let
       src = ./.;
       nativeBuildInputs = with pp; [ pkgs.git ];
       propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark openai];
-      GPT4ALLCLI_REVISION = revision;
-      GPT4ALLCLI_ROOT = src;
+      AICLI_REVISION = revision;
+      AICLI_ROOT = src;
       doCheck = true;
       nativeCheckInputs = with pp; [
         pytestCheckHook

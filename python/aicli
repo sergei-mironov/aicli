@@ -19,19 +19,31 @@ from sm_aicli import *
 
 REVISION:str|None
 try:
-  REVISION=environ["GPT4ALLCLI_REVISION"]
+  REVISION=environ["AICLI_REVISION"]
 except Exception:
   try:
     from subprocess import check_output, DEVNULL
     REVISION=check_output(['git', 'rev-parse', 'HEAD'],
-                          cwd=environ['GPT4ALLCLI_ROOT'],
+                          cwd=environ['AICLI_ROOT'],
                           stderr=DEVNULL).decode().strip()
   except Exception:
     try:
-      from gpt4all_cli.revision import REVISION as __rv__
+      from sm_aicli.revision import REVISION as __rv__
       REVISION = __rv__
     except ImportError:
       REVISION = None
+
+VERSION:str|None
+try:
+  VERSION=check_output(['python3', 'setup.py', '--version'],
+                       cwd=environ['AICLI_ROOT'],
+                       stderr=DEVNULL).decode().strip()
+except Exception:
+  try:
+    from sm_aicli.revision import VERSION as __ver__
+    VERSION = __ver__
+  except ImportError:
+    VERSION = None
 
 def _get_cmd_prefix():
   prefices = list({c[0] for c in COMMANDS if len(c)>0})
@@ -111,6 +123,11 @@ ARG_PARSER.add_argument(
   '--revision',
   action='store_true',
   help="Print the revision",
+)
+ARG_PARSER.add_argument(
+  '--version',
+  action='store_true',
+  help="Print the version",
 )
 
 
@@ -218,6 +235,9 @@ def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
   if args.revision:
     print(REVISION)
+    return 0
+  if args.version:
+    print(VERSION)
     return 0
   if args.model_apikey is not None:
     header.write(f"/apikey {ensure_quoted(args.model_apikey)}\n")
