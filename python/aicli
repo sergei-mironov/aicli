@@ -200,7 +200,7 @@ def parse_apikey(args)->str|None:
     elif schema=="file":
       try:
         with open(val) as f:
-          return f.read().strip()
+          return expanduser(f.read().strip())
       except Exception as err:
         raise ValueError(str(err)) from err
     else:
