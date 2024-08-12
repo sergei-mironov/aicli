@@ -52,7 +52,7 @@ usage: aicli [-h] [--model-dir MODEL_DIR] [--model [STR1:]STR2]
              [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
              [--readline-key-send READLINE_KEY_SEND]
              [--readline-prompt READLINE_PROMPT] [--readline-history FILE]
-             [--verbose NUM] [--revision]
+             [--verbose NUM] [--revision] [--version]
 
 Command-line arguments
 
@@ -80,6 +80,7 @@ options:
                         empty to disable)
   --verbose NUM         Set the verbosity level 0-no,1-full
   --revision            Print the revision
+  --version             Print the version
 ```
 
 The console accepts language defined by the following grammar:
