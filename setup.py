@@ -40,7 +40,7 @@ with open(join('python','sm_aicli', 'revision.py'), 'w') as f:
   else:
     f.write(f"REVISION = None # Undefined at the time of packaging\n")
 
-gpt4all = 'gpt4all-bindings' if 'NIX_PATH' in environ else 'gpt4all >= 2.7.0'
+gpt4all = environ['AICLI_GPT4ALL'] if 'AICLI_GPT4ALL' in environ else 'gpt4all >= 2.7.0'
 
 with open("README.md", "r") as f:
   long_description = f.read()

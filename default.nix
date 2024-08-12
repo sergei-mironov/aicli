@@ -92,6 +92,7 @@ let
       propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark openai];
       AICLI_REVISION = revision;
       AICLI_ROOT = src;
+      AICLI_GPT4ALL = "gpt4all-bindings";
       doCheck = true;
       nativeCheckInputs = with pp; [
         pytestCheckHook
