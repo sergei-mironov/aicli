@@ -1,14 +1,8 @@
 .DEFAULT_GOAL = all
 VERSION = $(shell python3 setup.py --version 2>/dev/null)
 WHEEL = dist/sm_aicli-$(VERSION)-py3-none-any.whl
-PY = $(shell find -name '*\.py' | grep -v semver.py | grep -v revision.py)
-TESTS = ./sh/test.sh
-
-# .stamp_test: $(PY) $(VIM) $(TESTS) Makefile python/bin/litrepl
-# 	LITREPL_BIN="`pwd`/python/bin" \
-# 	LITREPL_ROOT=`pwd` \
-# 	sh ./sh/test.sh
-# 	touch $@
+PY = $(shell find setup.py python -name '*\.py' -or -name 'aicli' | grep -v semver.py | grep -v revision.py)
+TEST = sh/runtests.sh
 
 .PHONY: help # Print help
 help:
@@ -31,6 +25,12 @@ version:
 .stamp_readme: $(PY)
 	cp README.md _README.md.in
 	cat _README.md.in | litrepl --foreground --exception-exit=100 eval-sections >README.md
+	touch $@
+
+.PHONY: test # Run tests
+test: .stamp_test
+.stamp_test: $(PY) $(TEST) Makefile
+	$(TEST)
 	touch $@
 
 .PHONY: readme # Update code sections in the README.md
