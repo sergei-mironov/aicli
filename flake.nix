@@ -18,18 +18,20 @@
 
   outputs = { self, nixpkgs }:
     let
-      defaults = (import ./default.nix) {
-        pkgs = import nixpkgs { system = "x86_64-linux"; };
+      defaults = system : (import ./default.nix) {
+        pkgs = import nixpkgs { inherit system; };
         revision = if self ? rev then self.rev else null;
       };
+      defaults-x86_64 = defaults "x86_64-linux";
+      defaults-aarch64 = defaults "aarch64-linux";
     in {
       packages = {
-        x86_64-linux = defaults;
+        x86_64-linux = defaults-x86_64;
+        aarch64-linux = defaults-aarch64;
       };
       devShells = {
-        x86_64-linux = {
-          default = defaults.shell;
-        };
+        x86_64-linux = { default = defaults-x86_64.shell; };
+        aarch64-linux = { default = defaults-aarch64.shell; };
       };
     };
 
