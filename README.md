@@ -52,7 +52,7 @@ usage: aicli [-h] [--model-dir MODEL_DIR] [--model [STR1:]STR2]
              [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
              [--readline-key-send READLINE_KEY_SEND]
              [--readline-prompt READLINE_PROMPT] [--readline-history FILE]
-             [--verbose NUM] [--revision] [--version]
+             [--verbose NUM] [--revision] [--version] [--no-rc]
 
 Command-line arguments
 
@@ -81,6 +81,7 @@ options:
   --verbose NUM         Set the verbosity level 0-no,1-full
   --revision            Print the revision
   --version             Print the version
+  --no-rc               Do not read configuration files
 ```
 
 The console accepts language defined by the following grammar:
@@ -114,6 +115,10 @@ float: /[0-9]+\.[0-9]*/
 def: "default"
 text: /(.(?!\/|\\))*./s
 ```
+
+If run without `--no-rc` arguemnt and no `AICLI_NORC` environmnet variable is set, the application
+tries to read configuration files starting from the `/` directory down to the current directory. The
+contents of `_aicli`, `.aicli`, `_sm_aicli` and `.sm_aicli` files is interpreted as commands.
 
 ### Example session
 
