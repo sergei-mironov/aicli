@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export AICLI_NORC=y
+
 set -e -x
 echo "Running pytest"
 pytest ./test

@@ -2,8 +2,8 @@
 
 import re
 from io import StringIO
-from os import environ
-from os.path import join, isfile, realpath, expanduser
+from os import environ, getcwd
+from os.path import join, isfile, realpath, expanduser, abspath, sep
 from gnureadline import parse_and_bind, set_completer, read_history_file, write_history_file
 from argparse import ArgumentParser
 from contextlib import contextmanager
@@ -129,6 +129,11 @@ ARG_PARSER.add_argument(
   action='store_true',
   help="Print the version",
 )
+ARG_PARSER.add_argument(
+  '--no-rc',
+  action='store_true',
+  help="Do not read configuration files",
+)
 
 
 
@@ -230,15 +235,35 @@ def parse_model(args) -> ModelProvider | None:
     else:
       raise ValueError(f"Invalid model provider '{mprov}'")
 
+def read_configs(args)->list[str]:
+  acc = []
+  current_dir = abspath(getcwd())
+  path_parts = current_dir.split(sep)
+  for depth in range(2, len(path_parts) + 1):
+    directory = sep.join(path_parts[:depth])
+    for fn in ['_aicli', '.aicli', '_sm_aicli', '.sm_aicli']:
+      candidate_file = join(directory, fn)
+      if isfile(candidate_file):
+        with open(candidate_file, 'r') as file:
+          for line in file.readlines():
+            acc.append(line.strip())
+  return acc
+
 def main(cmdline=None):
-  header = StringIO()
   args = ARG_PARSER.parse_args(cmdline)
-  if args.revision:
-    print(REVISION)
+  if args.revision or args.version:
+    if args.revision:
+      print(REVISION)
+    if args.version:
+      print(VERSION)
     return 0
-  if args.version:
-    print(VERSION)
-    return 0
+
+  header = StringIO()
+  if not environ.get('AICLI_NORC') and not args.no_rc:
+    for line in read_configs(args):
+      header.write(line+'\n')
+  else:
+    print_aux(args, "Skipping reading configuration files")
   if args.model_apikey is not None:
     header.write(f"/apikey {ensure_quoted(args.model_apikey)}\n")
   if args.model is not None:
