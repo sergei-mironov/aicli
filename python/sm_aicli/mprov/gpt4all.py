@@ -6,12 +6,13 @@ from .base import ModelProvider, Options
 class GPT4AllModelProvider(ModelProvider):
   temp_default = 0.9
 
-  def __init__(self, *args, **kwargs):
-    self.gpt4all = GPT4All(*args, **kwargs)
+  def __init__(self, models, *args, **kwargs):
+    assert models.image is None, "GPT4All can not generate images"
+    self.gpt4all = GPT4All(model=models.text, *args, **kwargs)
     self.temp = GPT4AllModelProvider.temp_default
     self.break_request = False
 
-  def stream(self, message, *args, opt:Options|None=None, **kwargs):
+  def ask_message_stream(self, message, *args, opt:Options|None=None, **kwargs):
     self.break_request = False
 
     def _model_callback(*args, **kwargs):

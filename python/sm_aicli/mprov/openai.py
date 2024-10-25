@@ -3,13 +3,13 @@ from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 from io import StringIO
 
-from .base import ModelProvider, Options
+from .base import ModelSpec, PathStr, ModelProvider, Options
 
 class OpenAIModelProvider(ModelProvider):
-  def __init__(self, model: str, apikey: str, *args, **kwargs):
+  def __init__(self, models: ModelSpec, apikey: str, *args, **kwargs):
     try:
       self.client = OpenAI(api_key=apikey)
-      self.model = model
+      self.models = models
       self.temperature = kwargs.get('temperature', 1.0)
       self.thread_count = kwargs.get('thread_count', None)
       self.interrupt_request = False
@@ -17,14 +17,14 @@ class OpenAIModelProvider(ModelProvider):
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  def stream(self, message: str, *args, opt:Options|None=None, **kwargs):
+  def ask_message_stream(self, message: str, *args, opt:Options|None=None, **kwargs):
     answer = StringIO()
     try:
       self.interrupt_request = False
       messages = self.messages
       messages.append({"role":"user", "content":str(message)})
       response = self.client.chat.completions.create(
-        model=self.model,
+        model=self.models.text,
         messages=messages,
         stream=True,
         temperature=self.temperature,
@@ -48,6 +48,15 @@ class OpenAIModelProvider(ModelProvider):
     finally:
       if answer:
         answer.close()
+
+  def ask_image(self, prompt:str, *args, opts:Options|None=None, **kwargs) -> PathStr:
+    response = self.client.images.generate(
+      prompt=prompt,
+      model=self.models.image,
+      n=1,
+      size="512x512",
+      response_format="url")
+    print(response)
 
   def interrupt(self) -> None:
     self.interrupt_request = True

@@ -8,9 +8,10 @@ CMD_RESET = "/reset"
 CMD_TEMP = "/temp"
 CMD_APIKEY = "/apikey"
 CMD_VERBOSE = "/verbose"
+CMD_IMG = "/img"
 
 COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ASK, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET, CMD_TEMP,
-            CMD_APIKEY]
+            CMD_APIKEY, CMD_IMG]
 COMMANDS_ARG = [CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE]
 COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 

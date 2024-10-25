@@ -2,13 +2,13 @@ from contextlib import contextmanager
 from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 
-from .base import ModelProvider, Options
+from .base import ModelSpec, ModelProvider, Options
 
 class DummyModelProvider(ModelProvider):
-  def __init__(self, model: str, apikey: str, *args, **kwargs):
+  def __init__(self, models: ModelSpec, apikey: str, *args, **kwargs):
     self.apikey = apikey
-    self.model = model
-    print(f"Dummy model '{model}' apikey '{apikey}'")
+    self.model = models.text
+    print(f"Dummy model '{self.model}' apikey '{self.apikey}'")
 
   def interrupt(self)->None:
     pass
