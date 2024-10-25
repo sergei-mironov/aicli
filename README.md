@@ -16,6 +16,7 @@ Contents
 * [Usage](#usage)
     * [Example session](#example-session)
 * [Vim integration](#vim-integration)
+* [Roadmap](#roadmap)
 
 <!-- vim-markdown-toc -->
 
