@@ -142,3 +142,17 @@ Vim integration
 Aicli is supported by the [Litrepl](https://github.com/sergei-mironov/litrepl) text processor.
 
 ![Peek 2024-07-19 00-11](https://github.com/user-attachments/assets/7e5e59ea-bb96-4ebe-988f-726e83929dab)
+
+
+Roadmap
+-------
+
+Some thoughts on adding image support:
+
+- App must work with different model providers at once.
+- App must provide a common conversation schema and translate it to model provider languages, rather
+  than stick to provider's conversation schemas.
+- App must allow to work with different models even for same modality. A good feature would be to
+  re-ask different models to generate response for the given conversation. So, basically, we need a
+  conversation editor.
+
