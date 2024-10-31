@@ -3,28 +3,29 @@ from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 from io import StringIO
 
-from .base import ModelSpec, PathStr, ModelProvider, Options
+from ..types import Model, ModelName, PathStr, ModelOptions
 
-class OpenAIModelProvider(ModelProvider):
-  def __init__(self, models: ModelSpec, apikey: str, *args, **kwargs):
+class OpenAIModel(Model):
+  def __init__(self, mname: ModelName, mopt: ModelOptions):
+    super().__init__(mname, mopt)
+    assert self.mname.provider == "openai"
     try:
-      self.client = OpenAI(api_key=apikey)
-      self.models = models
-      self.temperature = kwargs.get('temperature', 1.0)
-      self.thread_count = kwargs.get('thread_count', None)
+      self.client = OpenAI(api_key=mopt.apikey)
+      # self.temperature = kwargs.get('temperature', 1.0)
+      # self.thread_count = kwargs.get('thread_count', None)
       self.interrupt_request = False
       self.messages = []
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  def ask_message_stream(self, message: str, *args, opt:Options|None=None, **kwargs):
+  def ask_message_stream(self, message: str, *args, opt:ModelOptions|None=None, **kwargs):
     answer = StringIO()
     try:
       self.interrupt_request = False
       messages = self.messages
       messages.append({"role":"user", "content":str(message)})
       response = self.client.chat.completions.create(
-        model=self.models.text,
+        model=self.name.val,
         messages=messages,
         stream=True,
         temperature=self.temperature,
@@ -49,10 +50,10 @@ class OpenAIModelProvider(ModelProvider):
       if answer:
         answer.close()
 
-  def ask_image(self, prompt:str, *args, opts:Options|None=None, **kwargs) -> PathStr:
+  def ask_image(self, prompt:str, *args, opts:ModelOptions|None=None, **kwargs) -> PathStr:
     response = self.client.images.generate(
       prompt=prompt,
-      model=self.models.image,
+      model=self.model_name.val,
       n=1,
       size="512x512",
       response_format="url")

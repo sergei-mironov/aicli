@@ -1,6 +1,7 @@
+from .types import *
 from .grammar import *
 from .parser import *
-from .mprov import *
+from .model import *
 try:
   from .revision import REVISION
 except ImportError:
