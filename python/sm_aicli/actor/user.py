@@ -13,6 +13,11 @@ from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL
 from ..parser import PARSER
 from ..utils import print_aux
 
+def as_float(val:str, default:float|None)->float|None:
+  return float(val) if val not in {None,"def","default"} else default
+def as_int(val:str, default:int|None)->int|None:
+  return int(val) if val not in {None,"def","default"} else default
+
 
 @dataclass
 class InterpreterPause(Exception):
@@ -27,7 +32,7 @@ class Repl(Interpreter):
     self.av = None
     self.target_actor = None
   def _reset(self):
-    self.in_echo = False
+    self.in_echo = 0
     self.message = ""
     self.exit_request = False
   def reset(self):
@@ -38,7 +43,7 @@ class Repl(Interpreter):
   def _finish_echo(self):
     if self.in_echo:
       print()
-    self.in_echo = False
+    self.in_echo = 0
   def as_verbatim(self, tree):
     return "verbatim"
   def as_file(self, tree):
@@ -66,7 +71,7 @@ class Repl(Interpreter):
     command = tree.children[0].value
     opts = self.av.options
     if command == CMD_ECHO:
-      self.in_echo = True
+      self.in_echo = 1
     elif command in [CMD_ASK, CMD_IMG]:
       if command == CMD_ASK:
         ask_text(args, st, cnv)
@@ -120,7 +125,11 @@ class Repl(Interpreter):
   def text(self, tree):
     text = tree.children[0].value
     if self.in_echo:
-      print(text, end='')
+      if self.in_echo == 1:
+        print(text.lstrip(), end='')
+        self.in_echo = 2
+      else:
+        print(text, end='')
     else:
       for cmd in COMMANDS:
         if cmd in text:
@@ -134,12 +143,12 @@ class Repl(Interpreter):
       self.message += text
   def visit(self, tree, av:ActorView):
     self.av = av
-    self.in_echo = False
+    self.in_echo = 0
     try:
       res = super().visit(tree)
     finally:
       if self.in_echo:
-        self.in_echo = False
+        self.in_echo = 0
         print()
     return res
 

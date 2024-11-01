@@ -146,11 +146,6 @@ def with_sigint(_handler):
   finally:
     signal(SIGINT,prev)
 
-def as_float(val:str, default:float|None)->float|None:
-  return float(val) if val not in {None,"def","default"} else default
-def as_int(val:str, default:int|None)->int|None:
-  return int(val) if val not in {None,"def","default"} else default
-
 
 def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -> None:
   try:

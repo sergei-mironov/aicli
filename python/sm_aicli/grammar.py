@@ -24,7 +24,7 @@ GRAMMAR = fr"""
              /\/nthreads/ / +/ (number | def) | \
              /\/verbose/ / +/ (number | def) | \
              /\/temp/ / +/ (float | def ) | \
-             /\/echo/ | /\/echo/ / /
+             /\/echo/
   model_string: (model_provider ":")? model_name
   model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
   model_name: /[^"]+/
