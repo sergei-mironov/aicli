@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-from .model.base import Model, ModelName, Options
-
 @dataclass
 class ModelName:
   provider:str
@@ -57,6 +55,7 @@ class ActorRequest:
   def init():
     return ActorRequest(None, {}, False)
 
+Comment = tuple[Utterance|None, ActorRequest|None]
 
 class Actor:
   """ Abstraction of model """
@@ -64,11 +63,11 @@ class Actor:
     self.name = name
     self.opt = opt
 
-  def comment_with_text(self, cnv:Conversation) -> tuple[Utterance|None, ActorRequest|None]:
+  def comment_with_text(self, cnv:Conversation) -> Comment:
     """ Return a token generator object, responding the message. """
     raise NotImplementedError()
 
-  def comment_with_image(self, cnv:Conversation) -> tuple[Utterance|None, ActorRequest|None]:
+  def comment_with_image(self, cnv:Conversation) -> Comment:
     """ Return a path to generated image, responding the message. """
     raise NotImplementedError()
 
@@ -82,7 +81,7 @@ class Actor:
 @dataclass
 class ActorState:
   """ Non-serializable interpreter state. Allocated models, pending options, current model name."""
-  actors: dict[ActorName, Model]
+  actors: dict[ActorName, Actor]
 
   @staticmethod
   def init(initial:Actor):

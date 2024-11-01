@@ -3,10 +3,10 @@ from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 from io import StringIO
 
-from ..types import Model, ModelName, PathStr, ModelOptions
+from ..types import Actor, ActorName, PathStr, ActorOptions, Conversation, Comment
 
-class OpenAIModel(Model):
-  def __init__(self, mname: ModelName, mopt: ModelOptions):
+class OpenAIActor(Actor):
+  def __init__(self, mname: ActorName, mopt: ActorOptions):
     super().__init__(mname, mopt)
     assert self.mname.provider == "openai"
     try:
@@ -18,7 +18,7 @@ class OpenAIModel(Model):
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  def ask_message_stream(self, message: str, *args, opt:ModelOptions|None=None, **kwargs):
+  def comment_with_text(self, cnv:Conversation) -> Comment:
     answer = StringIO()
     try:
       self.interrupt_request = False
@@ -50,7 +50,7 @@ class OpenAIModel(Model):
       if answer:
         answer.close()
 
-  def ask_image(self, prompt:str, *args, opts:ModelOptions|None=None, **kwargs) -> PathStr:
+  def ask_image(self, prompt:str, *args, opts:ActorOptions|None=None, **kwargs) -> PathStr:
     response = self.client.images.generate(
       prompt=prompt,
       model=self.model_name.val,

@@ -2,7 +2,7 @@ from lark import Lark
 from lark.visitors import Interpreter
 from dataclasses import dataclass
 
-from ..types import Actor, ActorName, ActorOptions, ActorRequest, UserName, Utterance
+from ..types import Actor, ActorName, ActorOptions, ActorRequest, UserName, Utterance, Conversation
 from ..grammar import GRAMMAR
 from ..parser import PARSER
 

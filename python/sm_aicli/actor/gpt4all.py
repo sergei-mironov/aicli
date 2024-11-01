@@ -2,14 +2,14 @@ from contextlib import contextmanager
 from gpt4all import GPT4All
 from copy import deepcopy
 
-from ..types import Conversation, Model, ModelName, ModelOptions, User, Utterance
+from ..types import Conversation, Actor, ActorName, ActorOptions, Utterance, Comment
 
-class GPT4AllModel(Model):
+class GPT4AllActor(Actor):
   temp_default = 0.9
 
-  def __init__(self, mname:ModelName, mopt:ModelOptions):
+  def __init__(self, name:ActorName, opt:ActorOptions):
     assert mname.provider == "gpt4all"
-    super().__init__(mname, mopt)
+    super().__init__(name, opt)
     self.gpt4all = GPT4All(model=name.val)
     self.gpt4all.chat_session().__enter__()
     self.break_request = False
@@ -37,7 +37,7 @@ class GPT4AllModel(Model):
     return hist
 
 
-  def ask_for_message_stream(self, cnv:Conversation):
+  def comment_with_text(self, cnv:Conversation) -> Comment:
     self.break_request = False
     new_history = self._sync(cnv)
     assert new_history[-1]["role"] == "user"
@@ -70,7 +70,7 @@ class GPT4AllModel(Model):
   def interrupt(self)->None:
     self.break_request = True
 
-  def set_options(self, mopt:ModelOptions)->None:
+  def set_options(self, mopt:ActorOptions)->None:
     old_mopt = self.mopt
     if mopt.num_threads != old_mopt.num_threads:
       if mopt.num_threads is not None:

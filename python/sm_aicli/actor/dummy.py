@@ -3,25 +3,25 @@ from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 from itertools import cycle
 
-from ..types import Model, ModelName, ModelOptions
+from ..types import Actor, ActorName, ActorOptions, Comment, Conversation
 
-class DummyModel(Model):
+class DummyActor(Actor):
 
-  def __init__(self, mname:ModelName, mopt:ModelOptions):
-    super().__init__(mname, mopt)
+  def __init__(self, name:ActorName, opt:ActorOptions):
+    super().__init__(name, opt)
     self.interrupt = False
-    print(f"Dummy model '{self.mname}' apikey '{self.mopt.apikey}'")
+    print(f"Dummy actor '{self.name}' apikey '{self.opt.apikey}'")
 
   def interrupt(self)->None:
     self.interrupt = True
 
-  def ask_for_message_stream(self, cnv:Conversation):
+  def comment_with_text(self, cnv:Conversation) -> Comment:
     """ Return a token generator object, responding the message. """
     self.interrupt = False
     for chunk in cycle(["dummy"]):
       if not self.interrupt:
         yield chunk
 
-  def ask_for_image(self, cnv:Conversation) -> PathStr:
+  def ask_for_image(self, cnv:Conversation) -> Comment:
     """ Return a path to generated image, responding the message. """
     raise NotImplementedError()
