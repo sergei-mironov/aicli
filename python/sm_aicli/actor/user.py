@@ -26,11 +26,12 @@ class InterpreterPause(Exception):
   utterance:Utterance|None=None
 
 class Repl(Interpreter):
-  def __init__(self, args):
+  def __init__(self, name, args):
     self._reset()
     self.args = args
     self.av = None
     self.target_actor = None
+    self.aname = name
   def _reset(self):
     self.in_echo = 0
     self.message = ""
@@ -74,9 +75,9 @@ class Repl(Interpreter):
       self.in_echo = 1
     elif command in [CMD_ASK, CMD_IMG]:
       raise InterpreterPause(tree.meta.end_pos,
-                             utterance=Utterance(self.name, self.message),
+                             utterance=Utterance(self.aname, self.message),
                              request=ActorRequest.init(next_actor=self.target_actor,
-                                                       update_dict=self.av))
+                                                       updates=self.av))
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
@@ -161,7 +162,7 @@ class UserActor(Actor):
     super().__init__(name, opt)
     self.stream = prefix_stream if prefix_stream is not None else ''
     self.args = args
-    self.repl = Repl(args)
+    self.repl = Repl(name, args)
 
   def comment_with_text(self, av:ActorView, cnv:Conversation) -> Comment:
     try:

@@ -322,17 +322,17 @@ def main(cmdline=None):
   while True:
     reply, request = current.comment_with_text(st.get_view(), cnv)
     if reply is not None:
-      assert reply.actor_name == current.name
+      assert reply.actor_name == current.name, f"{reply.actor_name} != {current.name}"
       cnv.utterances.append(reply)
     if request is not None:
       if request.exit_request:
         break
-      for name, opt in request.update_list.items():
+      for name, opt in request.updates.options.items():
         actor = st.actors.get(name)
         if actor is not None:
           actor.set_options(opt)
         else:
-          if name.provide == "openai":
+          if name.provider == "openai":
             st.actors[name] = OpenAIActor(name, opt)
           elif name.provider == "gpt4all":
             st.actors[name] = Gpt4allActor(name, opt)

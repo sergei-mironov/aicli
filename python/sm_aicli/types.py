@@ -56,12 +56,12 @@ class ActorView:
 class ActorRequest:
   """ Request from an actor to change other actors' settings """
   next_actor: ActorName|None
-  update_dict: ActorView
+  updates: ActorView
   exit_request:bool
 
   @staticmethod
-  def init(next_actor=None, update_dict=None, exit_request=False):
-    return ActorRequest(next_actor, update_dict or {}, exit_request)
+  def init(next_actor=None, updates=None, exit_request=False):
+    return ActorRequest(next_actor, updates or {}, exit_request)
 
 
 
