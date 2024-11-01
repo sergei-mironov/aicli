@@ -49,20 +49,20 @@ class Conversation:
 
 
 @dataclass
+class ActorView:
+  options: dict[ActorName, ActorOptions]
+
+@dataclass
 class ActorRequest:
   """ Request from an actor to change other actors' settings """
   next_actor: ActorName|None
-  update_dict: dict[ActorName, ActorOptions]
+  update_dict: ActorView
   exit_request:bool
 
   @staticmethod
   def init(next_actor=None, update_dict=None, exit_request=False):
     return ActorRequest(next_actor, update_dict or {}, exit_request)
 
-
-@dataclass
-class ActorView:
-  options: dict[ActorName, ActorOptions]
 
 
 @dataclass

@@ -73,12 +73,10 @@ class Repl(Interpreter):
     if command == CMD_ECHO:
       self.in_echo = 1
     elif command in [CMD_ASK, CMD_IMG]:
-      if command == CMD_ASK:
-        ask_text(args, st, cnv)
-      elif command == CMD_IMG:
-        ask_img(args, st, cnv)
-      else:
-        assert False
+      raise InterpreterPause(tree.meta.end_pos,
+                             utterance=Utterance(self.name, self.message),
+                             request=ActorRequest.init(next_actor=self.target_actor,
+                                                       update_dict=self.av))
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
@@ -147,9 +145,7 @@ class Repl(Interpreter):
     try:
       res = super().visit(tree)
     finally:
-      if self.in_echo:
-        self.in_echo = 0
-        print()
+      self._finish_echo()
     return res
 
 
