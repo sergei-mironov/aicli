@@ -1,11 +1,15 @@
 from dataclasses import dataclass
+from copy import deepcopy
 
-@dataclass
+@dataclass(frozen=True)
 class ModelName:
   provider:str
   model:str
 
-@dataclass
+  def __repr__(self)->str:
+    return f"{self.provider}:{self.model}"
+
+@dataclass(frozen=True)
 class UserName:
   pass
 
@@ -48,12 +52,30 @@ class Conversation:
 class ActorRequest:
   """ Request from an actor to change other actors' settings """
   next_actor: ActorName|None
-  update_list: dict[ActorName, ActorOptions]
-  terminate:bool
+  update_dict: dict[ActorName, ActorOptions]
+  exit_request:bool
 
   @staticmethod
-  def init():
-    return ActorRequest(None, {}, False)
+  def init(next_actor=None, update_dict=None, exit_request=False):
+    return ActorRequest(next_actor, update_dict or {}, exit_request)
+
+
+@dataclass
+class ActorView:
+  options: dict[ActorName, ActorOptions]
+
+
+@dataclass
+class ActorState:
+  """ Non-serializable interpreter state. Allocated models, pending options, current model name."""
+  actors: dict[ActorName, "Actor"]
+
+  def get_view(self) -> ActorView:
+    return ActorView({n:deepcopy(a.get_options()) for n,a in self.actors.items()})
+
+  @staticmethod
+  def init(initial:"Actor"):
+    return ActorState({initial.name:initial})
 
 Comment = tuple[Utterance|None, ActorRequest|None]
 
@@ -63,11 +85,11 @@ class Actor:
     self.name = name
     self.opt = opt
 
-  def comment_with_text(self, cnv:Conversation) -> Comment:
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Comment:
     """ Return a token generator object, responding the message. """
     raise NotImplementedError()
 
-  def comment_with_image(self, cnv:Conversation) -> Comment:
+  def comment_with_image(self, act:ActorView, cnv:Conversation) -> Comment:
     """ Return a path to generated image, responding the message. """
     raise NotImplementedError()
 
@@ -76,14 +98,4 @@ class Actor:
 
   def get_options(self)->ActorOptions:
     return self.opt
-
-
-@dataclass
-class ActorState:
-  """ Non-serializable interpreter state. Allocated models, pending options, current model name."""
-  actors: dict[ActorName, Actor]
-
-  @staticmethod
-  def init(initial:Actor):
-    return ConversationState({initial.name:initial})
 
