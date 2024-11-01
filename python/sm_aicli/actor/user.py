@@ -1,3 +1,4 @@
+from gnureadline import write_history_file
 from lark import Lark
 from lark.visitors import Interpreter
 from dataclasses import dataclass
@@ -5,8 +6,8 @@ from typing import Any
 
 from pdb import set_trace as ST
 
-from ..types import (Actor, ActorName, ActorOptions, ActorRequest, UserName, Utterance,
-                     Conversation, ActorView, ModelName, Comment)
+from ..types import (Actor, ActorName, ActorOptions, ActorResponse, UserName, Utterance,
+                     Conversation, ActorView, ModelName)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS)
 
@@ -22,15 +23,14 @@ def as_int(val:str, default:int|None)->int|None:
 @dataclass
 class InterpreterPause(Exception):
   unparsed:int
-  request:ActorRequest|None=None
-  utterance:Utterance|None=None
+  response:ActorResponse|None=None
 
 class Repl(Interpreter):
   def __init__(self, name, args):
     self._reset()
     self.args = args
     self.av = None
-    self.target_actor = None
+    self.actor_next = None
     self.aname = name
   def _reset(self):
     self.in_echo = 0
@@ -66,7 +66,7 @@ class Repl(Interpreter):
     return tree.children[0].value
   def model_string(self, tree):
     val = self.visit_children(tree)
-    return tuple(val) if len(val)==2 else ("gpt4all",val[0])
+    return tuple(val) if len(val)==2 else (val[0],"default")
   def command(self, tree):
     self._finish_echo()
     command = tree.children[0].value
@@ -74,16 +74,23 @@ class Repl(Interpreter):
     if command == CMD_ECHO:
       self.in_echo = 1
     elif command in [CMD_ASK, CMD_IMG]:
-      raise InterpreterPause(tree.meta.end_pos,
-                             utterance=Utterance(self.aname, self.message),
-                             request=ActorRequest.init(next_actor=self.target_actor,
-                                                       updates=self.av))
+      raise InterpreterPause(
+        tree.meta.end_pos,
+        response=ActorResponse.init(
+          utterance=Utterance(self.aname, self.message),
+          actor_next=self.actor_next,
+          actor_updates=self.av
+        )
+      )
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
       print(GRAMMAR)
     elif command == CMD_EXIT:
-      raise InterpreterPause(tree.meta.end_pos, request=ActorRequest.init(exit_request=True))
+      raise InterpreterPause(
+        tree.meta.end_pos,
+        response=ActorResponse.init(exit_request=True)
+      )
     elif command == CMD_MODEL:
       res = self.visit_children(tree)
       if len(res)>2:
@@ -91,28 +98,28 @@ class Repl(Interpreter):
         opt = opts.get(name, ActorOptions.init())
         print_aux(f"Setting target actor to '{name}'")
         opts[name] = opt
-        self.target_actor = name
+        self.actor_next = name
       else:
-        self.target_actor = None
+        self.actor_next = None
         print_aux(f"Setting target actor to none")
     elif command == CMD_NTHREADS:
       n = as_int(tree.children[2].children[0].value, None)
-      opts[self.target_actor].num_threads = n
+      opts[self.actor_next].num_threads = n
       print_aux(f"Setting number of threads to '{n or 'default'}'")
     elif command == CMD_TEMP:
       t = as_float(tree.children[2].children[0].value, None)
-      opts[self.target_actor].temperature = t
+      opts[self.actor_next].temperature = t
       print_aux(f"Setting model temperature to '{t or 'default'}'")
     elif command == CMD_APIKEY:
       res = self.visit_children(tree)
       if len(res)<3:
         raise ValueError("API key should not be empty")
       schema,arg = res[3]
-      opts[self.target_actor].api_key = (schema,arg)
+      opts[self.actor_next].api_key = (schema,arg)
       print_aux(f"Setting API key to \"{schema}:{arg}\"")
     elif command == CMD_VERBOSE:
       v = as_int(tree.children[2].children[0].value, 0)
-      opts[self.target_actor].verbose = v
+      opts[self.actor_next].verbose = v
       print_aux(f"Setting actor verbosity to '{v}'")
     elif command == CMD_RESET:
       print_aux("Message buffer will be cleared")
@@ -164,19 +171,20 @@ class UserActor(Actor):
     self.args = args
     self.repl = Repl(name, args)
 
-  def comment_with_text(self, av:ActorView, cnv:Conversation) -> Comment:
+  def comment_with_text(self, av:ActorView, cnv:Conversation) -> ActorResponse:
     try:
       while True:
         if self.stream == '':
           self.stream = input(self.args.readline_prompt)
         self.repl.visit(PARSER.parse(self.stream), av)
+        if self.args.readline_history:
+          write_history_file(self.args.readline_history)
         self.stream = ''
     except InterpreterPause as p:
       self.stream = self.stream[p.unparsed:]
-      return (p.utterance, p.request)
+      return p.response
 
-
-  def set_options(self, mopt:ActorOptions)->None:
+  def set_options(self, opt:ActorOptions)->None:
     pass
 
   def get_options(self)->ActorOptions:

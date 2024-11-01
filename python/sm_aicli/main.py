@@ -320,14 +320,14 @@ def main(cmdline=None):
   st = ActorState.init(current)
 
   while True:
-    reply, request = current.comment_with_text(st.get_view(), cnv)
-    if reply is not None:
-      assert reply.actor_name == current.name, f"{reply.actor_name} != {current.name}"
-      cnv.utterances.append(reply)
-    if request is not None:
-      if request.exit_request:
-        break
-      for name, opt in request.updates.options.items():
+    response = current.comment_with_text(st.get_view(), cnv)
+    assert response.utterance.actor_name == current.name, (
+      f"{response.utterance.actor_name} != {current.name}"
+    )
+    if response.utterance is not None:
+      cnv.utterances.append(response.utterance)
+    if response.actor_updates is not None:
+      for name, opt in response.actor_updates.options.items():
         actor = st.actors.get(name)
         if actor is not None:
           actor.set_options(opt)
@@ -340,8 +340,10 @@ def main(cmdline=None):
             st.actors[name] = DummyActor(name, opt)
           else:
             raise RuntimeError(f"Unsupported provider {name.provider}")
-      if request.next_actor is not None:
-        current = st.actors.get(request.next_actor)
+    if response.actor_next is not None:
+      current = st.actors.get(response.actor_next)
+    if response.exit_flag:
+      break
 
 #     apply(st)
 #     repl.reset()

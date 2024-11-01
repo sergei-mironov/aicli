@@ -2,7 +2,8 @@ from contextlib import contextmanager
 from gpt4all import GPT4All
 from copy import deepcopy
 
-from ..types import Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance, Comment
+from ..types import (Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance,
+                     ActorResponse)
 
 class GPT4AllActor(Actor):
   temp_default = 0.9
@@ -37,7 +38,7 @@ class GPT4AllActor(Actor):
     return hist
 
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Comment:
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     self.break_request = False
     new_history = self._sync(cnv)
     assert new_history[-1]["role"] == "user"

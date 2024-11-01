@@ -3,7 +3,7 @@ from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 from io import StringIO
 
-from ..types import Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, Comment
+from ..types import Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, ActorResponse
 
 class OpenAIActor(Actor):
   def __init__(self, mname: ActorName, mopt: ActorOptions):
@@ -18,7 +18,7 @@ class OpenAIActor(Actor):
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Comment:
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     answer = StringIO()
     try:
       self.interrupt_request = False

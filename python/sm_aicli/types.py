@@ -52,17 +52,21 @@ class Conversation:
 class ActorView:
   options: dict[ActorName, ActorOptions]
 
+  @staticmethod
+  def init():
+    return ActorView({})
+
+
 @dataclass
-class ActorRequest:
-  """ Request from an actor to change other actors' settings """
-  next_actor: ActorName|None
-  updates: ActorView
-  exit_request:bool
+class ActorResponse:
+  utterance: Utterance|None
+  actor_next: ActorName|None
+  actor_updates: ActorView|None
+  exit_flag:bool
 
   @staticmethod
-  def init(next_actor=None, updates=None, exit_request=False):
-    return ActorRequest(next_actor, updates or {}, exit_request)
-
+  def init(utterance=None, actor_next=None, actor_updates=None, exit_flag=False):
+    return ActorResponse(utterance, actor_next, actor_updates, exit_flag)
 
 
 @dataclass
@@ -77,24 +81,22 @@ class ActorState:
   def init(initial:"Actor"):
     return ActorState({initial.name:initial})
 
-Comment = tuple[Utterance|None, ActorRequest|None]
-
 class Actor:
   """ Abstraction of model """
   def __init__(self, name:ActorName, opt:ActorOptions):
     self.name = name
     self.opt = opt
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Comment:
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     """ Return a token generator object, responding the message. """
     raise NotImplementedError()
 
-  def comment_with_image(self, act:ActorView, cnv:Conversation) -> Comment:
+  def comment_with_image(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     """ Return a path to generated image, responding the message. """
     raise NotImplementedError()
 
   def set_options(self, opt:ActorOptions)->None:
-    selt.opt = opt
+    self.opt = opt
 
   def get_options(self)->ActorOptions:
     return self.opt
