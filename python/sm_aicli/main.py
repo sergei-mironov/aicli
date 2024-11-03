@@ -7,7 +7,6 @@ from argparse import ArgumentParser
 from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from textwrap import dedent
-from glob import glob
 from functools import partial
 
 from lark import Lark
@@ -177,11 +176,6 @@ def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -
 #     with model.with_chat_session():
 #       yield
 
-def model_locations(args, model)->list[str]:
-  for path in [model] + ([join(args.model_dir,model)] if args.model_dir else []):
-    for match in glob(expanduser(path)):
-      yield realpath(match)
-
 def ensure_quoted(s:str)->str:
   if not (len(s)>0 and s[0]=='"'):
     s = '"' + s
@@ -189,29 +183,29 @@ def ensure_quoted(s:str)->str:
     s = s + '"'
   return s
 
-def parse_model(args) -> tuple[ModelName] | None:
-  if args.model is None:
-    return None
-  else:
-    mprov,mname = args.model
-    if mprov == 'gpt4all':
-      filename = None
-      for f in model_locations(args, mname):
-        if isfile(f):
-          filename = f
-          break
-      mname = filename if filename is not None else mname
-      return GPT4AllModel(mname, device=args.device)
-    elif mprov == 'openai':
-      apikey = parse_apikey(args)
-      if apikey is None:
-        raise ValueError("OpenAI models require apikey")
-      return OpenAIModel(model=mname, apikey=apikey)
-    elif mprov == 'dummy':
-      apikey = parse_apikey(args)
-      return DummyModel(model=mname, apikey=apikey)
-    else:
-      raise ValueError(f"Invalid model provider '{mprov}'")
+# def parse_model(args) -> tuple[ModelName] | None:
+#   if args.model is None:
+#     return None
+#   else:
+#     mprov,mname = args.model
+#     if mprov == 'gpt4all':
+#       filename = None
+#       for f in model_locations(args, mname):
+#         if isfile(f):
+#           filename = f
+#           break
+#       mname = filename if filename is not None else mname
+#       return GPT4AllModel(mname, device=args.device)
+#     elif mprov == 'openai':
+#       apikey = parse_apikey(args)
+#       if apikey is None:
+#         raise ValueError("OpenAI models require apikey")
+#       return OpenAIModel(model=mname, apikey=apikey)
+#     elif mprov == 'dummy':
+#       apikey = parse_apikey(args)
+#       return DummyModel(model=mname, apikey=apikey)
+#     else:
+#       raise ValueError(f"Invalid model provider '{mprov}'")
 
 def read_configs(args)->list[str]:
   acc = []
@@ -309,7 +303,7 @@ def main(cmdline=None):
           if name.provider == "openai":
             st.actors[name] = OpenAIActor(name, opt)
           elif name.provider == "gpt4all":
-            st.actors[name] = Gpt4allActor(name, opt)
+            st.actors[name] = GPT4AllActor(name, opt, args.model_dir)
           elif name.provider == "dummy":
             st.actors[name] = DummyActor(name, opt)
           else:

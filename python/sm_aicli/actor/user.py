@@ -191,7 +191,7 @@ class UserActor(Actor):
             # from pdb import set_trace; set_trace()
             for token in u.gen():
               need_eol = not token.rstrip(' ').endswith("\n")
-              print(token, end='')
+              print(token, end='', flush=True)
         if need_eol:
           print()
       self.cnv_top += 1

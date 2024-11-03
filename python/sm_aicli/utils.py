@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from os.path import join, isfile, realpath, expanduser, abspath, sep
+from glob import glob
 
 def print_help():
   print(f"Commands: {' '.join(COMMANDS)}")
@@ -34,3 +35,9 @@ def expand_apikey(apikey)->str|None:
       raise ValueError(str(err)) from err
   else:
     raise ValueError(f"Unsupported APIKEY schema '{schema}'")
+
+
+def expandpath(refdir, path)->list[str]:
+  for p in [path] + ([join(refdir, path)] if refdir else []):
+    for match in glob(expanduser(p)):
+      yield realpath(match)
