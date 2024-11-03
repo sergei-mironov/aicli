@@ -3,6 +3,7 @@ from lark import Lark
 from lark.visitors import Interpreter
 from dataclasses import dataclass
 from typing import Any
+from copy import deepcopy, copy
 
 from pdb import set_trace as ST
 
@@ -12,7 +13,7 @@ from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS)
 
 from ..parser import PARSER
-from ..utils import print_aux
+from ..utils import print_aux, with_sigint
 
 def as_float(val:str, default:float|None)->float|None:
   return float(val) if val not in {None,"def","default"} else default
@@ -74,14 +75,17 @@ class Repl(Interpreter):
     if command == CMD_ECHO:
       self.in_echo = 1
     elif command in [CMD_ASK, CMD_IMG]:
-      raise InterpreterPause(
-        tree.meta.end_pos,
-        response=ActorResponse.init(
-          utterance=Utterance(self.aname, self.message),
-          actor_next=self.actor_next,
-          actor_updates=self.av
+      try:
+        raise InterpreterPause(
+          tree.meta.end_pos,
+          response=ActorResponse.init(
+            utterance=Utterance(self.aname, copy(self.message)),
+            actor_next=self.actor_next,
+            actor_updates=self.av
+          )
         )
-      )
+      finally:
+        self.message = ''
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
@@ -96,7 +100,7 @@ class Repl(Interpreter):
       if len(res)>2:
         name = ModelName(*res[3])
         opt = opts.get(name, ActorOptions.init())
-        print_aux(f"Setting target actor to '{name}'")
+        print_aux(f"Setting target actor to '{name.repr()}'")
         opts[name] = opt
         self.actor_next = name
       else:
@@ -115,7 +119,7 @@ class Repl(Interpreter):
       if len(res)<3:
         raise ValueError("API key should not be empty")
       schema,arg = res[3]
-      opts[self.actor_next].api_key = (schema,arg)
+      opts[self.actor_next].apikey = (schema,arg)
       print_aux(f"Setting API key to \"{schema}:{arg}\"")
     elif command == CMD_VERBOSE:
       v = as_int(tree.children[2].children[0].value, 0)
@@ -170,8 +174,30 @@ class UserActor(Actor):
     self.stream = prefix_stream if prefix_stream is not None else ''
     self.args = args
     self.repl = Repl(name, args)
+    self.cnv_top = 0
+
+  def _sync(self, cnv:Conversation):
+    for i in range(self.cnv_top, len(cnv.utterances)):
+      u:Utterance = cnv.utterances[i]
+      if u.actor_name != self.name:
+        need_eol = False
+        if u.contents is not None:
+          need_eol = not u.contents.rstrip(' ').endswith("\n")
+          print(u.contents, end='')
+        else:
+          def _handler(*args, **kwargs):
+            u.interrupt()
+          with with_sigint(_handler):
+            # from pdb import set_trace; set_trace()
+            for token in u.gen():
+              need_eol = not token.rstrip(' ').endswith("\n")
+              print(token, end='')
+        if need_eol:
+          print()
+      self.cnv_top += 1
 
   def comment_with_text(self, av:ActorView, cnv:Conversation) -> ActorResponse:
+    self._sync(cnv)
     try:
       while True:
         if self.stream == '':

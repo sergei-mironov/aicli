@@ -1,85 +1,73 @@
+from typing import Any
 from contextlib import contextmanager
 from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 from io import StringIO
+from dataclasses import dataclass
 
-from ..types import Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, ActorResponse
+from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation,
+                     ActorResponse, ModelName, UserName, Utterance)
+from ..utils import expand_apikey
+
+@dataclass
+class OpenAIUtterance(Utterance):
+  chunks:Any
+  stop:bool=False
+  def interrupt(self):
+    self.stop = True
+  def gen(self):
+    self.stop = False
+    self.contents = ''
+    try:
+      for chunk in self.chunks:
+        if self.stop:
+          break
+        if text:=chunk.choices[0].delta.content:
+          self.contents += text
+          yield text
+    except OpenAIError as err:
+      yield f"<ERROR: {str(err)}>"
 
 class OpenAIActor(Actor):
-  def __init__(self, mname: ActorName, mopt: ActorOptions):
-    super().__init__(mname, mopt)
-    assert self.mname.provider == "openai"
+  def __init__(self, name: ActorName, opt: ActorOptions):
+    assert isinstance(name, ModelName), name
+    assert name.provider == "openai", name.provider
+    super().__init__(name, opt)
+    self.cnvtop = 0
+    self.messages = [{"role": "system", "content": "You are a helpful assistant."}]
     try:
-      self.client = OpenAI(api_key=mopt.apikey)
-      # self.temperature = kwargs.get('temperature', 1.0)
-      # self.thread_count = kwargs.get('thread_count', None)
-      self.interrupt_request = False
-      self.messages = []
+      self.client = OpenAI(api_key=expand_apikey(opt.apikey))
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
   def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
-    answer = StringIO()
+    for i in range(self.cnvtop, len(cnv.utterances)):
+      u = cnv.utterances[i]
+      assert isinstance(u.contents, str)
+      role = "user" if u.actor_name == UserName() else "assistant"
+      self.messages.append({"role":role, "content": u.contents})
+      self.cnvtop += 1
+
     try:
-      self.interrupt_request = False
-      messages = self.messages
-      messages.append({"role":"user", "content":str(message)})
-      response = self.client.chat.completions.create(
-        model=self.name.val,
-        messages=messages,
+      chunks = self.client.chat.completions.create(
+        model=self.name.model,
+        messages=self.messages,
         stream=True,
-        temperature=self.temperature,
-        **kwargs
+        temperature=self.opt.temperature,
       )
-      if opt and opt.verbose>0:
-        print(messages)
-        print(response)
-
-      for chunk in response:
-        if self.interrupt_request:
-          break
-        if c := chunk.choices[0].delta.content:
-          answer.write(c)
-          yield c
-
-      messages.append({"role":"assistant", "content":str(answer.getvalue())})
-      self.messages = messages
+      return ActorResponse.init(
+        actor_next=UserName(),
+        utterance=OpenAIUtterance(self.name, None, chunks)
+      )
     except OpenAIError as err:
       raise ValueError(str(err)) from err
-    finally:
-      if answer:
-        answer.close()
 
-  def ask_image(self, prompt:str, *args, opts:ActorOptions|None=None, **kwargs) -> PathStr:
-    response = self.client.images.generate(
-      prompt=prompt,
-      model=self.model_name.val,
-      n=1,
-      size="512x512",
-      response_format="url")
-    print(response)
-
-  def interrupt(self) -> None:
-    self.interrupt_request = True
-
-  def get_thread_count(self) -> int | None:
-    return self.thread_count
-
-  def set_thread_count(self, n: int | None) -> None:
-    self.thread_count = n
-
-  def get_temperature(self) -> float | None:
-    return self.temperature
-
-  def set_temperature(self, t: float | None) -> None:
-    self.temperature = t
-
-  @contextmanager
-  def with_chat_session(self):
-    old = self.messages
-    try:
-      self.messages = [{"role": "system", "content": "You are a helpful assistant."}]
-      yield
-    finally:
-      self.messages = old
+  # def ask_image(self, prompt:str, *args, opts:ActorOptions|None=None, **kwargs) -> PathStr:
+  #   response = self.client.images.generate(
+  #     prompt=prompt,
+  #     model=self.model_name.val,
+  #     n=1,
+  #     size="512x512",
+  #     response_format="url")
+  #   print(response)
 

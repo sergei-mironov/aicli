@@ -1,3 +1,4 @@
+from typing import Iterable
 from dataclasses import dataclass
 from copy import deepcopy
 
@@ -6,7 +7,7 @@ class ModelName:
   provider:str
   model:str
 
-  def __repr__(self)->str:
+  def repr(self)->str:
     return f"{self.provider}:{self.model}"
 
 @dataclass(frozen=True)
@@ -32,7 +33,11 @@ ActorName = ModelName | UserName
 @dataclass
 class Utterance:
   actor_name: ActorName
-  contents: str
+  contents: str|None
+  def gen(self) -> Iterable[str]:
+    return NotImplementedError()
+  def interrupt(self) -> None:
+    return NotImplementedError()
 
 @dataclass
 class Conversation:
@@ -87,7 +92,7 @@ class Actor:
     self.name = name
     self.opt = opt
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+  def respond_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     """ Return a token generator object, responding the message. """
     raise NotImplementedError()
 

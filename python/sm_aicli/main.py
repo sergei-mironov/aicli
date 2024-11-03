@@ -137,16 +137,6 @@ ARG_PARSER.add_argument(
 
 
 
-@contextmanager
-def with_sigint(_handler):
-  """ A Not very correct singal handler. One also needs to mask signals during switching handlers """
-  prev=signal(SIGINT,_handler)
-  try:
-    yield
-  finally:
-    signal(SIGINT,prev)
-
-
 def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -> None:
   try:
     actor = ast.actors.get(aname)
@@ -198,22 +188,6 @@ def ensure_quoted(s:str)->str:
   if not (len(s)>0 and s[-1]=='"'):
     s = s + '"'
   return s
-
-def parse_apikey(args)->str|None:
-  if args.model_apikey is None:
-    return None
-  else:
-    schema,val = args.model_apikey
-    if schema=="verbatim":
-      return val
-    elif schema=="file":
-      try:
-        with open(expanduser(val)) as f:
-          return f.read().strip()
-      except Exception as err:
-        raise ValueError(str(err)) from err
-    else:
-      raise ValueError(f"Unsupported APIKEY schema '{schema}'")
 
 def parse_model(args) -> tuple[ModelName] | None:
   if args.model is None:
