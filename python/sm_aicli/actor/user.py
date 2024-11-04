@@ -13,8 +13,9 @@ from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
                        CMD_DBG)
 
-from ..parser import PARSER
 from ..utils import info, err, with_sigint
+
+PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
 no_model_is_active = "No model is active, use /model first"
 
