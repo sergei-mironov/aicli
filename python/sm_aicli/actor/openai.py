@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation,
                      ActorResponse, ModelName, UserName, Utterance)
-from ..utils import expand_apikey
+from ..utils import expand_apikey, dbg
 
 @dataclass
 class OpenAIUtterance(Utterance):
@@ -34,13 +34,19 @@ class OpenAIActor(Actor):
     assert name.provider == "openai", name.provider
     super().__init__(name, opt)
     self.cnvtop = 0
-    self.messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    self.messages = []
     try:
       self.client = OpenAI(api_key=expand_apikey(opt.apikey))
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+  def _sync(self, cnv:Conversation):
+    if self.cnvtop >= len(cnv.utterances):
+      dbg("Resetting session", actor=self)
+      self.cnvtop = 0
+      self.messages = []
+    if self.messages == []:
+      self.messages = [{"role": "system", "content": "You are a helpful assistant."}]
     for i in range(self.cnvtop, len(cnv.utterances)):
       u = cnv.utterances[i]
       assert isinstance(u.contents, str)
@@ -48,6 +54,11 @@ class OpenAIActor(Actor):
       self.messages.append({"role":role, "content": u.contents})
       self.cnvtop += 1
 
+    dbg(f"messages: {self.messages}", actor=self)
+    assert len(self.messages)>0
+
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+    self._sync(cnv)
     try:
       chunks = self.client.chat.completions.create(
         model=self.name.model,

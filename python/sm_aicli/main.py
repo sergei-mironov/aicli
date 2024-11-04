@@ -14,7 +14,6 @@ from lark.visitors import Interpreter
 
 from sm_aicli import *
 
-no_model_is_active = "No model is active, use /model first"
 
 REVISION:str|None
 try:
@@ -217,9 +216,9 @@ def read_configs(args)->list[str]:
       candidate_file = join(directory, fn)
       if isfile(candidate_file):
         with open(candidate_file, 'r') as file:
-          print_aux(f"Reading {candidate_file}")
+          info(f"Reading {candidate_file}")
           for line in file.readlines():
-            print_aux(line.strip())
+            info(line.strip())
             acc.append(line.strip())
   return acc
 
@@ -262,7 +261,7 @@ def main(cmdline=None):
     for line in read_configs(args):
       header.write(line+'\n')
   else:
-    print_aux("Skipping reading configuration files")
+    info("Skipping reading configuration files")
   if args.model is not None:
     header.write(f"/model {ensure_quoted(args.model)}\n")
   if args.model_apikey is not None:
@@ -277,22 +276,23 @@ def main(cmdline=None):
   if args.readline_history:
     try:
       read_history_file(args.readline_history)
-      print_aux(f"History file loaded")
+      info(f"History file loaded")
     except FileNotFoundError:
-      print_aux(f"History file not loaded")
+      info(f"History file not loaded")
   else:
-    print_aux(f"History file is not used")
+    info(f"History file is not used")
 
   cnv = Conversation.init()
-  current = UserActor(UserName(), ActorOptions.init(), args, header.getvalue())
-  st = ActorState.init(current)
+  st = ActorState.init()
+  current = UserName()
+  st.actors[current] = UserActor(UserName(), ActorOptions.init(), args, header.getvalue())
 
   while True:
-    response = current.comment_with_text(st.get_view(), cnv)
-    assert response.utterance.actor_name == current.name, (
-      f"{response.utterance.actor_name} != {current.name}"
-    )
+    response = st.actors[current].comment_with_text(st.get_view(), cnv)
     if response.utterance is not None:
+      assert response.utterance.actor_name == st.actors[current].name, (
+        f"{response.utterance.actor_name} != {st.actors[current].name}"
+      )
       cnv.utterances.append(response.utterance)
     if response.actor_updates is not None:
       for name, opt in response.actor_updates.options.items():
@@ -309,7 +309,12 @@ def main(cmdline=None):
           else:
             raise RuntimeError(f"Unsupported provider {name.provider}")
     if response.actor_next is not None:
-      current = st.actors.get(response.actor_next)
+      assert response.actor_next in st.actors, (
+        f"{response.actor_next} is not among {st.actors.keys()}"
+      )
+      current = response.actor_next
+    if response.reset_flag:
+      cnv = Conversation.init()
     if response.exit_flag:
       break
 

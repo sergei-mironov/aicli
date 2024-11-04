@@ -2,15 +2,20 @@ from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from os.path import join, isfile, realpath, expanduser, abspath, sep
 from glob import glob
+from sys import stderr
 
-def print_help():
-  print(f"Commands: {' '.join(COMMANDS)}")
+from .types import Actor
 
-def print_aux(s:str)->None:
-  print(f"INFO: {s}")
 
-def print_aux_err(s:str)->None:
-  print(f"ERROR: {s}")
+def err(s:str, actor:Actor|None=None)->None:
+  print(f"ERROR: {s}", file=stderr)
+
+def info(s:str, actor:Actor|None=None)->None:
+  print(f"INFO: {s}", file=stderr)
+
+def dbg(s:str, actor:Actor|None=None)->None:
+  if actor and actor.opt.verbose>0:
+    print(f"DEBUG: {s}", file=stderr)
 
 
 @contextmanager

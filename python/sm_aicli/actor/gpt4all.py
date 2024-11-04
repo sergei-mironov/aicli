@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from ..types import (Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance,
                      ActorResponse, ModelName, UserName)
-from ..utils import expandpath
+from ..utils import expandpath, info, dbg
 
 def firstfile(paths) -> str|None:
   for p in paths:
@@ -29,8 +29,8 @@ class GPT4AllUtterance(Utterance):
       for chunk in self.actor.chunks:
         if self.actor.break_request:
           break
-        yield chunk
         self.contents += chunk
+        yield chunk
       assert self.actor.gpt4all._history[-1]["role"] == "assistant"
       del self.actor.gpt4all._history[-1]
     finally:
@@ -56,22 +56,36 @@ class GPT4AllActor(Actor):
   def __del__(self):
     self.session.__exit__()
 
-  def _sync(self, cnv:Conversation) -> list:
+  def _sync(self, cnv:Conversation) -> None:
+    if self.cnvtop >= len(cnv.utterances):
+      dbg("Resetting session", actor=self)
+      self.session.__exit__()
+      self.session.__enter__()
+      self.cnvtop = 0
     history = []
+    last_user_message = None
+    last_user_message_id = None
     for i in range(self.cnvtop, len(cnv.utterances)):
       u = cnv.utterances[i]
-      assert isinstance(u.contents, str)
-      role = "user" if u.actor_name == UserName() else "assistant"
+      assert u.contents is not None, "Utterance without contents is not supported"
+      role = None
+      if u.actor_name == UserName():
+        last_user_message_id = len(history)
+        role = "user"
+      else:
+        role = "assistant"
+      assert role is not None
       history.append({"role":role, "content": u.contents})
       self.cnvtop += 1
-    return history
+    if last_user_message_id is not None:
+      last_user_message = history[last_user_message_id]['content']
+      del history[last_user_message_id]
+    self.gpt4all._history.extend(history)
+    return last_user_message
 
   def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     assert self.chunks is None, "Re-entering is not allowed"
-    self.gpt4all._history.extend(self._sync(cnv))
-    assert self.gpt4all._history[-1]['role'] == 'user'
-    user_message = self.gpt4all._history[-1]['content']
-
+    last_user_message = self._sync(cnv)
     def _model_callback(*args, **kwargs):
       return not self.break_request
     self.chunks = self.gpt4all.generate(

@@ -13,7 +13,9 @@ from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS)
 
 from ..parser import PARSER
-from ..utils import print_aux, with_sigint
+from ..utils import info, err, with_sigint
+
+no_model_is_active = "No model is active, use /model first"
 
 def as_float(val:str, default:float|None)->float|None:
   return float(val) if val not in {None,"def","default"} else default
@@ -33,15 +35,17 @@ class Repl(Interpreter):
     self.av = None
     self.actor_next = None
     self.aname = name
+  def _check_next_actor(self):
+    if self.actor_next is None:
+      raise RuntimeError(no_model_is_active)
   def _reset(self):
     self.in_echo = 0
     self.message = ""
-    self.exit_request = False
   def reset(self):
     old_message = self.message
     self._reset()
     if len(old_message)>0:
-      print_aux("Message buffer is now empty")
+      info("Message buffer is now empty")
   def _finish_echo(self):
     if self.in_echo:
       print()
@@ -93,43 +97,49 @@ class Repl(Interpreter):
     elif command == CMD_EXIT:
       raise InterpreterPause(
         tree.meta.end_pos,
-        response=ActorResponse.init(exit_request=True)
+        response=ActorResponse.init(exit_flag=True, actor_updates=self.av)
       )
     elif command == CMD_MODEL:
       res = self.visit_children(tree)
       if len(res)>2:
         name = ModelName(*res[3])
         opt = opts.get(name, ActorOptions.init())
-        print_aux(f"Setting target actor to '{name.repr()}'")
+        info(f"Setting target actor to '{name.repr()}'")
         opts[name] = opt
         self.actor_next = name
       else:
         self.actor_next = None
-        print_aux(f"Setting target actor to none")
+        info(f"Setting target actor to none")
     elif command == CMD_NTHREADS:
       n = as_int(tree.children[2].children[0].value, None)
+      self._check_next_actor()
       opts[self.actor_next].num_threads = n
-      print_aux(f"Setting number of threads to '{n or 'default'}'")
+      info(f"Setting number of threads to '{n or 'default'}'")
     elif command == CMD_TEMP:
       t = as_float(tree.children[2].children[0].value, None)
+      self._check_next_actor()
       opts[self.actor_next].temperature = t
-      print_aux(f"Setting model temperature to '{t or 'default'}'")
+      info(f"Setting model temperature to '{t or 'default'}'")
     elif command == CMD_APIKEY:
       res = self.visit_children(tree)
       if len(res)<3:
         raise ValueError("API key should not be empty")
       schema,arg = res[3]
+      self._check_next_actor()
       opts[self.actor_next].apikey = (schema,arg)
-      print_aux(f"Setting API key to \"{schema}:{arg}\"")
+      info(f"Setting API key to \"{schema}:{arg}\"")
     elif command == CMD_VERBOSE:
       v = as_int(tree.children[2].children[0].value, 0)
+      self._check_next_actor()
       opts[self.actor_next].verbose = v
-      print_aux(f"Setting actor verbosity to '{v}'")
+      info(f"Setting actor verbosity to '{v}'")
     elif command == CMD_RESET:
-      print_aux("Message buffer will be cleared")
+      info("Message buffer will be cleared")
       self.reset()
-      # cnv.reset()
-      assert False, "TODO"
+      raise InterpreterPause(
+        tree.meta.end_pos,
+        response=ActorResponse.init(reset_flag=True, actor_updates=self.av)
+      )
     else:
       raise ValueError(f"Unknown command: {command}")
   def text(self, tree):
@@ -143,7 +153,7 @@ class Repl(Interpreter):
     else:
       for cmd in COMMANDS:
         if cmd in text:
-          print_aux(f"Warning: '{cmd}' was parsed as a text")
+          info(f"Warning: '{cmd}' was parsed as a text")
       self.message += text
   def escape(self, tree):
     text = tree.children[0].value[1:]
@@ -177,6 +187,8 @@ class UserActor(Actor):
     self.cnv_top = 0
 
   def _sync(self, cnv:Conversation):
+    if self.cnv_top >= len(cnv.utterances):
+      self.cnv_top = 0
     for i in range(self.cnv_top, len(cnv.utterances)):
       u:Utterance = cnv.utterances[i]
       if u.actor_name != self.name:
@@ -200,11 +212,14 @@ class UserActor(Actor):
     self._sync(cnv)
     try:
       while True:
-        if self.stream == '':
-          self.stream = input(self.args.readline_prompt)
-        self.repl.visit(PARSER.parse(self.stream), av)
-        if self.args.readline_history:
-          write_history_file(self.args.readline_history)
+        try:
+          if self.stream == '':
+            self.stream = input(self.args.readline_prompt)
+          self.repl.visit(PARSER.parse(self.stream), av)
+          if self.args.readline_history:
+            write_history_file(self.args.readline_history)
+        except (ValueError, RuntimeError) as e:
+          err(str(e), actor=self)
         self.stream = ''
     except InterpreterPause as p:
       self.stream = self.stream[p.unparsed:]

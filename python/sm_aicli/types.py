@@ -68,10 +68,11 @@ class ActorResponse:
   actor_next: ActorName|None
   actor_updates: ActorView|None
   exit_flag:bool
+  reset_flag:bool
 
   @staticmethod
-  def init(utterance=None, actor_next=None, actor_updates=None, exit_flag=False):
-    return ActorResponse(utterance, actor_next, actor_updates, exit_flag)
+  def init(utterance=None, actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False):
+    return ActorResponse(utterance, actor_next, actor_updates, exit_flag, reset_flag)
 
 
 @dataclass
@@ -83,8 +84,8 @@ class ActorState:
     return ActorView({n:deepcopy(a.get_options()) for n,a in self.actors.items()})
 
   @staticmethod
-  def init(initial:"Actor"):
-    return ActorState({initial.name:initial})
+  def init():
+    return ActorState({})
 
 class Actor:
   """ Abstraction of model """
