@@ -21,6 +21,7 @@ class ActorOptions:
   apikey:str|None = None
   temperature:float|None = None
   num_threads:int|None = None
+  prompt:str|None = None
 
   @staticmethod
   def init():
@@ -99,6 +100,10 @@ class Actor:
 
   def comment_with_image(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     """ Return a path to generated image, responding the message. """
+    raise NotImplementedError()
+
+  def reset(self):
+    """ Resets cached conversation """
     raise NotImplementedError()
 
   def set_options(self, opt:ActorOptions)->None:

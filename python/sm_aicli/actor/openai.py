@@ -33,20 +33,17 @@ class OpenAIActor(Actor):
     assert isinstance(name, ModelName), name
     assert name.provider == "openai", name.provider
     super().__init__(name, opt)
-    self.cnvtop = 0
-    self.messages = []
     try:
       self.client = OpenAI(api_key=expand_apikey(opt.apikey))
     except OpenAIError as err:
       raise ValueError(str(err)) from err
+    self.reset()
 
   def _sync(self, cnv:Conversation):
-    if self.cnvtop >= len(cnv.utterances):
-      dbg("Resetting session", actor=self)
-      self.cnvtop = 0
-      self.messages = []
+    assert self.cnvtop < len(cnv.utterances)
     if self.messages == []:
-      self.messages = [{"role": "system", "content": "You are a helpful assistant."}]
+      prompt = self.opt.prompt or "You are a helpful assistant."
+      self.messages = [{"role": "system", "content": prompt}]
     for i in range(self.cnvtop, len(cnv.utterances)):
       u = cnv.utterances[i]
       assert isinstance(u.contents, str)
@@ -56,6 +53,11 @@ class OpenAIActor(Actor):
 
     dbg(f"messages: {self.messages}", actor=self)
     assert len(self.messages)>0
+
+  def reset(self):
+    dbg("Resetting session", actor=self)
+    self.cnvtop = 0
+    self.messages = []
 
   def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     self._sync(cnv)

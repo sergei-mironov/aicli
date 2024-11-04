@@ -26,6 +26,9 @@ class DummyActor(Actor):
     super().__init__(name, opt)
     print(f"Dummy actor '{self.name.repr()}' apikey '{self.opt.apikey}'")
 
+  def reset(self):
+    pass
+
   def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     return ActorResponse.init(utterance=DummyUtterance(self.name, None),
                               actor_next=UserName())

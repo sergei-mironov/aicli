@@ -10,7 +10,7 @@ from pdb import set_trace as ST
 from ..types import (Actor, ActorName, ActorOptions, ActorResponse, UserName, Utterance,
                      Conversation, ActorView, ModelName)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
-                       CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS)
+                       CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT)
 
 from ..parser import PARSER
 from ..utils import info, err, with_sigint
@@ -133,6 +133,11 @@ class Repl(Interpreter):
       self._check_next_actor()
       opts[self.actor_next].verbose = v
       info(f"Setting actor verbosity to '{v}'")
+    elif command == CMD_PROMPT:
+      self._check_next_actor()
+      opts[self.actor_next].prompt = self.message
+      info(f"Setting actor prompt to '{self.message[:10]}...'")
+      self.message = ''
     elif command == CMD_RESET:
       info("Message buffer will be cleared")
       self.reset()
@@ -161,8 +166,7 @@ class Repl(Interpreter):
       print(text, end='')
     else:
       self.message += text
-  def visit(self, tree, av:ActorView):
-    self.av = av
+  def visit(self, tree):
     self.in_echo = 0
     try:
       res = super().visit(tree)
@@ -184,11 +188,12 @@ class UserActor(Actor):
     self.stream = prefix_stream if prefix_stream is not None else ''
     self.args = args
     self.repl = Repl(name, args)
-    self.cnv_top = 0
+    self.reset()
 
-  def _sync(self, cnv:Conversation):
-    if self.cnv_top >= len(cnv.utterances):
-      self.cnv_top = 0
+  def _sync(self, av:ActorView, cnv:Conversation):
+    assert self.cnv_top <= len(cnv.utterances)
+    if self.repl.av is None:
+      self.repl.av = av
     for i in range(self.cnv_top, len(cnv.utterances)):
       u:Utterance = cnv.utterances[i]
       if u.actor_name != self.name:
@@ -208,14 +213,17 @@ class UserActor(Actor):
           print()
       self.cnv_top += 1
 
+  def reset(self):
+    self.cnv_top = 0
+
   def comment_with_text(self, av:ActorView, cnv:Conversation) -> ActorResponse:
-    self._sync(cnv)
+    self._sync(av, cnv)
     try:
       while True:
         try:
           if self.stream == '':
             self.stream = input(self.args.readline_prompt)
-          self.repl.visit(PARSER.parse(self.stream), av)
+          self.repl.visit(PARSER.parse(self.stream))
           if self.args.readline_history:
             write_history_file(self.args.readline_history)
         except (ValueError, RuntimeError) as e:
@@ -224,6 +232,9 @@ class UserActor(Actor):
     except InterpreterPause as p:
       self.stream = self.stream[p.unparsed:]
       return p.response
+    except EOFError:
+      self.stream = ''
+      return ActorResponse.init(exit_flag=True)
 
   def set_options(self, opt:ActorOptions)->None:
     pass

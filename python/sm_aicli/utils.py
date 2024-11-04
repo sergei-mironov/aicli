@@ -10,8 +10,9 @@ from .types import Actor
 def err(s:str, actor:Actor|None=None)->None:
   print(f"ERROR: {s}", file=stderr)
 
-def info(s:str, actor:Actor|None=None)->None:
-  print(f"INFO: {s}", file=stderr)
+def info(s:str, actor:Actor|None=None, prefix=True)->None:
+  prefix = "INFO: " if prefix else ""
+  print(f"{prefix}{s}", file=stderr)
 
 def dbg(s:str, actor:Actor|None=None)->None:
   if actor and actor.opt.verbose>0:

@@ -288,35 +288,41 @@ def main(cmdline=None):
   st.actors[current] = UserActor(UserName(), ActorOptions.init(), args, header.getvalue())
 
   while True:
-    response = st.actors[current].comment_with_text(st.get_view(), cnv)
-    if response.utterance is not None:
-      assert response.utterance.actor_name == st.actors[current].name, (
-        f"{response.utterance.actor_name} != {st.actors[current].name}"
-      )
-      cnv.utterances.append(response.utterance)
-    if response.actor_updates is not None:
-      for name, opt in response.actor_updates.options.items():
-        actor = st.actors.get(name)
-        if actor is not None:
-          actor.set_options(opt)
-        else:
-          if name.provider == "openai":
-            st.actors[name] = OpenAIActor(name, opt)
-          elif name.provider == "gpt4all":
-            st.actors[name] = GPT4AllActor(name, opt, args.model_dir)
-          elif name.provider == "dummy":
-            st.actors[name] = DummyActor(name, opt)
+    try:
+      response = st.actors[current].comment_with_text(st.get_view(), cnv)
+      if response.utterance is not None:
+        assert response.utterance.actor_name == st.actors[current].name, (
+          f"{response.utterance.actor_name} != {st.actors[current].name}"
+        )
+        cnv.utterances.append(response.utterance)
+      if response.actor_updates is not None:
+        for name, opt in response.actor_updates.options.items():
+          actor = st.actors.get(name)
+          if actor is not None:
+            actor.set_options(opt)
           else:
-            raise RuntimeError(f"Unsupported provider {name.provider}")
-    if response.actor_next is not None:
-      assert response.actor_next in st.actors, (
-        f"{response.actor_next} is not among {st.actors.keys()}"
-      )
-      current = response.actor_next
-    if response.reset_flag:
-      cnv = Conversation.init()
-    if response.exit_flag:
-      break
+            if name.provider == "openai":
+              st.actors[name] = OpenAIActor(name, opt)
+            elif name.provider == "gpt4all":
+              st.actors[name] = GPT4AllActor(name, opt, args.model_dir)
+            elif name.provider == "dummy":
+              st.actors[name] = DummyActor(name, opt)
+            else:
+              raise RuntimeError(f"Unsupported provider {name.provider}")
+      if response.actor_next is not None:
+        assert response.actor_next in st.actors, (
+          f"{response.actor_next} is not among {st.actors.keys()}"
+        )
+        current = response.actor_next
+      if response.reset_flag:
+        cnv = Conversation.init()
+        for a in st.actors.values():
+          a.reset()
+      if response.exit_flag:
+        break
+    except KeyboardInterrupt:
+      info("^C", prefix=False)
+      current = UserName()
 
 #     apply(st)
 #     repl.reset()

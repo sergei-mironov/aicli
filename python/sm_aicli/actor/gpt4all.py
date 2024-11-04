@@ -57,11 +57,7 @@ class GPT4AllActor(Actor):
     self.session.__exit__()
 
   def _sync(self, cnv:Conversation) -> None:
-    if self.cnvtop >= len(cnv.utterances):
-      dbg("Resetting session", actor=self)
-      self.session.__exit__()
-      self.session.__enter__()
-      self.cnvtop = 0
+    assert self.cnvtop < len(cnv.utterances)
     history = []
     last_user_message = None
     last_user_message_id = None
@@ -82,6 +78,12 @@ class GPT4AllActor(Actor):
       del history[last_user_message_id]
     self.gpt4all._history.extend(history)
     return last_user_message
+
+  def reset(self):
+    dbg("Resetting session", actor=self)
+    self.session.__exit__()
+    self.session.__enter__()
+    self.cnvtop = 0
 
   def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
     assert self.chunks is None, "Re-entering is not allowed"
@@ -111,4 +113,6 @@ class GPT4AllActor(Actor):
     self.opt = deepcopy(opt)
     if opt.num_threads is not None:
       self.gpt4all.model.set_thread_count(opt.num_threads)
+    if opt.prompt is not None:
+      info("Custom prompt is ignored by this model", actor=self)
 
