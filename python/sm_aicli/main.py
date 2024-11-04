@@ -2,7 +2,8 @@ import re
 from io import StringIO
 from os import environ, getcwd
 from os.path import join, isfile, realpath, expanduser, abspath, sep
-from gnureadline import parse_and_bind, set_completer, read_history_file, write_history_file
+from gnureadline import (parse_and_bind, set_completer, read_history_file, write_history_file,
+                         clear_history)
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
@@ -275,6 +276,7 @@ def main(cmdline=None):
 
   if args.readline_history:
     try:
+      clear_history()
       read_history_file(args.readline_history)
       info(f"History file loaded")
     except FileNotFoundError:
@@ -318,6 +320,9 @@ def main(cmdline=None):
         cnv = Conversation.init()
         for a in st.actors.values():
           a.reset()
+      if response.dbg_flag:
+        import pdb
+        pdb.set_trace()
       if response.exit_flag:
         break
     except KeyboardInterrupt:

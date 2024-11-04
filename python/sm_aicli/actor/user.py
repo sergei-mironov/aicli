@@ -10,7 +10,8 @@ from pdb import set_trace as ST
 from ..types import (Actor, ActorName, ActorOptions, ActorResponse, UserName, Utterance,
                      Conversation, ActorView, ModelName)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
-                       CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT)
+                       CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
+                       CMD_DBG)
 
 from ..parser import PARSER
 from ..utils import info, err, with_sigint
@@ -80,10 +81,11 @@ class Repl(Interpreter):
       self.in_echo = 1
     elif command in [CMD_ASK, CMD_IMG]:
       try:
+        utterance = Utterance(self.aname, copy(self.message)) if len(self.message.strip())>0 else None
         raise InterpreterPause(
           tree.meta.end_pos,
           response=ActorResponse.init(
-            utterance=Utterance(self.aname, copy(self.message)),
+            utterance=utterance,
             actor_next=self.actor_next,
             actor_updates=self.av
           )
@@ -143,7 +145,13 @@ class Repl(Interpreter):
       self.reset()
       raise InterpreterPause(
         tree.meta.end_pos,
-        response=ActorResponse.init(reset_flag=True, actor_updates=self.av)
+        response=ActorResponse.init(reset_flag=True)
+      )
+    elif command == CMD_DBG:
+      info("Calling Python debugger")
+      raise InterpreterPause(
+        tree.meta.end_pos,
+        response=ActorResponse.init(dbg_flag=True)
       )
     else:
       raise ValueError(f"Unknown command: {command}")

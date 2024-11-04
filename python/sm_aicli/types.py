@@ -70,10 +70,12 @@ class ActorResponse:
   actor_updates: ActorView|None
   exit_flag:bool
   reset_flag:bool
+  dbg_flag:bool
 
   @staticmethod
-  def init(utterance=None, actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False):
-    return ActorResponse(utterance, actor_next, actor_updates, exit_flag, reset_flag)
+  def init(utterance=None, actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False,
+           dbg_flag=False):
+    return ActorResponse(utterance, actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
 
 
 @dataclass
