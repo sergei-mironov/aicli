@@ -58,15 +58,12 @@ class GPT4AllActor(Actor):
 
   def _sync(self, cnv:Conversation) -> None:
     assert self.cnvtop < len(cnv.utterances)
-    history = []
-    last_user_message = None
-    last_user_message_id = None
+    history = self.gpt4all._history
     for i in range(self.cnvtop, len(cnv.utterances)):
       u = cnv.utterances[i]
       assert u.contents is not None, "Utterance without contents is not supported"
       role = None
       if u.actor_name == UserName():
-        last_user_message_id = len(history)
         role = "user"
       else:
         role = "assistant"
@@ -74,12 +71,19 @@ class GPT4AllActor(Actor):
       history.append({"role":role, "content": u.contents})
       self.cnvtop += 1
     dbg(f"gpt4all history: {self.gpt4all._history}", actor=self)
-    dbg(f"actor history: {history} last_id {last_user_message_id}", actor=self)
-    if last_user_message_id is not None:
-      last_user_message = history[last_user_message_id]['content']
+
+    last_user_message = None
+    last_user_message_id = None
+    for i in reversed(range(0, len(history))):
+      if history[i]['role'] == 'user':
+        last_user_message = history[i]['content']
+        last_user_message_id = i
+        dbg(f"actor history: last_user_message {last_user_message}", actor=self)
+        break
+    if last_user_message_id == len(history)-1:
       del history[last_user_message_id]
-    self.gpt4all._history.extend(history)
-    return last_user_message
+      dbg(f"actor history: removing very last message {last_user_message_id}", actor=self)
+    return last_user_message or ""
 
   def reset(self):
     dbg("Resetting session", actor=self)

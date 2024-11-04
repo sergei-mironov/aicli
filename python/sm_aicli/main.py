@@ -9,6 +9,8 @@ from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from textwrap import dedent
 from functools import partial
+from sys import _getframe
+from pdb import Pdb
 
 from lark import Lark
 from lark.visitors import Interpreter
@@ -321,8 +323,8 @@ def main(cmdline=None):
         for a in st.actors.values():
           a.reset()
       if response.dbg_flag:
-        import pdb
-        pdb.set_trace()
+        info("Type `cont` to continue when done")
+        Pdb(nosigint=True).set_trace(_getframe())
       if response.exit_flag:
         break
     except KeyboardInterrupt:
