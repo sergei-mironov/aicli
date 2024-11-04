@@ -54,7 +54,7 @@ class GPT4AllActor(Actor):
     self.set_options(opt)
 
   def __del__(self):
-    self.session.__exit__()
+    self.session.__exit__(None, None, None)
 
   def _sync(self, cnv:Conversation) -> None:
     assert self.cnvtop < len(cnv.utterances)
@@ -73,6 +73,8 @@ class GPT4AllActor(Actor):
       assert role is not None
       history.append({"role":role, "content": u.contents})
       self.cnvtop += 1
+    dbg(f"gpt4all history: {self.gpt4all._history}", actor=self)
+    dbg(f"actor history: {history} last_id {last_user_message_id}", actor=self)
     if last_user_message_id is not None:
       last_user_message = history[last_user_message_id]['content']
       del history[last_user_message_id]
@@ -81,7 +83,8 @@ class GPT4AllActor(Actor):
 
   def reset(self):
     dbg("Resetting session", actor=self)
-    self.session.__exit__()
+    self.session.__exit__(None, None, None)
+    self.session = self.gpt4all.chat_session()
     self.session.__enter__()
     self.cnvtop = 0
 
@@ -91,7 +94,7 @@ class GPT4AllActor(Actor):
     def _model_callback(*args, **kwargs):
       return not self.break_request
     self.chunks = self.gpt4all.generate(
-      user_message,
+      last_user_message,
       max_tokens=200,
       temp=self.opt.temperature or self.temperature_def,
       top_k=40,
