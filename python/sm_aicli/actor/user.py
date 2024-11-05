@@ -66,10 +66,6 @@ class Repl(Interpreter):
     return "openai"
   def mp_dummy(self, tree):
     return "dummy"
-  def model_provider(self, tree):
-    return tree.children[0].value
-  def model_name(self, tree):
-    return tree.children[0].value
   def model(self, tree):
     val = self.visit_children(tree)
     return tuple(val) if len(val)==2 else (val[0],"default")

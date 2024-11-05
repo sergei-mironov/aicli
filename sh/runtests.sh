@@ -4,7 +4,7 @@ export AICLI_NORC=y
 
 set -e -x
 echo "Running pytest"
-pytest ./test
+pytest -vv ./test
 for t in ./test/*\.exp ; do
   echo "Running $t"
   $t

@@ -35,24 +35,20 @@ GRAMMAR = fr"""
 
   string: "\"" string_quoted "\"" | string_raw
   string_quoted: /[^"]+/ -> string_value
-  string_raw: /[^ ]+/ -> string_value
+  string_raw: /[^"][^ ]*/ -> string_value
 
   model_string: "\"" model_quoted "\"" | model_raw
-  model_quoted: (model_provider ":")? model_name_quoted -> model
-  model_raw: (model_provider ":")? model_name_raw -> model
+  model_quoted: (model_provider ":")? string_quoted -> model
+  model_raw: (model_provider ":")? string_raw -> model
   model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
-  model_name_quoted: /[^"]+/ -> model_name
-  model_name_raw: /[^ ]+/ -> model_name
 
   modality_string: "\"" modality "\"" | modality
   modality: /img/ -> modality_img | /text/ -> modality_text
 
   apikey_string: "\"" apikey_quoted "\"" | apikey_raw
-  apikey_quoted: (apikey_schema ":")? apikey_value_quoted -> apikey
-  apikey_raw: (apikey_schema ":")? apikey_value_raw -> apikey
+  apikey_quoted: (apikey_schema ":")? string_quoted -> apikey
+  apikey_raw: (apikey_schema ":")? string_raw -> apikey
   apikey_schema: "verbatim" -> as_verbatim | "file" -> as_file
-  apikey_value_quoted: /[^"]+/ -> string_value
-  apikey_value_raw: /[^ ]+/ -> string_value
 
   number: /[0-9]+/
   float: /[0-9]+\.[0-9]*/

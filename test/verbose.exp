@@ -4,7 +4,7 @@
 set timeout 2
 
 # Start the console application
-spawn aicli
+spawn aicli --model=dummy:dummy
 
 # Wait for the prompt (assuming it's a '> ' prompt)
 expect {
@@ -21,7 +21,7 @@ expect {
 
 # Expect the echoed output
 expect {
-    "INFO: Verbosity will be set to '10'" {
+    "Setting actor verbosity to '10'" {
         # Expected output received, proceed with exiting the application
         send "/exit\r"
     }

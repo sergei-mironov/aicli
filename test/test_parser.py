@@ -85,32 +85,29 @@ def test_apikey():
       command
         /apikey
 
-        "
         apikey_string
-          apikey_value       keydata
-        "
+          apikey
+            string_value       keydata
   ''')
   _assert('/apikey "file:keyfile"', r'''
     start
       command
         /apikey
 
-        "
         apikey_string
-          as_file
-          apikey_value       keyfile
-        "
+          apikey
+            as_file
+            string_value       keyfile
   ''')
   _assert('/apikey "verbatim:keydata"', r'''
     start
       command
         /apikey
 
-        "
         apikey_string
-          as_verbatim
-          apikey_value       keydata
-        "
+          apikey
+            as_verbatim
+            string_value       keydata
   ''')
 
 def test_model():
@@ -119,8 +116,7 @@ def test_model():
      command
        /model
 
-       "
        model_string
-         model_name       aaa
-       "
+         model
+           string_value       aaa
   ''')

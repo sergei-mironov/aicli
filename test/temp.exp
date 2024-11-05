@@ -4,11 +4,10 @@
 set timeout 2
 
 # Start the console application
-spawn aicli
+spawn aicli --model=dummy:dummy
 
-# Wait for the prompt (assuming it's a '> ' prompt)
 expect {
-    "> " {
+    ">>> " {
         # Prompt received, proceed with sending the /temp command
         send "/temp 25.5\r"
     }
@@ -22,7 +21,7 @@ expect {
 # Expect the output related to the /temp command
 # Assuming that the console should output the new temperature setting
 expect {
-    "Temperature will be set to '25.5'" {
+    "Setting model temperature to '25.5'" {
         # Expected output received, proceed with exiting the application
         send "/exit\r"
     }
