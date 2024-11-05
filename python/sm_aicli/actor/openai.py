@@ -6,27 +6,30 @@ from io import StringIO
 from dataclasses import dataclass
 
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation,
-                     ActorResponse, ModelName, UserName, Utterance)
+                     Intention, ModelName, UserName, Utterance)
 from ..utils import expand_apikey, dbg, find_last_message
 
 @dataclass
 class OpenAIUtterance(Utterance):
-  chunks:Any
+  chunks:Any|None=None
   stop:bool=False
   def interrupt(self):
     self.stop = True
-  def gen(self):
-    self.stop = False
-    self.contents = ''
-    try:
-      for chunk in self.chunks:
-        if self.stop:
-          break
-        if text:=chunk.choices[0].delta.content:
-          self.contents += text
-          yield text
-    except OpenAIError as err:
-      yield f"<ERROR: {str(err)}>"
+  def init(name, intention, contents=None, chunks=None):
+    def _gen(self):
+      self.stop = False
+      self.contents = ''
+      try:
+        for chunk in chunks:
+          if self.stop:
+            break
+          if text:=chunk.choices[0].delta.content:
+            self.contents += text
+            yield text
+      except OpenAIError as err:
+        yield f"<ERROR: {str(err)}>"
+    gen =  _gen if chunks is not None else None
+    return OpenAIUtterance(name, intention, None, gen)
 
 class OpenAIActor(Actor):
   def __init__(self, name: ActorName, opt: ActorOptions):
@@ -46,10 +49,10 @@ class OpenAIActor(Actor):
       self.messages = [{"role": "system", "content": prompt}]
     for i in range(self.cnvtop, len(cnv.utterances)):
       u = cnv.utterances[i]
-      assert isinstance(u.contents, str)
-      role = "user" if u.actor_name == UserName() else "assistant"
-      self.messages.append({"role":role, "content": u.contents})
-      self.cnvtop += 1
+      if u.contents is not None:
+        role = "user" if u.actor_name == UserName() else "assistant"
+        self.messages.append({"role":role, "content": u.contents})
+        self.cnvtop += 1
 
     dbg(f"messages: {self.messages}", actor=self)
     assert len(self.messages)>0
@@ -59,7 +62,7 @@ class OpenAIActor(Actor):
     self.cnvtop = 0
     self.messages = []
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
     self._sync(cnv)
     try:
       chunks = self.client.chat.completions.create(
@@ -68,14 +71,11 @@ class OpenAIActor(Actor):
         stream=True,
         temperature=self.opt.temperature,
       )
-      return ActorResponse.init(
-        actor_next=UserName(),
-        utterance=OpenAIUtterance(self.name, None, chunks)
-      )
+      return OpenAIUtterance.init(self.name, Intention.init(actor_next=UserName()), chunks=chunks)
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  def comment_with_image(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+  def comment_with_image(self, act:ActorView, cnv:Conversation) -> Utterance:
     self._sync(cnv)
     prompt,_ = find_last_message(self.messages, 'user')
     response = self.client.images.generate(
@@ -85,8 +85,5 @@ class OpenAIActor(Actor):
       size="512x512",
       response_format="url"
     )
-    return ActorResponse.init(
-      actor_next=UserName(),
-      utterance=OpenAIUtterance(self.name, str(response), None)
-    )
+    return OpenAIUtterance(self.name, Intention.init(actor_next=UserName()), contents=str(response))
 

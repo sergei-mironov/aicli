@@ -7,7 +7,7 @@ from os import getcwd
 from dataclasses import dataclass
 
 from ..types import (Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance,
-                     ActorResponse, ModelName, UserName)
+                     Intention, ModelName, UserName)
 from ..utils import expandpath, info, dbg, find_last_message
 
 def firstfile(paths) -> str|None:
@@ -19,22 +19,25 @@ def firstfile(paths) -> str|None:
 
 @dataclass
 class GPT4AllUtterance(Utterance):
-  actor:"GPT4AllActor"
+  actor:Any|None = None
   def interrupt(self):
     self.actor.break_request = True
-  def gen(self):
-    self.actor.break_request = False
-    self.contents = ''
-    try:
-      for chunk in self.actor.chunks:
-        if self.actor.break_request:
-          break
-        self.contents += chunk
-        yield chunk
-      assert self.actor.gpt4all._history[-1]["role"] == "assistant"
-      del self.actor.gpt4all._history[-1]
-    finally:
-      self.actor.chunks = None
+  def init(name, intention, actor):
+    def _gen(self):
+      actor.break_request = False
+      self.actor = actor
+      self.contents = ''
+      try:
+        for chunk in actor.chunks:
+          if actor.break_request:
+            break
+          self.contents += chunk
+          yield chunk
+        assert actor.gpt4all._history[-1]["role"] == "assistant"
+        del actor.gpt4all._history[-1]
+      finally:
+        actor.chunks = None
+    return GPT4AllUtterance(name, intention, contents=None, gen=_gen)
 
 
 class GPT4AllActor(Actor):
@@ -72,7 +75,7 @@ class GPT4AllActor(Actor):
       self.cnvtop += 1
     dbg(f"gpt4all history: {self.gpt4all._history}", actor=self)
 
-    last_message, last_user_message_id = find_last_message(history, "user")
+    last_user_message, last_user_message_id = find_last_message(history, "user")
     if last_user_message_id == len(history)-1:
       del history[last_user_message_id]
       dbg(f"actor history: removing very last message {last_user_message_id}", actor=self)
@@ -85,7 +88,7 @@ class GPT4AllActor(Actor):
     self.session.__enter__()
     self.cnvtop = 0
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
     assert self.chunks is None, "Re-entering is not allowed"
     last_user_message = self._sync(cnv)
     def _model_callback(*args, **kwargs):
@@ -103,11 +106,7 @@ class GPT4AllActor(Actor):
       streaming=True,
       callback=_model_callback,
     )
-
-    return ActorResponse.init(
-      actor_next=UserName(),
-      utterance=GPT4AllUtterance(self.name, None, self)
-    )
+    return GPT4AllUtterance.init(self.name, Intention.init(actor_next=UserName()), self)
 
   def set_options(self, opt:ActorOptions)->None:
     self.opt = deepcopy(opt)

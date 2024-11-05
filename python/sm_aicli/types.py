@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Callable
 from dataclasses import dataclass
 from copy import deepcopy
 from enum import Enum
@@ -33,13 +33,43 @@ PathStr = str
 ActorName = ModelName | UserName
 
 @dataclass
+class ActorView:
+  options: dict[ActorName, ActorOptions]
+
+  @staticmethod
+  def init():
+    return ActorView({})
+
+class Modality(Enum):
+  Text = 0
+  Image = 1
+
+@dataclass
+class Intention:
+  actor_next: ActorName|None
+  actor_updates: ActorView|None
+  exit_flag:bool
+  reset_flag:bool
+  dbg_flag:bool
+  modality:Modality=Modality.Text
+
+  @staticmethod
+  def init(actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False,
+           dbg_flag=False, modality=Modality.Text):
+    return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag,
+                         modality=modality)
+
+@dataclass
 class Utterance:
   actor_name: ActorName
-  contents: str|None
-  def gen(self) -> Iterable[str]:
-    return NotImplementedError()
+  intention: Intention
+  contents: str|None = None
+  gen: Callable[["Utterance"],Iterable[str]]|None = None
   def interrupt(self) -> None:
     return NotImplementedError()
+  def init(name, intention, contents=None):
+    return Utterance(name, intention, contents=contents, gen=None)
+
 
 @dataclass
 class Conversation:
@@ -54,34 +84,6 @@ class Conversation:
   def init():
     return Conversation([])
 
-
-@dataclass
-class ActorView:
-  options: dict[ActorName, ActorOptions]
-
-  @staticmethod
-  def init():
-    return ActorView({})
-
-class Modality(Enum):
-  Text = 0
-  Image = 1
-
-@dataclass
-class ActorResponse:
-  utterance: Utterance|None
-  actor_next: ActorName|None
-  actor_updates: ActorView|None
-  exit_flag:bool
-  reset_flag:bool
-  dbg_flag:bool
-  modality:Modality=Modality.Text
-
-  @staticmethod
-  def init(utterance=None, actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False,
-           dbg_flag=False, modality=Modality.Text):
-    return ActorResponse(utterance, actor_next, actor_updates, exit_flag, reset_flag, dbg_flag,
-                         modality=modality)
 
 
 @dataclass
@@ -102,11 +104,11 @@ class Actor:
     self.name = name
     self.opt = opt
 
-  def respond_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+  def respond_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
     """ Return a token generator object, responding the message. """
     raise NotImplementedError()
 
-  def comment_with_image(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+  def comment_with_image(self, act:ActorView, cnv:Conversation) -> Utterance:
     """ Return a path to generated image, responding the message. """
     raise NotImplementedError()
 

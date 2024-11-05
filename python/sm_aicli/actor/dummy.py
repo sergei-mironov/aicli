@@ -3,22 +3,24 @@ from openai import OpenAI, OpenAIError
 from json import loads as json_loads, dumps as json_dumps
 from itertools import cycle
 
-from ..types import (Actor, ActorName, ActorOptions, ActorView, ActorResponse, Conversation,
+from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conversation,
                      Utterance, UserName)
 
 class DummyUtterance(Utterance):
   stop:bool = False
   def interrupt(self):
     self.stop = True
-  def gen(self):
-    self.stop = False
-    self.contents = ''
-    for i in range(10):
-      if self.stop:
-        break
-      token = "dummy\n"
-      self.contents += token
-      yield token
+  def init(name, intention):
+    def _gen(self):
+      self.stop = False
+      self.contents = ''
+      for i in range(10):
+        if self.stop:
+          break
+        token = "dummy\n"
+        self.contents += token
+        yield token
+    return DummyUtterance(name, intention, None, _gen)
 
 class DummyActor(Actor):
 
@@ -29,6 +31,5 @@ class DummyActor(Actor):
   def reset(self):
     pass
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> ActorResponse:
-    return ActorResponse.init(utterance=DummyUtterance(self.name, None),
-                              actor_next=UserName())
+  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
+    return DummyUtterance.init(self.name, Intention.init(actor_next=UserName()))

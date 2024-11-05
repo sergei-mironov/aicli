@@ -295,18 +295,18 @@ def main(cmdline=None):
   while True:
     try:
       if current_modality == Modality.Text:
-        response = st.actors[current_actor].comment_with_text(st.get_view(), cnv)
+        utterance = st.actors[current_actor].comment_with_text(st.get_view(), cnv)
       elif current_modality == Modality.Image:
-        response = st.actors[current_actor].comment_with_image(st.get_view(), cnv)
+        utterance = st.actors[current_actor].comment_with_image(st.get_view(), cnv)
       else:
         assert False, f"Unsupported modality {current_modality}"
-      if response.utterance is not None:
-        assert response.utterance.actor_name == st.actors[current_actor].name, (
-          f"{response.utterance.actor_name} != {st.actors[current_actor].name}"
-        )
-        cnv.utterances.append(response.utterance)
-      if response.actor_updates is not None:
-        for name, opt in response.actor_updates.options.items():
+      assert utterance.actor_name == st.actors[current_actor].name, (
+        f"{utterance.actor_name} != {st.actors[current_actor].name}"
+      )
+      cnv.utterances.append(utterance)
+      intention = utterance.intention
+      if intention.actor_updates is not None:
+        for name, opt in intention.actor_updates.options.items():
           actor = st.actors.get(name)
           if actor is not None:
             actor.set_options(opt)
@@ -319,19 +319,19 @@ def main(cmdline=None):
               st.actors[name] = DummyActor(name, opt)
             else:
               raise RuntimeError(f"Unsupported provider {name.provider}")
-      if response.actor_next is not None:
-        assert response.actor_next in st.actors, (
-          f"{response.actor_next} is not among {st.actors.keys()}"
+      if intention.actor_next is not None:
+        assert intention.actor_next in st.actors, (
+          f"{intention.actor_next} is not among {st.actors.keys()}"
         )
-        current_actor = response.actor_next
-      if response.reset_flag:
+        current_actor = intention.actor_next
+      if intention.reset_flag:
         cnv = Conversation.init()
         for a in st.actors.values():
           a.reset()
-      if response.dbg_flag:
+      if intention.dbg_flag:
         info("Type `cont` to continue when done")
         Pdb(nosigint=True).set_trace(_getframe())
-      if response.exit_flag:
+      if intention.exit_flag:
         break
     except KeyboardInterrupt:
       info("^C", prefix=False)

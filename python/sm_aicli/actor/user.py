@@ -7,7 +7,7 @@ from copy import deepcopy, copy
 
 from pdb import set_trace as ST
 
-from ..types import (Actor, ActorName, ActorOptions, ActorResponse, UserName, Utterance,
+from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Utterance,
                      Conversation, ActorView, ModelName, Modality)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
@@ -28,7 +28,7 @@ def as_int(val:str, default:int|None)->int|None:
 @dataclass
 class InterpreterPause(Exception):
   unparsed:int
-  response:ActorResponse|None=None
+  utterance:Utterance
 
 class Repl(Interpreter):
   def __init__(self, name, args):
@@ -82,7 +82,7 @@ class Repl(Interpreter):
       self.in_echo = 1
     elif command in [CMD_ASK, CMD_IMG]:
       try:
-        utterance = Utterance(self.aname, copy(self.message)) if len(self.message.strip())>0 else None
+        contents=copy(self.message) if len(self.message.strip())>0 else None
         modality = None
         if command == CMD_ASK:
           modality = Modality.Text
@@ -91,12 +91,15 @@ class Repl(Interpreter):
         else:
           assert False, f"Invalid command {command}"
         raise InterpreterPause(
-          tree.meta.end_pos,
-          response=ActorResponse.init(
-            utterance=utterance,
-            actor_next=self.actor_next,
-            actor_updates=self.av,
-            modality=modality
+          unparsed=tree.meta.end_pos,
+          utterance=Utterance.init(
+            name=self.aname,
+            contents=contents,
+            intention=Intention.init(
+              actor_next=self.actor_next,
+              actor_updates=self.av,
+              modality=modality
+            )
           )
         )
       finally:
@@ -107,8 +110,11 @@ class Repl(Interpreter):
       print(GRAMMAR)
     elif command == CMD_EXIT:
       raise InterpreterPause(
-        tree.meta.end_pos,
-        response=ActorResponse.init(exit_flag=True, actor_updates=self.av)
+        unparsed=tree.meta.end_pos,
+        utterance=Utterance.init(
+          name=self.aname,
+          intention=Intention.init(exit_flag=True, actor_updates=self.av)
+        )
       )
     elif command == CMD_MODEL:
       res = self.visit_children(tree)
@@ -153,14 +159,20 @@ class Repl(Interpreter):
       info("Message buffer will be cleared")
       self.reset()
       raise InterpreterPause(
-        tree.meta.end_pos,
-        response=ActorResponse.init(reset_flag=True)
+        unparsed=tree.meta.end_pos,
+        utterance=Utterance.init(
+          name=self.aname,
+          intention=Intention.init(reset_flag=True)
+        )
       )
     elif command == CMD_DBG:
       info("Calling Python debugger")
       raise InterpreterPause(
-        tree.meta.end_pos,
-        response=ActorResponse.init(dbg_flag=True)
+        unparsed=tree.meta.end_pos,
+        utterance=Utterance.init(
+          name=self.aname,
+          intention=Intention.init(dbg_flag=True)
+        )
       )
     else:
       raise ValueError(f"Unknown command: {command}")
@@ -218,14 +230,15 @@ class UserActor(Actor):
         if u.contents is not None:
           need_eol = not u.contents.rstrip(' ').endswith("\n")
           print(u.contents, end='')
-        else:
+        elif u.gen is not None:
           def _handler(*args, **kwargs):
             u.interrupt()
           with with_sigint(_handler):
-            # from pdb import set_trace; set_trace()
-            for token in u.gen():
+            for token in u.gen(u):
               need_eol = not token.rstrip(' ').endswith("\n")
               print(token, end='', flush=True)
+        else:
+          dbg(f"Ignoring utterance without content")
         if need_eol:
           print()
       self.cnv_top += 1
@@ -233,7 +246,7 @@ class UserActor(Actor):
   def reset(self):
     self.cnv_top = 0
 
-  def comment_with_text(self, av:ActorView, cnv:Conversation) -> ActorResponse:
+  def comment_with_text(self, av:ActorView, cnv:Conversation) -> Utterance:
     self._sync(av, cnv)
     try:
       while True:
@@ -248,10 +261,13 @@ class UserActor(Actor):
         self.stream = ''
     except InterpreterPause as p:
       self.stream = self.stream[p.unparsed:]
-      return p.response
+      return p.utterance
     except EOFError:
       self.stream = ''
-      return ActorResponse.init(exit_flag=True)
+      return Utterance.init(
+        name=self.name,
+        intention=Intention.init(exit_flag=True)
+      )
 
   def set_options(self, opt:ActorOptions)->None:
     pass
