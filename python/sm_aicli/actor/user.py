@@ -11,9 +11,9 @@ from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Uttera
                      Conversation, ActorView, ModelName, Modality)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
-                       CMD_DBG)
+                       CMD_DBG, CMD_EXPECT)
 
-from ..utils import info, err, with_sigint
+from ..utils import info, err, with_sigint, dbg
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
@@ -37,6 +37,7 @@ class Repl(Interpreter):
     self.av = None
     self.actor_next = None
     self.aname = name
+    self.modality = Modality.Text
   def _check_next_actor(self):
     if self.actor_next is None:
       raise RuntimeError(no_model_is_active)
@@ -52,13 +53,11 @@ class Repl(Interpreter):
     if self.in_echo:
       print()
     self.in_echo = 0
-  def as_verbatim(self, tree):
-    return "verbatim"
-  def as_file(self, tree):
-    return "file"
+  def as_verbatim(self, tree): return "verbatim"
+  def as_file(self, tree): return "file"
   def apikey_value(self, tree):
     return tree.children[0].value
-  def apikey_string(self, tree):
+  def apikey(self, tree):
     val = self.visit_children(tree)
     return tuple(val) if len(val)==2 else ("verbatim",val[0])
   def mp_gpt4all(self, tree):
@@ -71,25 +70,21 @@ class Repl(Interpreter):
     return tree.children[0].value
   def model_name(self, tree):
     return tree.children[0].value
-  def model_string(self, tree):
+  def model(self, tree):
     val = self.visit_children(tree)
     return tuple(val) if len(val)==2 else (val[0],"default")
+  def modality_img(self, tree): return Modality.Image
+  def modality_text(self, tree): return Modality.Text
   def command(self, tree):
     self._finish_echo()
     command = tree.children[0].value
     opts = self.av.options
     if command == CMD_ECHO:
       self.in_echo = 1
-    elif command in [CMD_ASK, CMD_IMG]:
+    elif command == CMD_ASK:
       try:
         contents=copy(self.message) if len(self.message.strip())>0 else None
-        modality = None
-        if command == CMD_ASK:
-          modality = Modality.Text
-        elif command == CMD_IMG:
-          modality = Modality.Image
-        else:
-          assert False, f"Invalid command {command}"
+        val = self.visit_children(tree)
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
@@ -98,12 +93,17 @@ class Repl(Interpreter):
             intention=Intention.init(
               actor_next=self.actor_next,
               actor_updates=self.av,
-              modality=modality
+              modality=self.modality
             )
           )
         )
       finally:
         self.message = ''
+    elif command == CMD_EXPECT:
+      val = self.visit_children(tree)
+      modality = val[2][0]
+      info(f"Setting expected modality to '{modality}'")
+      self.modality = modality
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
@@ -119,14 +119,15 @@ class Repl(Interpreter):
     elif command == CMD_MODEL:
       res = self.visit_children(tree)
       if len(res)>2:
-        name = ModelName(*res[3])
+        name = ModelName(*res[2][0])
         opt = opts.get(name, ActorOptions.init())
         info(f"Setting target actor to '{name.repr()}'")
         opts[name] = opt
         self.actor_next = name
       else:
-        self.actor_next = None
-        info(f"Setting target actor to none")
+        raise ValueError("Invalid model format")
+        # self.actor_next = None
+        # info(f"Setting target actor to none")
     elif command == CMD_NTHREADS:
       n = as_int(tree.children[2].children[0].value, None)
       self._check_next_actor()
@@ -139,12 +140,12 @@ class Repl(Interpreter):
       info(f"Setting model temperature to '{t or 'default'}'")
     elif command == CMD_APIKEY:
       res = self.visit_children(tree)
-      if len(res)<3:
+      if len(res)<2:
         raise ValueError("API key should not be empty")
-      schema,arg = res[3]
+      schema,arg = res[2][0]
       self._check_next_actor()
       opts[self.actor_next].apikey = (schema,arg)
-      info(f"Setting API key to \"{schema}:{arg}\"")
+      info(f"Setting API key to '{schema}:{arg}'")
     elif command == CMD_VERBOSE:
       v = as_int(tree.children[2].children[0].value, 0)
       self._check_next_actor()
@@ -237,8 +238,12 @@ class UserActor(Actor):
             for token in u.gen(u):
               need_eol = not token.rstrip(' ').endswith("\n")
               print(token, end='', flush=True)
-        else:
-          dbg(f"Ignoring utterance without content")
+        if u.resources is not None:
+          for r in u.resources:
+            if r.modality == Modality.Image:
+              print(f"/img \"{r.path}\"\n", end='', flush=True)
+            else:
+              assert False, f"Unexpected resource modality {r.modality}"
         if need_eol:
           print()
       self.cnv_top += 1

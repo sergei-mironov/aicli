@@ -1,3 +1,4 @@
+from typing import Iterable
 from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from os.path import join, isfile, realpath, expanduser, abspath, sep
@@ -42,6 +43,15 @@ def expand_apikey(apikey)->str|None:
   else:
     raise ValueError(f"Unsupported APIKEY schema '{schema}'")
 
+def onematch(gen:Iterable[str])->str:
+  res = list(gen)
+  if len(res)!=1:
+    raise ValueError(f"Expected exactly one match, got '{res}'")
+  return res[0]
+
+def expanddir(path)->list[str]:
+  for match in glob(expanduser(path)):
+    yield realpath(match)
 
 def expandpath(refdir, path)->list[str]:
   for p in [path] + ([join(refdir, path)] if refdir else []):

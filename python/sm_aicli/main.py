@@ -58,7 +58,13 @@ ARG_PARSER.add_argument(
   "--model-dir",
   type=str,
   help="Model directory to prepend to model file names",
-  default=None
+  default='.'
+)
+ARG_PARSER.add_argument(
+  "--image-dir",
+  type=str,
+  help="Directory in which to store images",
+  default='.'
 )
 ARG_PARSER.add_argument(
   "--model", "-m",
@@ -249,6 +255,17 @@ def get_help_string(arg_parser):
   arg_parser.print_help(help_output)
   return help_output.getvalue()
 
+def reload_history(args):
+  if args.readline_history:
+    try:
+      clear_history()
+      read_history_file(args.readline_history)
+      info(f"History file loaded")
+    except FileNotFoundError:
+      info(f"History file not loaded")
+  else:
+    info(f"History file is not used")
+
 def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
   args.help = get_help_string(ARG_PARSER)
@@ -276,21 +293,16 @@ def main(cmdline=None):
   print(f"Type /help or a question followed by the /ask command (or by pressing "
         f"`{hint}` key).")
 
-  if args.readline_history:
-    try:
-      clear_history()
-      read_history_file(args.readline_history)
-      info(f"History file loaded")
-    except FileNotFoundError:
-      info(f"History file not loaded")
-  else:
-    info(f"History file is not used")
+  reload_history(args)
 
   cnv = Conversation.init()
   st = ActorState.init()
   current_actor = UserName()
   current_modality = Modality.Text
   st.actors[current_actor] = UserActor(UserName(), ActorOptions.init(), args, header.getvalue())
+
+  model_dir = onematch(expanddir(args.model_dir))
+  image_dir = onematch(expanddir(args.image_dir))
 
   while True:
     try:
@@ -312,9 +324,9 @@ def main(cmdline=None):
             actor.set_options(opt)
           else:
             if name.provider == "openai":
-              st.actors[name] = OpenAIActor(name, opt)
+              st.actors[name] = OpenAIActor(name, opt, image_dir=image_dir)
             elif name.provider == "gpt4all":
-              st.actors[name] = GPT4AllActor(name, opt, args.model_dir)
+              st.actors[name] = GPT4AllActor(name, opt, model_dir=model_dir)
             elif name.provider == "dummy":
               st.actors[name] = DummyActor(name, opt)
             else:
@@ -331,11 +343,19 @@ def main(cmdline=None):
       if intention.dbg_flag:
         info("Type `cont` to continue when done")
         Pdb(nosigint=True).set_trace(_getframe())
+        reload_history(args)
+      if intention.modality is not None:
+        current_modality = intention.modality
       if intention.exit_flag:
         break
     except KeyboardInterrupt:
       info("^C", prefix=False)
       current_actor = UserName()
+      current_modality = Modality.Text
+    except NotImplementedError as e:
+      err("<Not implemented>")
+      current_actor = UserName()
+      current_modality = Modality.Text
 
 #     apply(st)
 #     repl.reset()
