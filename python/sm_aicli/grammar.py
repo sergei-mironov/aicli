@@ -12,10 +12,12 @@ CMD_IMG = "/img"
 CMD_PROMPT = "/prompt"
 CMD_DBG = "/dbg"
 CMD_EXPECT = "/expect"
+CMD_IMGSZ = "/imgsz"
 
 COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET, CMD_TEMP,
-            CMD_APIKEY, CMD_IMG, CMD_PROMPT, CMD_DBG, CMD_ASK]
-COMMANDS_ARG = [CMD_MODEL, CMD_NTHREADS, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_EXPECT]
+            CMD_APIKEY, CMD_IMG, CMD_PROMPT, CMD_DBG, CMD_ASK, CMD_IMGSZ]
+COMMANDS_ARG = [CMD_MODEL, CMD_NTHREADS, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE,
+                CMD_EXPECT, CMD_IMGSZ, CMD_IMG]
 COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 
 GRAMMAR = fr"""
@@ -27,7 +29,13 @@ GRAMMAR = fr"""
              /\/nthreads/ / +/ (number | def) | \
              /\/verbose/ / +/ (number | def) | \
              /\/temp/ / +/ (float | def ) | \
-             /\/expect/ / +/ modality_string
+             /\/expect/ / +/ modality_string | \
+             /\/img/ / +/ string | \
+             /\/imgsz/ / +/ string
+
+  string: "\"" string_quoted "\"" | string_raw
+  string_quoted: /[^"]+/ -> string_value
+  string_raw: /[^ ]+/ -> string_value
 
   model_string: "\"" model_quoted "\"" | model_raw
   model_quoted: (model_provider ":")? model_name_quoted -> model
@@ -43,8 +51,8 @@ GRAMMAR = fr"""
   apikey_quoted: (apikey_schema ":")? apikey_value_quoted -> apikey
   apikey_raw: (apikey_schema ":")? apikey_value_raw -> apikey
   apikey_schema: "verbatim" -> as_verbatim | "file" -> as_file
-  apikey_value_quoted: /[^"]+/ -> apikey_value
-  apikey_value_raw: /[^ ]+/ -> apikey_value
+  apikey_value_quoted: /[^"]+/ -> string_value
+  apikey_value_raw: /[^ ]+/ -> string_value
 
   number: /[0-9]+/
   float: /[0-9]+\.[0-9]*/

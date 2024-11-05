@@ -115,33 +115,36 @@ class OpenAIActor(Actor):
 
   def comment_with_image(self, act:ActorView, cnv:Conversation) -> Utterance:
     self._sync(cnv)
-    prompt,_ = find_last_message(self.messages, 'user')
-    response = self.client.images.generate(
-      prompt=prompt,
-      model=self.name.model,
-      n=1,
-      size="512x512",
-      response_format="url"
-    )
-    resources = []
-    for datum in response.data:
-      if isinstance(datum, OpenAIImage):
-        url = datum.url
-        if url is not None:
-          dbg(url, actor=self)
-          ext = url2ext(url)
-          path = download_url(url, self.image_dir, ext)
-          if path is not None:
-            dbg(f"Url successfully saved as '{path}'", actor=self)
-            resources.append(Resource.img(path))
-          else:
-            err(f'Failed to download {url}', actor=self)
-      else:
-        dbg(f'Skipping non-image response {datum}', actor=self)
+    try:
+      prompt,_ = find_last_message(self.messages, 'user')
+      response = self.client.images.generate(
+        prompt=prompt,
+        model=self.name.model,
+        n=1,
+        size=self.opt.imgsz or "256x256",
+        response_format="url"
+      )
+      resources = []
+      for datum in response.data:
+        if isinstance(datum, OpenAIImage):
+          url = datum.url
+          if url is not None:
+            dbg(url, actor=self)
+            ext = url2ext(url)
+            path = download_url(url, self.image_dir, ext)
+            if path is not None:
+              dbg(f"Url successfully saved as '{path}'", actor=self)
+              resources.append(Resource.img(path))
+            else:
+              err(f'Failed to download {url}', actor=self)
+        else:
+          dbg(f'Skipping non-image response {datum}', actor=self)
 
-    return Utterance.init(
-      name=self.name,
-      intention=Intention.init(actor_next=UserName()),
-      resources=resources
-    )
+      return Utterance.init(
+        name=self.name,
+        intention=Intention.init(actor_next=UserName()),
+        resources=resources
+      )
+    except OpenAIError as err:
+      raise ValueError(str(err)) from err
 

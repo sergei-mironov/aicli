@@ -11,7 +11,7 @@ from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Uttera
                      Conversation, ActorView, ModelName, Modality)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
-                       CMD_DBG, CMD_EXPECT)
+                       CMD_DBG, CMD_EXPECT, CMD_IMGSZ)
 
 from ..utils import info, err, with_sigint, dbg
 
@@ -55,7 +55,7 @@ class Repl(Interpreter):
     self.in_echo = 0
   def as_verbatim(self, tree): return "verbatim"
   def as_file(self, tree): return "file"
-  def apikey_value(self, tree):
+  def string_value(self, tree):
     return tree.children[0].value
   def apikey(self, tree):
     val = self.visit_children(tree)
@@ -156,6 +156,11 @@ class Repl(Interpreter):
       opts[self.actor_next].prompt = self.message
       info(f"Setting actor prompt to '{self.message[:10]}...'")
       self.message = ''
+    elif command == CMD_IMGSZ:
+      self._check_next_actor()
+      v = self.visit_children(tree)[2][0]
+      opts[self.actor_next].imgsz = v
+      info(f"Setting image size to '{v}'")
     elif command == CMD_RESET:
       info("Message buffer will be cleared")
       self.reset()

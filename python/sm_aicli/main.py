@@ -142,8 +142,6 @@ ARG_PARSER.add_argument(
   help="Do not read configuration files",
 )
 
-
-
 def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -> None:
   try:
     actor = ast.actors.get(aname)
@@ -170,50 +168,12 @@ def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -
   finally:
     print()
 
-# def askimg(args, model:Model, message:str) -> None:
-#   opt:Options = Options(verbose=as_int(args.verbose, 0))
-#   model.set_temperature(as_float(args.model_temperature,None))
-#   path = model.ask_image(message, opt=opt)
-#   print(path)
-
-# @contextmanager
-# def with_chat_session(model:Model):
-#   if model is None:
-#     yield
-#   else:
-#     with model.with_chat_session():
-#       yield
-
 def ensure_quoted(s:str)->str:
   if not (len(s)>0 and s[0]=='"'):
     s = '"' + s
   if not (len(s)>0 and s[-1]=='"'):
     s = s + '"'
   return s
-
-# def parse_model(args) -> tuple[ModelName] | None:
-#   if args.model is None:
-#     return None
-#   else:
-#     mprov,mname = args.model
-#     if mprov == 'gpt4all':
-#       filename = None
-#       for f in model_locations(args, mname):
-#         if isfile(f):
-#           filename = f
-#           break
-#       mname = filename if filename is not None else mname
-#       return GPT4AllModel(mname, device=args.device)
-#     elif mprov == 'openai':
-#       apikey = parse_apikey(args)
-#       if apikey is None:
-#         raise ValueError("OpenAI models require apikey")
-#       return OpenAIModel(model=mname, apikey=apikey)
-#     elif mprov == 'dummy':
-#       apikey = parse_apikey(args)
-#       return DummyModel(model=mname, apikey=apikey)
-#     else:
-#       raise ValueError(f"Invalid model provider '{mprov}'")
 
 def read_configs(args)->list[str]:
   acc = []
@@ -230,25 +190,6 @@ def read_configs(args)->list[str]:
             info(line.strip())
             acc.append(line.strip())
   return acc
-
-
-# def apply_options(args, st:State) -> None:
-#   mname = st.current_model_name
-#   if mname is None:
-#     raise RuntimeError(no_model_is_active)
-#   mopt = st.options.get(mname, ModelOptions.init())
-#   model = st.models.get(mname)
-#   if model is None:
-#     if mname.provider == "openai":
-#       model = OpenAIModel(mname)
-#     elif mname.provider == "gpt4all":
-#       model = GPT4AllModel(mname)
-#     elif mname.provider == "dummy":
-#       model = DummyModel(mname)
-#     else:
-#       raise ValueError(f"Unknown model provider {mname.provider}")
-#   model.set_options(mopt)
-
 
 def get_help_string(arg_parser):
   help_output = StringIO()
@@ -356,18 +297,8 @@ def main(cmdline=None):
       err("<Not implemented>")
       current_actor = UserName()
       current_modality = Modality.Text
-
-#     apply(st)
-#     repl.reset()
-#     try:
-#       while all([not repl.exit_request, not repl.reset_request]):
-#         repl.visit(PARSER.parse(input(args.readline_prompt)))
-#         repl._finish_echo()
-#         if args.readline_history:
-#           write_history_file(args.readline_history)
-#     except (ValueError,RuntimeError) as err:
-#       print_aux_err(args, err)
-#     except EOFError:
-#       print()
-#       break
+    except ValueError as e:
+      err(e)
+      current_actor = UserName()
+      current_modality = Modality.Text
 

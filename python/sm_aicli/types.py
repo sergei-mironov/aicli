@@ -23,6 +23,7 @@ class ActorOptions:
   temperature:float|None = None
   num_threads:int|None = None
   prompt:str|None = None
+  imgsz:str|None = None
 
   @staticmethod
   def init():
