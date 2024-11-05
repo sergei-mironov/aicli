@@ -288,15 +288,21 @@ def main(cmdline=None):
 
   cnv = Conversation.init()
   st = ActorState.init()
-  current = UserName()
-  st.actors[current] = UserActor(UserName(), ActorOptions.init(), args, header.getvalue())
+  current_actor = UserName()
+  current_modality = Modality.Text
+  st.actors[current_actor] = UserActor(UserName(), ActorOptions.init(), args, header.getvalue())
 
   while True:
     try:
-      response = st.actors[current].comment_with_text(st.get_view(), cnv)
+      if current_modality == Modality.Text:
+        response = st.actors[current_actor].comment_with_text(st.get_view(), cnv)
+      elif current_modality == Modality.Image:
+        response = st.actors[current_actor].comment_with_image(st.get_view(), cnv)
+      else:
+        assert False, f"Unsupported modality {current_modality}"
       if response.utterance is not None:
-        assert response.utterance.actor_name == st.actors[current].name, (
-          f"{response.utterance.actor_name} != {st.actors[current].name}"
+        assert response.utterance.actor_name == st.actors[current_actor].name, (
+          f"{response.utterance.actor_name} != {st.actors[current_actor].name}"
         )
         cnv.utterances.append(response.utterance)
       if response.actor_updates is not None:
@@ -317,7 +323,7 @@ def main(cmdline=None):
         assert response.actor_next in st.actors, (
           f"{response.actor_next} is not among {st.actors.keys()}"
         )
-        current = response.actor_next
+        current_actor = response.actor_next
       if response.reset_flag:
         cnv = Conversation.init()
         for a in st.actors.values():
@@ -329,7 +335,7 @@ def main(cmdline=None):
         break
     except KeyboardInterrupt:
       info("^C", prefix=False)
-      current = UserName()
+      current_actor = UserName()
 
 #     apply(st)
 #     repl.reset()

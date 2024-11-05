@@ -47,3 +47,16 @@ def expandpath(refdir, path)->list[str]:
   for p in [path] + ([join(refdir, path)] if refdir else []):
     for match in glob(expanduser(p)):
       yield realpath(match)
+
+
+def find_last_message(messages:list[dict[str,str]], role:str) -> tuple[str|None,int|None]:
+  """ Find last message in the list of messages, return its contents and list index """
+  last_message = None
+  last_message_id = None
+  for i in reversed(range(0, len(messages))):
+    if messages[i]['role'] == role:
+      last_message = messages[i]['content']
+      last_message_id = i
+      break
+  return last_message, last_message_id
+

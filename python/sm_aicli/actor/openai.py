@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation,
                      ActorResponse, ModelName, UserName, Utterance)
-from ..utils import expand_apikey, dbg
+from ..utils import expand_apikey, dbg, find_last_message
 
 @dataclass
 class OpenAIUtterance(Utterance):
@@ -75,12 +75,18 @@ class OpenAIActor(Actor):
     except OpenAIError as err:
       raise ValueError(str(err)) from err
 
-  # def ask_image(self, prompt:str, *args, opts:ActorOptions|None=None, **kwargs) -> PathStr:
-  #   response = self.client.images.generate(
-  #     prompt=prompt,
-  #     model=self.model_name.val,
-  #     n=1,
-  #     size="512x512",
-  #     response_format="url")
-  #   print(response)
+  def comment_with_image(self, act:ActorView, cnv:Conversation) -> ActorResponse:
+    self._sync(cnv)
+    prompt,_ = find_last_message(self.messages, 'user')
+    response = self.client.images.generate(
+      prompt=prompt,
+      model=self.name.model,
+      n=1,
+      size="512x512",
+      response_format="url"
+    )
+    return ActorResponse.init(
+      actor_next=UserName(),
+      utterance=OpenAIUtterance(self.name, str(response), None)
+    )
 

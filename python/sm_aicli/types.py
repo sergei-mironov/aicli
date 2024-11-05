@@ -1,6 +1,7 @@
 from typing import Iterable
 from dataclasses import dataclass
 from copy import deepcopy
+from enum import Enum
 
 @dataclass(frozen=True)
 class ModelName:
@@ -62,6 +63,9 @@ class ActorView:
   def init():
     return ActorView({})
 
+class Modality(Enum):
+  Text = 0
+  Image = 1
 
 @dataclass
 class ActorResponse:
@@ -71,11 +75,13 @@ class ActorResponse:
   exit_flag:bool
   reset_flag:bool
   dbg_flag:bool
+  modality:Modality=Modality.Text
 
   @staticmethod
   def init(utterance=None, actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False,
-           dbg_flag=False):
-    return ActorResponse(utterance, actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
+           dbg_flag=False, modality=Modality.Text):
+    return ActorResponse(utterance, actor_next, actor_updates, exit_flag, reset_flag, dbg_flag,
+                         modality=modality)
 
 
 @dataclass

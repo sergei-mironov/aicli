@@ -8,7 +8,7 @@ from copy import deepcopy, copy
 from pdb import set_trace as ST
 
 from ..types import (Actor, ActorName, ActorOptions, ActorResponse, UserName, Utterance,
-                     Conversation, ActorView, ModelName)
+                     Conversation, ActorView, ModelName, Modality)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
                        CMD_DBG)
@@ -83,12 +83,20 @@ class Repl(Interpreter):
     elif command in [CMD_ASK, CMD_IMG]:
       try:
         utterance = Utterance(self.aname, copy(self.message)) if len(self.message.strip())>0 else None
+        modality = None
+        if command == CMD_ASK:
+          modality = Modality.Text
+        elif command == CMD_IMG:
+          modality = Modality.Image
+        else:
+          assert False, f"Invalid command {command}"
         raise InterpreterPause(
           tree.meta.end_pos,
           response=ActorResponse.init(
             utterance=utterance,
             actor_next=self.actor_next,
-            actor_updates=self.av
+            actor_updates=self.av,
+            modality=modality
           )
         )
       finally:

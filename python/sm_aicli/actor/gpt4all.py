@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from ..types import (Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance,
                      ActorResponse, ModelName, UserName)
-from ..utils import expandpath, info, dbg
+from ..utils import expandpath, info, dbg, find_last_message
 
 def firstfile(paths) -> str|None:
   for p in paths:
@@ -72,14 +72,7 @@ class GPT4AllActor(Actor):
       self.cnvtop += 1
     dbg(f"gpt4all history: {self.gpt4all._history}", actor=self)
 
-    last_user_message = None
-    last_user_message_id = None
-    for i in reversed(range(0, len(history))):
-      if history[i]['role'] == 'user':
-        last_user_message = history[i]['content']
-        last_user_message_id = i
-        dbg(f"actor history: last_user_message {last_user_message}", actor=self)
-        break
+    last_message, last_user_message_id = find_last_message(history, "user")
     if last_user_message_id == len(history)-1:
       del history[last_user_message_id]
       dbg(f"actor history: removing very last message {last_user_message_id}", actor=self)
