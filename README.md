@@ -48,10 +48,10 @@ Usage
 ```
 -->
 ``` result
-usage: aicli [-h] [--model-dir MODEL_DIR] [--model [STR1:]STR2]
-             [--num-threads NUM_THREADS] [--model-apikey STR]
-             [--model-temperature MODEL_TEMPERATURE] [--device DEVICE]
-             [--readline-key-send READLINE_KEY_SEND]
+usage: aicli [-h] [--model-dir MODEL_DIR] [--image-dir IMAGE_DIR]
+             [--model [STR1:]STR2] [--num-threads NUM_THREADS]
+             [--model-apikey STR] [--model-temperature MODEL_TEMPERATURE]
+             [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
              [--readline-prompt READLINE_PROMPT] [--readline-history FILE]
              [--verbose NUM] [--revision] [--version] [--no-rc]
 
@@ -61,6 +61,8 @@ options:
   -h, --help            show this help message and exit
   --model-dir MODEL_DIR
                         Model directory to prepend to model file names
+  --image-dir IMAGE_DIR
+                        Directory in which to store images
   --model [STR1:]STR2, -m [STR1:]STR2
                         Model to use. STR1 is 'gpt4all' (the default) or
                         'openai'. STR2 is the model name
@@ -98,28 +100,43 @@ print(dedent(GRAMMAR).strip())
 ``` result
 start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
-command.2: /\/ask|\/exit|\/help|\/reset/ | \
-           /\/model/ / +/ (/"/ model_string /"/ | /"/ /"/) | \
-           /\/apikey/ / +/ (/"/ apikey_string /"/ | /"/ /"/) | \
+command.2: /\/ask|\/dbg|\/echo|\/exit|\/help|\/prompt|\/reset/ | \
+           /\/model/ / +/ model_string | \
+           /\/apikey/ / +/ apikey_string | \
            /\/nthreads/ / +/ (number | def) | \
            /\/verbose/ / +/ (number | def) | \
            /\/temp/ / +/ (float | def ) | \
-           /\/echo/ | /\/echo/ / /
-model_string: (model_provider ":")? model_name
+           /\/expect/ / +/ modality_string | \
+           /\/img/ / +/ string | \
+           /\/imgsz/ / +/ string
+
+string: "\"" string_quoted "\"" | string_raw
+string_quoted: /[^"]+/ -> string_value
+string_raw: /[^"][^ ]*/ -> string_value
+
+model_string: "\"" model_quoted "\"" | model_raw
+model_quoted: (model_provider ":")? string_quoted -> model
+model_raw: (model_provider ":")? string_raw -> model
 model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
-model_name: /[^"]+/
-apikey_string: (apikey_schema ":")? apikey_value
+
+modality_string: "\"" modality "\"" | modality
+modality: /img/ -> modality_img | /text/ -> modality_text
+
+apikey_string: "\"" apikey_quoted "\"" | apikey_raw
+apikey_quoted: (apikey_schema ":")? string_quoted -> apikey
+apikey_raw: (apikey_schema ":")? string_raw -> apikey
 apikey_schema: "verbatim" -> as_verbatim | "file" -> as_file
-apikey_value: /[^"]+/
+
 number: /[0-9]+/
 float: /[0-9]+\.[0-9]*/
 def: "default"
-text: /(.(?!\/|\\))*./s
+text.0: /(.(?!\/|\\))*./s
 ```
 
-If run without `--no-rc` arguemnt and no `AICLI_NORC` environmnet variable is set, the application
-tries to read configuration files starting from the `/` directory down to the current directory. The
-contents of `_aicli`, `.aicli`, `_sm_aicli` and `.sm_aicli` files is interpreted as commands.
+By default, the application tries to read configuration files starting from the `/` directory down
+to the current directory. The contents of `_aicli`, `.aicli`, `_sm_aicli` and `.sm_aicli` files is
+interpreted as commands.  The `--no-rc` command-line arguemnt or `AICLI_NORC` environmnet variable
+prevent this from happening.
 
 ### Example session
 
