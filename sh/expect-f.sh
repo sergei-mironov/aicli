@@ -1,4 +1,4 @@
 #!/bin/sh
 
-export AICLI_NORC=y
+export AICLI_RC=none
 exec expect -f "$@"

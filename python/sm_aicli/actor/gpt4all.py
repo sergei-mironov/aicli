@@ -5,10 +5,11 @@ from copy import deepcopy
 from os.path import isfile
 from os import getcwd
 from dataclasses import dataclass
+from collections import OrderedDict
 
 from ..types import (Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance,
-                     Intention, ModelName, UserName)
-from ..utils import expandpath, info, dbg, find_last_message
+                     Intention, ModelName, UserName, SAU)
+from ..utils import (expandpath, info, dbg, find_last_message, uts_lastfullref, uts_2sau)
 
 def firstfile(paths) -> str|None:
   for p in paths:
@@ -52,49 +53,46 @@ class GPT4AllActor(Actor):
     self.session = self.gpt4all.chat_session()
     self.session.__enter__()
     self.break_request = False
-    self.cnvtop = 0
+    self.cache = OrderedDict()
     self.chunks = None
     self.set_options(opt)
 
   def __del__(self):
     self.session.__exit__(None, None, None)
 
-  def _sync(self, cnv:Conversation) -> None:
-    assert self.cnvtop < len(cnv.utterances)
-    history = self.gpt4all._history
-    for i in range(self.cnvtop, len(cnv.utterances)):
-      u = cnv.utterances[i]
-      assert u.contents is not None, "Utterance without contents is not supported"
-      role = None
-      if u.actor_name == UserName():
-        role = "user"
-      else:
-        role = "assistant"
-      assert role is not None
-      history.append({"role":role, "content": u.contents})
-      self.cnvtop += 1
-    dbg(f"gpt4all history: {self.gpt4all._history}", actor=self)
-
-    last_user_message, last_user_message_id = find_last_message(history, "user")
-    if last_user_message_id == len(history)-1:
-      del history[last_user_message_id]
-      dbg(f"actor history: removing very last message {last_user_message_id}", actor=self)
-    return last_user_message or ""
-
   def reset(self):
     dbg("Resetting session", actor=self)
     self.session.__exit__(None, None, None)
     self.session = self.gpt4all.chat_session()
     self.session.__enter__()
-    self.cnvtop = 0
+    self.cache = OrderedDict()
+
+  def _sync(self, cnv:Conversation) -> tuple[SAU, str]:
+    uid = uts_lastfullref(cnv.utterances, self.name)
+    if uid is None:
+      raise ConversationException("No context")
+    sau = uts_2sau(cnv.utterances[:uid+1],
+                   {UserName():"user"},
+                   "assistant",
+                   self.opt.prompt or '',
+                   self.cache)
+    if len(self.cache)>5:
+      self.cache.popitem(last=False)
+    assert len(sau)>0, f"{sau}"
+    assert sau[-1]['role'] == 'user', f"{sau}"
+    return sau[:-1], sau[-1]['content']
 
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:
     assert self.chunks is None, "Re-entering is not allowed"
-    last_user_message = self._sync(cnv)
+    sau, prompt = self._sync(cnv)
+    if self.opt.verbose>0:
+      dbg(f"sau: {sau}", actor=self)
+      dbg(f"prompt: {prompt}", actor=self)
+    self.gpt4all._history = sau
     def _model_callback(*args, **kwargs):
       return not self.break_request
     self.chunks = self.gpt4all.generate(
-      last_user_message,
+      prompt,
       max_tokens=200,
       temp=self.opt.temperature or self.temperature_def,
       top_k=40,
@@ -112,6 +110,4 @@ class GPT4AllActor(Actor):
     self.opt = deepcopy(opt)
     if opt.num_threads is not None:
       self.gpt4all.model.set_thread_count(opt.num_threads)
-    if opt.prompt is not None:
-      info("Custom prompt is ignored by this model", actor=self)
 

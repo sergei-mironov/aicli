@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from textwrap import dedent
 from functools import partial
-from sys import _getframe
+from sys import _getframe, stderr
 from pdb import Pdb
 
 from lark import Lark
@@ -107,7 +107,7 @@ ARG_PARSER.add_argument(
   default="\\C-k"
 )
 ARG_PARSER.add_argument(
-  '--readline-prompt',
+  '--readline-prompt', '-p',
   type=str,
   help="Input prompt (default: >>>)",
   default=">>> "
@@ -137,9 +137,9 @@ ARG_PARSER.add_argument(
   help="Print the version",
 )
 ARG_PARSER.add_argument(
-  '--no-rc',
-  action='store_true',
-  help="Do not read configuration files",
+  '--rc',
+  default='_aicli,.aicli,_sm_aicli,.sm_aicli',
+  help="List of config file names (','-separated, use empty or 'none' to disable)",
 )
 
 def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -> None:
@@ -175,13 +175,14 @@ def ensure_quoted(s:str)->str:
     s = s + '"'
   return s
 
-def read_configs(args)->list[str]:
+def read_configs(args, rcnames:list[str])->list[str]:
   acc = []
   current_dir = abspath(getcwd())
   path_parts = current_dir.split(sep)
   for depth in range(2, len(path_parts) + 1):
     directory = sep.join(path_parts[:depth])
-    for fn in ['_aicli', '.aicli', '_sm_aicli', '.sm_aicli']:
+    # for fn in ['_aicli', '.aicli', '_sm_aicli', '.sm_aicli']:
+    for fn in rcnames:
       candidate_file = join(directory, fn)
       if isfile(candidate_file):
         with open(candidate_file, 'r') as file:
@@ -218,11 +219,12 @@ def main(cmdline=None):
     return 0
 
   header = StringIO()
-  if not environ.get('AICLI_NORC') and not args.no_rc:
-    for line in read_configs(args):
+  rcnames = environ.get('AICLI_RC', args.rc)
+  if rcnames is not None and len(rcnames)>0 and rcnames!='none':
+    for line in read_configs(args, rcnames.split(',')):
       header.write(line+'\n')
   else:
-    info("Skipping reading configuration files")
+    info("Skipping configuration files")
   if args.model is not None:
     header.write(f"/model {ensure_quoted(args.model)}\n")
   if args.model_apikey is not None:
@@ -232,7 +234,7 @@ def main(cmdline=None):
   hint = args.readline_key_send.replace('\\', '')
 
   print(f"Type /help or a question followed by the /ask command (or by pressing "
-        f"`{hint}` key).")
+        f"`{hint}` key).", file=stderr)
 
   reload_history(args)
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export AICLI_NORC=y
+export AICLI_RC=none
 
 set -e -x
 echo "Running pytest"

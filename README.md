@@ -135,8 +135,7 @@ text.0: /(.(?!\/|\\))*./s
 
 By default, the application tries to read configuration files starting from the `/` directory down
 to the current directory. The contents of `_aicli`, `.aicli`, `_sm_aicli` and `.sm_aicli` files is
-interpreted as commands.  The `--no-rc` command-line arguemnt or `AICLI_NORC` environmnet variable
-prevent this from happening.
+interpreted as commands.
 
 ### Example session
 

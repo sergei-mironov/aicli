@@ -15,9 +15,8 @@ from urllib.parse import urlparse, parse_qs
 from pdb import set_trace as ST
 from collections import OrderedDict
 
-from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation,
-                     Intention, ModelName, UserName, Utterance, Resource, Modality,
-                     ConversationException, SAU)
+from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, Intention,
+                     ModelName, UserName, Utterance, Modality, ConversationException, SAU)
 from ..utils import (expand_apikey, dbg, find_last_message, err, uts_2sau, uts_lastfull,
                      uts_lastref)
 
@@ -55,7 +54,7 @@ class OpenAIUtterance(Utterance):
   stop:bool=False
   def interrupt(self):
     self.stop = True
-  def init(name, intention, contents=None, chunks=None):
+  def init_text(name, intention, chunks):
     def _gen(self):
       self.stop = False
       self.contents = ''
@@ -68,8 +67,23 @@ class OpenAIUtterance(Utterance):
             yield text
       except OpenAIError as err:
         yield f"<ERROR: {str(err)}>"
-    gen =  _gen if chunks is not None else None
-    return OpenAIUtterance(name, intention, None, gen)
+    # gen =  _gen if chunks is not None else None
+    return OpenAIUtterance(name, intention, None, _gen)
+
+
+  def init_request(name, intention, response):
+    def _gen(self):
+      self.stop = False
+      self.contents = b''
+      try:
+        for chunk in response.iter_content(4*1024):
+          if self.stop:
+            break
+          self.contents += chunk
+          yield chunk
+      except RequestException as err:
+        yield f"<ERROR: {str(err)}>".decode()
+    return OpenAIUtterance(name, intention, None, _gen)
 
 
 class OpenAIActor(Actor):
@@ -86,23 +100,7 @@ class OpenAIActor(Actor):
 
   def reset(self):
     dbg("Resetting session", actor=self)
-    self.cnvtop = 0
-    self.messages = []
     self.cache = OrderedDict()
-
-  # def _sync(self, cnv:Conversation):
-  #   assert self.cnvtop < len(cnv.utterances)
-  #   if self.messages == []:
-  #     prompt = self.opt.prompt or "You are a helpful assistant."
-  #     self.messages = [{"role": "system", "content": prompt}]
-  #   for i in range(self.cnvtop, len(cnv.utterances)):
-  #     u = cnv.utterances[i]
-  #     if u.contents is not None:
-  #       role = "user" if u.actor_name == UserName() else "assistant"
-  #       self.messages.append({"role":role, "content": u.contents})
-  #       self.cnvtop += 1
-  #   dbg(f"messages: {self.messages}", actor=self)
-  #   assert len(self.messages)>0
 
   def _cnv2sau(self, cnv:Conversation) -> SAU:
     sau = uts_2sau(
@@ -116,17 +114,6 @@ class OpenAIActor(Actor):
       self.cache.popitem(last=False)
     return sau
 
-  def _cnv2prompt(self, cnv:Conversation) -> str:
-    uid = uts_lastref(cnv.utterances, self.name)
-    if uid is not None and cnv.utterances[uid].is_empty():
-      refname = cnv.utterances[uid].actor_name
-      uid = uts_lastfull(cnv.utterances[:uid], refname)
-    if uid is None:
-      raise ConversationException("no prompt")
-    prompt = cnv.utterances[uid].contents
-    assert prompt is not None, f"Prompt {uid} has no contents. Is it a thunk?"
-    return prompt
-
   def _react_text(self, act:ActorView, cnv:Conversation) -> Utterance:
     sau = self._cnv2sau(cnv)
     if self.opt.verbose > 0:
@@ -138,9 +125,20 @@ class OpenAIActor(Actor):
         stream=True,
         temperature=self.opt.temperature,
       )
-      return OpenAIUtterance.init(self.name, Intention.init(actor_next=UserName()), chunks=chunks)
+      return OpenAIUtterance.init_text(self.name, Intention.init(actor_next=UserName()), chunks=chunks)
     except OpenAIError as err:
       raise ConversationException(str(err)) from err
+
+  def _cnv2prompt(self, cnv:Conversation) -> str:
+    uid = uts_lastref(cnv.utterances, self.name)
+    if uid is not None and cnv.utterances[uid].is_empty():
+      refname = cnv.utterances[uid].actor_name
+      uid = uts_lastfull(cnv.utterances[:uid], refname)
+    if uid is None:
+      raise ConversationException("no prompt")
+    prompt = cnv.utterances[uid].contents
+    assert prompt is not None, f"Prompt {uid} has no contents. Is it a thunk?"
+    return prompt
 
   def _react_image(self, act:ActorView, cnv:Conversation) -> Utterance:
     prompt = self._cnv2prompt(cnv)
@@ -154,28 +152,35 @@ class OpenAIActor(Actor):
         size=self.opt.imgsz or "256x256",
         response_format="url"
       )
-      resources = []
-      for datum in response.data:
-        if isinstance(datum, OpenAIImage):
-          url = datum.url
-          if url is not None:
-            dbg(url, actor=self)
-            ext = url2ext(url)
-            path = download_url(url, self.image_dir, ext)
-            if path is not None:
-              dbg(f"Url successfully saved as '{path}'", actor=self)
-              resources.append(Resource.img(path))
-            else:
-              err(f'Failed to download {url}', actor=self)
-        else:
-          dbg(f'Skipping non-image response {datum}', actor=self)
+      if len(response.data) != 1:
+        raise ConversationException(f"Wrong response data length ({len(response.data)})")
+      datum = response.data[0]
+      if not isinstance(datum, OpenAIImage):
+        raise ConversationException(f"Wrong datum type ({type(datum)})")
+      url = datum.url
+      if url is None:
+        raise ConversationException(f"Datum url is None")
+      dbg(url, actor=self)
+      response = requests_get(url, stream=True)
+          # ext = url2ext(url)
+          # path = download_url(url, self.image_dir, ext)
+          # if path is not None:
+          #   dbg(f"Url successfully saved as '{path}'", actor=self)
+          #   resources.append(Resource.img(path))
+          # else:
+          #   err(f'Failed to download {url}', actor=self)
+      # else:
+        # dbg(f'Skipping non-image response {datum}', actor=self)
 
-      return Utterance.init(
+      response.raise_for_status()  # Check for HTTP errors
+      return OpenAIUtterance.init_request(
         name=self.name,
         intention=Intention.init(actor_next=UserName()),
-        resources=resources
+        response=response
       )
     except OpenAIError as err:
+      raise ConversationException(str(err)) from err
+    except RequestException as err:
       raise ConversationException(str(err)) from err
 
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:

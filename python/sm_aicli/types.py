@@ -63,27 +63,25 @@ class Intention:
     return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag,
                          modality=modality)
 
-@dataclass(frozen=True)
-class Resource:
-  path:str
-  modality:Modality
-  checksum:str|None = None
-
-  @staticmethod
-  def img(path):
-    return Resource(path, Modality.Image)
+# @dataclass(frozen=True)
+# class Resource:
+#   path:str
+#   modality:Modality
+#   checksum:str|None = None
+#   @staticmethod
+#   def img(path):
+#     return Resource(path, Modality.Image)
 
 @dataclass
 class Utterance:
   actor_name: ActorName
   intention: Intention
-  contents: str|None = None
+  contents: bytes|str|None = None
   gen: Callable[["Utterance"],Iterable[str]]|None = None
-  resources: list[Resource]|None = None
   def interrupt(self) -> None:
     return NotImplementedError()
-  def init(name, intention, contents=None, resources=None):
-    return Utterance(name, intention, contents=contents, gen=None, resources=resources)
+  def init(name, intention, contents=None):
+    return Utterance(name, intention, contents=contents, gen=None)
   def is_empty(ut):
     return ut.contents is None and ut.gen is None
 

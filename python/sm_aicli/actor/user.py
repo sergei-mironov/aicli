@@ -4,6 +4,7 @@ from lark.visitors import Interpreter
 from dataclasses import dataclass
 from typing import Any
 from copy import deepcopy, copy
+from sys import stdout
 
 from pdb import set_trace as ST
 
@@ -237,14 +238,13 @@ class UserActor(Actor):
             u.interrupt()
           with with_sigint(_handler):
             for token in u.gen(u):
-              need_eol = not token.rstrip(' ').endswith("\n")
-              print(token, end='', flush=True)
-        if u.resources is not None:
-          for r in u.resources:
-            if r.modality == Modality.Image:
-              print(f"/img \"{r.path}\"\n", end='', flush=True)
-            else:
-              assert False, f"Unexpected resource modality {r.modality}"
+              if isinstance(token, bytes):
+                need_eol = True
+                stdout.buffer.write(token)
+                stdout.buffer.flush()
+              elif isinstance(token, str):
+                need_eol = not token.rstrip(' ').endswith("\n")
+                print(token, end='', flush=True)
         if need_eol:
           print()
       self.cnv_top += 1

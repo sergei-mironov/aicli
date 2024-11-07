@@ -72,14 +72,14 @@ def find_last_message(messages:list[dict[str,str]], role:str) -> tuple[str|None,
   return last_message, last_message_id
 
 
-def uts_lastref(uts:Utterances, name:ActorName) -> UID|None:
+def uts_lastref(uts:Utterances, referree:ActorName) -> UID|None:
   ul = len(uts)
   if ul == 0:
     return None
   uid:UID|None = None
   for i in reversed(range(0, ul)):
     ut = uts[i]
-    if ut.intention.actor_next == name:
+    if ut.intention.actor_next == referree:
       uid = i
       break
   return uid
@@ -93,6 +93,11 @@ def uts_lastfull(uts:Utterances, owner:ActorName) -> UID|None:
       break
   return uid
 
+def uts_lastfullref(uts:Utterances, referree:ActorName) -> UID|None:
+  uid = uts_lastref(uts, referree)
+  if uid is not None and uts[uid].is_empty():
+    uid = uts_lastfull(uts, uts[uid].actor_name)
+  return uid
 
 def uts_2sau(
   uts:Utterances,
@@ -117,6 +122,6 @@ def uts_2sau(
   racc.append({'role':'system', 'content':system_prompt or ''})
   acc = list(reversed(racc))
   if cache is not None:
-    cache[_cachekey(len(uts))] = acc
+    cache[_cachekey(len(uts)-1)] = acc
   return acc
 
