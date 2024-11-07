@@ -4,8 +4,9 @@ from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from os.path import join, isfile, realpath, expanduser, abspath, sep
 from glob import glob
 from sys import stderr
+from collections import OrderedDict
 
-from .types import Actor
+from .types import Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName
 
 
 def err(s:str, actor:Actor|None=None)->None:
@@ -69,4 +70,53 @@ def find_last_message(messages:list[dict[str,str]], role:str) -> tuple[str|None,
       last_message_id = i
       break
   return last_message, last_message_id
+
+
+def uts_lastref(uts:Utterances, name:ActorName) -> UID|None:
+  ul = len(uts)
+  if ul == 0:
+    return None
+  uid:UID|None = None
+  for i in reversed(range(0, ul)):
+    ut = uts[i]
+    if ut.intention.actor_next == name:
+      uid = i
+      break
+  return uid
+
+def uts_lastfull(uts:Utterances, owner:ActorName) -> UID|None:
+  uid = None
+  for i in reversed(range(0, len(uts))):
+    ut = uts[i]
+    if ut.actor_name == owner and not ut.is_empty():
+      uid = i
+      break
+  return uid
+
+
+def uts_2sau(
+  uts:Utterances,
+  names:dict[ActorName, str],
+  default_name:str|None = None,
+  system_prompt:str|None = None,
+  cache:dict[hash,SAU]|None = None
+) -> SAU:
+  def _cachekey(i):
+    return tuple([i, system_prompt, *tuple(names.items())])
+  racc:SAU = []
+  for i in reversed(range(0, len(uts))):
+    if cache is not None:
+      cache_key = _cachekey(i)
+      cached = cache.get(cache_key)
+      if cached is not None:
+        return cached + list(reversed(racc))
+    ut:Utterance = uts[i]
+    name = names.get(ut.actor_name, default_name)
+    # assert name in ['user','assistant'], f"Unknown SAU name {name}"
+    racc.append({'role':name, 'content':ut.contents or ''})
+  racc.append({'role':'system', 'content':system_prompt or ''})
+  acc = list(reversed(racc))
+  if cache is not None:
+    cache[_cachekey(len(uts))] = acc
+  return acc
 

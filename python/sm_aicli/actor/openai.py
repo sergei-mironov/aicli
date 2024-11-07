@@ -13,10 +13,13 @@ from requests import get, exceptions
 from hashlib import sha256
 from urllib.parse import urlparse, parse_qs
 from pdb import set_trace as ST
+from collections import OrderedDict
 
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation,
-                     Intention, ModelName, UserName, Utterance, Resource)
-from ..utils import expand_apikey, dbg, find_last_message, err
+                     Intention, ModelName, UserName, Utterance, Resource, Modality,
+                     ConversationException, SAU)
+from ..utils import (expand_apikey, dbg, find_last_message, err, uts_2sau, uts_lastfull,
+                     uts_lastref)
 
 
 def url2ext(url)->str|None:
@@ -68,6 +71,7 @@ class OpenAIUtterance(Utterance):
     gen =  _gen if chunks is not None else None
     return OpenAIUtterance(name, intention, None, gen)
 
+
 class OpenAIActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions, image_dir:str):
     assert isinstance(name, ModelName), name
@@ -80,43 +84,69 @@ class OpenAIActor(Actor):
       raise ValueError(str(err)) from err
     self.reset()
 
-  def _sync(self, cnv:Conversation):
-    assert self.cnvtop < len(cnv.utterances)
-    if self.messages == []:
-      prompt = self.opt.prompt or "You are a helpful assistant."
-      self.messages = [{"role": "system", "content": prompt}]
-    for i in range(self.cnvtop, len(cnv.utterances)):
-      u = cnv.utterances[i]
-      if u.contents is not None:
-        role = "user" if u.actor_name == UserName() else "assistant"
-        self.messages.append({"role":role, "content": u.contents})
-        self.cnvtop += 1
-
-    dbg(f"messages: {self.messages}", actor=self)
-    assert len(self.messages)>0
-
   def reset(self):
     dbg("Resetting session", actor=self)
     self.cnvtop = 0
     self.messages = []
+    self.cache = OrderedDict()
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
-    self._sync(cnv)
+  # def _sync(self, cnv:Conversation):
+  #   assert self.cnvtop < len(cnv.utterances)
+  #   if self.messages == []:
+  #     prompt = self.opt.prompt or "You are a helpful assistant."
+  #     self.messages = [{"role": "system", "content": prompt}]
+  #   for i in range(self.cnvtop, len(cnv.utterances)):
+  #     u = cnv.utterances[i]
+  #     if u.contents is not None:
+  #       role = "user" if u.actor_name == UserName() else "assistant"
+  #       self.messages.append({"role":role, "content": u.contents})
+  #       self.cnvtop += 1
+  #   dbg(f"messages: {self.messages}", actor=self)
+  #   assert len(self.messages)>0
+
+  def _cnv2sau(self, cnv:Conversation) -> SAU:
+    sau = uts_2sau(
+      cnv.utterances,
+      names={UserName():'user'},
+      default_name='assistant',
+      system_prompt=self.opt.prompt,
+      cache=self.cache
+    )
+    if len(self.cache)>5:
+      self.cache.popitem(last=False)
+    return sau
+
+  def _cnv2prompt(self, cnv:Conversation) -> str:
+    uid = uts_lastref(cnv.utterances, self.name)
+    if uid is not None and cnv.utterances[uid].is_empty():
+      refname = cnv.utterances[uid].actor_name
+      uid = uts_lastfull(cnv.utterances[:uid], refname)
+    if uid is None:
+      raise ConversationException("no prompt")
+    prompt = cnv.utterances[uid].contents
+    assert prompt is not None, f"Prompt {uid} has no contents. Is it a thunk?"
+    return prompt
+
+  def _react_text(self, act:ActorView, cnv:Conversation) -> Utterance:
+    sau = self._cnv2sau(cnv)
+    if self.opt.verbose > 0:
+      dbg(f"sau: {sau}", actor=self)
     try:
       chunks = self.client.chat.completions.create(
         model=self.name.model,
-        messages=self.messages,
+        messages=sau,
         stream=True,
         temperature=self.opt.temperature,
       )
       return OpenAIUtterance.init(self.name, Intention.init(actor_next=UserName()), chunks=chunks)
     except OpenAIError as err:
-      raise ValueError(str(err)) from err
+      raise ConversationException(str(err)) from err
 
-  def comment_with_image(self, act:ActorView, cnv:Conversation) -> Utterance:
-    self._sync(cnv)
+  def _react_image(self, act:ActorView, cnv:Conversation) -> Utterance:
+    prompt = self._cnv2prompt(cnv)
+    if self.opt.verbose > 0:
+      dbg(f"prompt: {prompt}", actor=self)
     try:
-      prompt,_ = find_last_message(self.messages, 'user')
       response = self.client.images.generate(
         prompt=prompt,
         model=self.name.model,
@@ -146,5 +176,18 @@ class OpenAIActor(Actor):
         resources=resources
       )
     except OpenAIError as err:
-      raise ValueError(str(err)) from err
+      raise ConversationException(str(err)) from err
+
+  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
+    if len(cnv.utterances) == 0:
+      raise ConversationException(f'No context')
+    modality = cnv.utterances[-1].intention.modality
+    if modality == Modality.Text:
+      return self._react_text(act, cnv)
+    elif modality == Modality.Image:
+      return self._react_image(act, cnv)
+    else:
+      raise ConversationException(f'Unsupported modality {modality}')
+
+
 

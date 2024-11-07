@@ -88,7 +88,7 @@ class GPT4AllActor(Actor):
     self.session.__enter__()
     self.cnvtop = 0
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
     assert self.chunks is None, "Re-entering is not allowed"
     last_user_message = self._sync(cnv)
     def _model_callback(*args, **kwargs):

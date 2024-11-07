@@ -252,7 +252,7 @@ class UserActor(Actor):
   def reset(self):
     self.cnv_top = 0
 
-  def comment_with_text(self, av:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, av:ActorView, cnv:Conversation) -> Utterance:
     self._sync(av, cnv)
     try:
       while True:

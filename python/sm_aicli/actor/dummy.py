@@ -33,5 +33,5 @@ class DummyActor(Actor):
   def reset(self):
     pass
 
-  def comment_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
     return DummyUtterance.init(self.name, Intention.init(actor_next=UserName()))

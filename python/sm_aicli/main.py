@@ -247,17 +247,16 @@ def main(cmdline=None):
 
   while True:
     try:
-      if current_modality == Modality.Text:
-        utterance = st.actors[current_actor].comment_with_text(st.get_view(), cnv)
-      elif current_modality == Modality.Image:
-        utterance = st.actors[current_actor].comment_with_image(st.get_view(), cnv)
-      else:
-        assert False, f"Unsupported modality {current_modality}"
+      utterance = st.actors[current_actor].react(st.get_view(), cnv)
       assert utterance.actor_name == st.actors[current_actor].name, (
         f"{utterance.actor_name} != {st.actors[current_actor].name}"
       )
       cnv.utterances.append(utterance)
       intention = utterance.intention
+      if intention.dbg_flag:
+        info("Type `cont` to continue when done")
+        Pdb(nosigint=True).set_trace(_getframe())
+        reload_history(args)
       if intention.actor_updates is not None:
         for name, opt in intention.actor_updates.options.items():
           actor = st.actors.get(name)
@@ -281,12 +280,6 @@ def main(cmdline=None):
         cnv = Conversation.init()
         for a in st.actors.values():
           a.reset()
-      if intention.dbg_flag:
-        info("Type `cont` to continue when done")
-        Pdb(nosigint=True).set_trace(_getframe())
-        reload_history(args)
-      if intention.modality is not None:
-        current_modality = intention.modality
       if intention.exit_flag:
         break
     except KeyboardInterrupt:

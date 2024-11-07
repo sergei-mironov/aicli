@@ -3,6 +3,9 @@ from dataclasses import dataclass
 from copy import deepcopy
 from enum import Enum
 
+class ConversationException(ValueError):
+  pass
+
 @dataclass(frozen=True)
 class ModelName:
   provider:str
@@ -81,12 +84,17 @@ class Utterance:
     return NotImplementedError()
   def init(name, intention, contents=None, resources=None):
     return Utterance(name, intention, contents=contents, gen=None, resources=resources)
+  def is_empty(ut):
+    return ut.contents is None and ut.gen is None
 
+Utterances = list[Utterance]
+UtteranceId = int
+UID = UtteranceId
 
 @dataclass
 class Conversation:
   """ A conversation between a user and one or more AI models. """
-  utterances:list[Utterance]
+  utterances:Utterances
 
   def reset(self):
     """ TODO: redundant? """
@@ -97,6 +105,8 @@ class Conversation:
     return Conversation([])
 
 
+# Well-known [ {'role':'user'|'assistant', 'content':str} ]
+SAU = list[dict[str, str]]
 
 @dataclass
 class ActorState:
@@ -116,12 +126,8 @@ class Actor:
     self.name = name
     self.opt = opt
 
-  def respond_with_text(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
     """ Return a token generator object, responding the message. """
-    raise NotImplementedError()
-
-  def comment_with_image(self, act:ActorView, cnv:Conversation) -> Utterance:
-    """ Return a path to generated image, responding the message. """
     raise NotImplementedError()
 
   def reset(self):
