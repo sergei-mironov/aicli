@@ -125,3 +125,10 @@ def uts_2sau(
     cache[_cachekey(len(uts)-1)] = acc
   return acc
 
+def ensure_quoted(s:str)->str:
+  if not (len(s)>0 and s[0]=='"'):
+    s = '"' + s
+  if not (len(s)>0 and s[-1]=='"'):
+    s = s + '"'
+  return s
+

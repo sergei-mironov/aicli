@@ -168,13 +168,6 @@ def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -
   finally:
     print()
 
-def ensure_quoted(s:str)->str:
-  if not (len(s)>0 and s[0]=='"'):
-    s = '"' + s
-  if not (len(s)>0 and s[-1]=='"'):
-    s = s + '"'
-  return s
-
 def read_configs(args, rcnames:list[str])->list[str]:
   acc = []
   current_dir = abspath(getcwd())
