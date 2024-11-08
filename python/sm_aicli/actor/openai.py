@@ -17,7 +17,7 @@ from collections import OrderedDict
 
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, Intention,
                      ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream)
-from ..utils import (expand_apikey, dbg, find_last_message, err, uts_2sau, uts_lastfull,
+from ..utils import (dbg, find_last_message, err, uts_2sau, uts_lastfull,
                      uts_lastref, cont2str)
 
 
@@ -35,23 +35,6 @@ def url2fname(url)->str|None:
   base_name = sha256(url.encode()).hexdigest()[:10]
   fname = f"{base_name}{ext}" if ext is not None else base_name
   return fname
-
-# def download_url(url, folder_path, ext=None)->str|None:
-#   if not exists(folder_path):
-#     makedirs(folder_path)
-#   try:
-#     response = requests_get(url, stream=True)
-#     response.raise_for_status()  # Check for HTTP errors
-#     base_name = sha256(url.encode()).hexdigest()[:10]
-#     fname = f"{base_name}{ext}" if ext is not None else base_name
-#     fpath = join(folder_path, fname)
-#     with open(fpath, 'wb') as file:
-#       for chunk in response.iter_content(1024):
-#         file.write(chunk)
-#     return fpath
-#   except RequestException as e:
-#     err(f"An error occurred: {e}")
-#   return None
 
 
 class TextStream(Stream):
@@ -120,7 +103,7 @@ class OpenAIActor(Actor):
     super().__init__(name, opt)
     self.image_dir = image_dir
     try:
-      self.client = OpenAI(api_key=expand_apikey(opt.apikey))
+      self.client = OpenAI(api_key=opt.apikey)
     except OpenAIError as err:
       raise ValueError(str(err)) from err
     self.reset()

@@ -62,19 +62,6 @@ def with_sigint(_handler):
   finally:
     signal(SIGINT,prev)
 
-def expand_apikey(apikey)->str|None:
-  schema,val = apikey
-  if schema=="verbatim":
-    return val
-  elif schema=="file":
-    try:
-      with open(expanduser(val)) as f:
-        return f.read().strip()
-    except Exception as err:
-      raise ValueError(str(err)) from err
-  else:
-    raise ValueError(f"Unsupported APIKEY schema '{schema}'")
-
 def onematch(gen:Iterable[str])->str:
   res = list(gen)
   if len(res)!=1:

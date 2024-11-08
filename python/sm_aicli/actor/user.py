@@ -6,6 +6,7 @@ from typing import Any
 from copy import deepcopy, copy
 from sys import stdout
 from collections import defaultdict
+from os.path import expanduser
 
 from pdb import set_trace as ST
 
@@ -81,11 +82,46 @@ PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
 no_model_is_active = "No model is active, use /model first"
 
-def as_float(val:str, default:float|None)->float|None:
+def as_float(val:str, default:float|None=None)->float|None:
   return float(val) if val not in {None,"def","default"} else default
-def as_int(val:str, default:int|None)->int|None:
+def as_int(val:str, default:int|None=None)->int|None:
   return int(val) if val not in {None,"def","default"} else default
 
+
+def ref_write(ref, val, buffers):
+  schema, name = ref
+  if schema in 'file':
+    try:
+      with open(name, "w") as f:
+        f.write(val.encode('utf-8') if isinstance(val, bytes) else val)
+    except Exception as err:
+      raise ValueError(str(err)) from err
+  elif schema in 'bfile':
+    try:
+      with open(name, "bw") as f:
+        f.write(val.decode() if isinstance(val, str) else val)
+    except Exception as err:
+      raise ValueError(str(err)) from err
+  elif schema == 'buf':
+    buffers[name.lower()] = val
+  else:
+    raise ValueError(f"Unsupported target schema '{schema}'")
+
+def ref_read(ref, buffers)->str|None:
+  schema, name = ref
+  if schema=="verbatim":
+    return name
+  elif schema in ["file", "bfile"]:
+    try:
+      mode = "rb" if schema == "bfile" else "r"
+      with open(expanduser(name), mode) as f:
+        return f.read().strip()
+    except Exception as err:
+      raise ValueError(str(err)) from err
+  elif schema == 'buf':
+    return buffers[name.lower()]
+  else:
+    raise ValueError(f"Unsupported reference schema '{schema}'")
 
 @dataclass
 class InterpreterPause(Exception):
@@ -201,20 +237,23 @@ class Repl(Interpreter):
         if pname == 'apikey':
           if not isinstance(pval, tuple) or len(pval)!=2:
             raise ValueError("Model API key should be formatted as `schema:value`")
-          opts[self.actor_next].apikey = pval
-          info(f"Setting model API key to '{pval[0]}:{pval[1]}'")
+          opts[self.actor_next].apikey = ref_read(pval, self.buffers)
+          info(f"Setting model API key to the contents of '{pval[0]}:{pval[1]}'")
         elif pname in ['t','temp']:
-          opts[self.actor_next].temperature = pval
-          info(f"Setting model temperature to '{pval or 'default'}'")
+          val = as_float(pval)
+          opts[self.actor_next].temperature = val
+          info(f"Setting model temperature to '{val or 'default'}'")
         elif pname in ['nt','nthreads']:
-          opts[self.actor_next].num_threads = pval
-          info(f"Setting model number of threads to '{pval or 'default'}'")
+          val = as_int(pval)
+          opts[self.actor_next].num_threads = val
+          info(f"Setting model number of threads to '{val or 'default'}'")
         elif pname == 'imgsz':
           opts[self.actor_next].imgsz = pval
           info(f"Setting model image size to '{pval}'")
         elif pname == 'verbosity':
-          opts[self.actor_next].verbose = pval
-          info(f"Setting actor verbosity to '{pval}'")
+          val = as_int(pval)
+          opts[self.actor_next].verbose = val
+          info(f"Setting actor verbosity to '{val}'")
         else:
           raise ValueError(f"Unknown actor parameter '{pname}'")
       elif section in ['term','terminal']:
@@ -274,8 +313,9 @@ class Repl(Interpreter):
         )
       )
     elif command == CMD_COPY:
-      ST()
-      pass
+      args = self.visit_children(tree)
+      sref, dref = args[2][0], args[4][0]
+      ref_write(dref, ref_read(sref, self.buffers), self.buffers)
     elif command == CMD_VERSION:
       print(f"{VERSION}+g{REVISION[:7]}")
     else:

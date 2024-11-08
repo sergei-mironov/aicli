@@ -5,13 +5,12 @@ from itertools import cycle
 
 from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conversation,
                      Utterance, UserName, Stream)
-from ..utils import expand_apikey
 
 
 class DummyActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions):
     super().__init__(name, opt)
-    apikey = expand_apikey(self.opt.apikey) if self.opt.apikey else "<no-api-key>"
+    apikey = self.opt.apikey if self.opt.apikey else "<no-api-key>"
     print(f"Dummy actor '{self.name.repr()}' apikey '{apikey}'")
 
   def reset(self):
