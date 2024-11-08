@@ -26,10 +26,11 @@ CMD_LOAD = "/load"
 CMD_LOADBIN = "/loadbin"
 CMD_SET = "/set"
 CMD_READ = "/read"
+CMD_COPY = "/copy"
 
 COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_RESET, CMD_LOADBIN, CMD_DBG,
-            CMD_ASK, CMD_VERSION, CMD_LOAD, CMD_CLEAR, CMD_SET]
-COMMANDS_ARG = [CMD_MODEL, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ]
+            CMD_ASK, CMD_VERSION, CMD_LOAD, CMD_CLEAR, CMD_SET, CMD_COPY]
+COMMANDS_ARG = [CMD_MODEL, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ, CMD_COPY]
 COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 
 GRAMMAR = fr"""
@@ -47,7 +48,8 @@ GRAMMAR = fr"""
                                          /imgsz/ / +/ string | \
                                          /verbosity/ / +/ (number | def)) | \
                            (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
-                                                       /rawbin/ / +/ bool))
+                                                       /rawbin/ / +/ bool)) | \
+             /\/copy/ / +/ apikey_string / +/ apikey_string
 
   string: "\"" string_quoted "\"" | string_raw
   string_quoted: /[^"]+/ -> string_value
@@ -64,7 +66,7 @@ GRAMMAR = fr"""
   apikey_string: "\"" apikey_quoted "\"" | apikey_raw
   apikey_quoted: (apikey_schema ":")? string_quoted -> apikey
   apikey_raw: (apikey_schema ":")? string_raw -> apikey
-  apikey_schema: "verbatim" -> as_verbatim | "file" -> as_file
+  apikey_schema: /verbatim/ | /file/ | /buf/ -> apikey_schema
 
   filename: string
   number: /[0-9]+/
@@ -114,10 +116,10 @@ class Repl(Interpreter):
     if self.in_echo:
       print()
     self.in_echo = 0
-  def as_verbatim(self, tree): return "verbatim"
-  def as_file(self, tree): return "file"
   def string_value(self, tree):
     return tree.children[0].value
+  def apikey_schema(self, tree):
+    return str(tree.children[0])
   def apikey(self, tree):
     val = self.visit_children(tree)
     return tuple(val) if len(val)==2 else ("verbatim",val[0])
@@ -266,6 +268,9 @@ class Repl(Interpreter):
           intention=Intention.init(dbg_flag=True)
         )
       )
+    elif command == CMD_COPY:
+      ST()
+      pass
     elif command == CMD_VERSION:
       print(f"{VERSION}+g{REVISION[:7]}")
     else:

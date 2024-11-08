@@ -116,7 +116,7 @@ def test_apikey():
 
         apikey_string
           apikey
-            as_file
+            apikey_schema       file
             string_value       keyfile
   ''')
   _assert('/set model apikey "verbatim:keydata"', r'''
@@ -130,7 +130,7 @@ def test_apikey():
 
         apikey_string
           apikey
-            as_verbatim
+            apikey_schema       verbatim
             string_value       keydata
   ''')
 
