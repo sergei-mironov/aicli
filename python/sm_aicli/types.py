@@ -64,10 +64,12 @@ class Intention:
                          modality=modality)
 
 class Stream:
-  def __init__(self, generator):
+  def __init__(self, generator, binary=False, suggested_fname:str|None=None):
     self.generator = generator
     self.stop = False
     self.recording = None
+    self.binary = binary
+    self.suggested_fname = suggested_fname
 
   def gen(self):
     self.stop = False

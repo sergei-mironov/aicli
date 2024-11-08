@@ -1,9 +1,7 @@
 #!/usr/bin/env expect-f.sh
 
-# Set timeout for the expect script
 set timeout 2
 
-# Start the console application
 spawn aicli --model=dummy:dummy
 
 expect {

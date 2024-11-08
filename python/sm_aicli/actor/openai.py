@@ -30,22 +30,28 @@ def url2ext(url)->str|None:
   else:
     return None
 
-def download_url(url, folder_path, ext=None)->str|None:
-  if not exists(folder_path):
-    makedirs(folder_path)
-  try:
-    response = requests_get(url, stream=True)
-    response.raise_for_status()  # Check for HTTP errors
-    base_name = sha256(url.encode()).hexdigest()[:10]
-    fname = f"{base_name}{ext}" if ext is not None else base_name
-    fpath = join(folder_path, fname)
-    with open(fpath, 'wb') as file:
-      for chunk in response.iter_content(1024):
-        file.write(chunk)
-    return fpath
-  except RequestException as e:
-    err(f"An error occurred: {e}")
-  return None
+def url2fname(url)->str|None:
+  ext = url2ext(url)
+  base_name = sha256(url.encode()).hexdigest()[:10]
+  fname = f"{base_name}{ext}" if ext is not None else base_name
+  return fname
+
+# def download_url(url, folder_path, ext=None)->str|None:
+#   if not exists(folder_path):
+#     makedirs(folder_path)
+#   try:
+#     response = requests_get(url, stream=True)
+#     response.raise_for_status()  # Check for HTTP errors
+#     base_name = sha256(url.encode()).hexdigest()[:10]
+#     fname = f"{base_name}{ext}" if ext is not None else base_name
+#     fpath = join(folder_path, fname)
+#     with open(fpath, 'wb') as file:
+#       for chunk in response.iter_content(1024):
+#         file.write(chunk)
+#     return fpath
+#   except RequestException as e:
+#     err(f"An error occurred: {e}")
+#   return None
 
 
 class TextStream(Stream):
@@ -61,8 +67,8 @@ class TextStream(Stream):
       yield f"<ERROR: {str(err)}>"
 
 class BinStream(Stream):
-  def __init__(self, chunks):
-    super().__init__(chunks.iter_content(4*1024))
+  def __init__(self, chunks, **kwargs):
+    super().__init__(chunks.iter_content(4*1024), binary=True, **kwargs)
   def gen(self):
     try:
       yield from super().gen()
@@ -186,7 +192,7 @@ class OpenAIActor(Actor):
       return Utterance.init(
         name=self.name,
         intention=Intention.init(actor_next=UserName()),
-        contents=[BinStream(response)]
+        contents=[BinStream(response, suggested_fname=url2fname(url))]
       )
     except OpenAIError as err:
       raise ConversationException(str(err)) from err

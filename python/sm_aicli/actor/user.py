@@ -24,21 +24,21 @@ CMD_CLEAR = "/clear"
 CMD_TEMP = "/temp"
 CMD_APIKEY = "/apikey"
 CMD_VERBOSE = "/verbose"
-CMD_IMG = "/img"
 CMD_PROMPT = "/prompt"
 CMD_DBG = "/dbg"
 CMD_EXPECT = "/expect"
 CMD_IMGSZ = "/imgsz"
 CMD_VERSION = "/version"
 CMD_LOAD = "/load"
+CMD_LOADBIN = "/loadbin"
 CMD_SET = "/set"
 CMD_READ = "/read"
 
 COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET, CMD_TEMP,
-            CMD_APIKEY, CMD_IMG, CMD_PROMPT, CMD_DBG, CMD_ASK, CMD_IMGSZ, CMD_VERSION, CMD_LOAD,
+            CMD_APIKEY, CMD_LOADBIN, CMD_PROMPT, CMD_DBG, CMD_ASK, CMD_IMGSZ, CMD_VERSION, CMD_LOAD,
             CMD_CLEAR, CMD_SET]
 COMMANDS_ARG = [CMD_MODEL, CMD_NTHREADS, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE,
-                CMD_EXPECT, CMD_IMGSZ, CMD_IMG, CMD_LOAD, CMD_SET, CMD_READ]
+                CMD_EXPECT, CMD_IMGSZ, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ]
 COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 
 GRAMMAR = fr"""
@@ -48,6 +48,7 @@ GRAMMAR = fr"""
              /\/model/ / +/ model_string | \
              /\/img/ / +/ string | \
              /\/load/ / +/ filename | \
+             /\/loadbin/ / +/ filename | \
              /\/read/ / +/ /model/ / +/ /prompt/ | \
              /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ apikey_string | \
                                          (/t/ | /temp/) / +/ (float | def) | \
@@ -55,7 +56,8 @@ GRAMMAR = fr"""
                                          /imgsz/ / +/ string | \
                                          /verbosity/ / +/ (number | def) \
                                         ) | \
-                           (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string \
+                           (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
+                                                       /rawbin/ / +/ bool \
                                                       ) \
                           )
 
@@ -80,6 +82,7 @@ GRAMMAR = fr"""
   number: /[0-9]+/
   float: /[0-9]+\.[0-9]*/
   def: "default"
+  bool: /true/|/false/|/yes/|/no/|/1/|/0/
   text.0: /(.(?!\/|\\))*./s
 """
 
@@ -106,6 +109,7 @@ class Repl(Interpreter):
     self.actor_next = None
     self.aname = name
     self.modality = Modality.Text
+    self.rawbin = False
   def _check_next_actor(self):
     if self.actor_next is None:
       raise RuntimeError(no_model_is_active)
@@ -134,6 +138,14 @@ class Repl(Interpreter):
     return "openai"
   def mp_dummy(self, tree):
     return "dummy"
+  def bool(self, tree):
+    val = self.visit_children(tree)[0]
+    if val in ['true','yes','1']:
+      return [True]
+    elif val in ['false','no','0']:
+      return [False]
+    else:
+      raise ValueError(f"Invalid boolean value {val}")
   def model(self, tree):
     val = self.visit_children(tree)
     return tuple(val) if len(val)==2 else (val[0],"default")
@@ -163,11 +175,6 @@ class Repl(Interpreter):
         )
       finally:
         self.message = ''
-    # elif command == CMD_EXPECT:
-    #   val = self.visit_children(tree)
-    #   modality = val[2][0]
-    #   info(f"Setting expected modality to '{modality}'")
-    #   self.modality = modality
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
@@ -218,6 +225,9 @@ class Repl(Interpreter):
         if pname == 'modality':
           info(f"Setting terminal expected modality to '{pval}'")
           self.modality = pval
+        elif pname == 'rawbin':
+          info(f"Setting terminal raw binary mode to '{pval}'")
+          self.rawbin = pval
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
@@ -234,10 +244,17 @@ class Repl(Interpreter):
         raise ValueError(f"Unknown read parameter '{pname}'")
       self.message = ''
     elif command == CMD_LOAD:
-      fname = self.visit_children(tree)[2][0]
-      info(f"Loading file '{fname}' into buffer")
+      fname = self.visit_children(tree)[2][0][0]
+      info(f"Loading text file '{fname}' into buffer")
       with open(fname) as f:
         self.message += f.read()
+    elif command == CMD_LOADBIN:
+      fname = self.visit_children(tree)[2][0][0]
+      info(f"Loading binary file '{fname}' into buffer")
+      acc = b''
+      with open(fname, 'rb') as f:
+        acc += f.read()
+      self.message = acc
     elif command == CMD_CLEAR:
       info("Clearing message buffer")
       self.reset()
@@ -321,14 +338,25 @@ class UserActor(Actor):
           def _handler(*args, **kwargs):
             s.interrupt()
           with with_sigint(_handler):
-            for token in s.gen():
-              if isinstance(token, bytes):
-                need_eol = True
-                stdout.buffer.write(token)
-                stdout.buffer.flush()
-              elif isinstance(token, str):
-                need_eol = not token.rstrip(' ').endswith("\n")
-                print(token, end='', flush=True)
+            if s.binary and not self.repl.rawbin:
+              assert s.suggested_fname is not None, \
+                f"Suggested file name for binary stream must be set"
+              with open(s.suggested_fname, 'wb') as f:
+                for token in s.gen():
+                  f.write(token)
+              info(f"Binary file has been saved to '{s.suggested_fname}'")
+              cmd = f"/loadbin \"{s.suggested_fname}\""
+              print(cmd, flush=True)
+              self.stream = cmd + self.stream
+            else:
+              for token in s.gen():
+                if isinstance(token, bytes):
+                  need_eol = True
+                  stdout.buffer.write(token)
+                  stdout.buffer.flush()
+                elif isinstance(token, str):
+                  need_eol = not token.rstrip(' ').endswith("\n")
+                  print(token, end='', flush=True)
         if need_eol:
           print()
       self.cnv_top += 1
