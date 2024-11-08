@@ -63,27 +63,38 @@ class Intention:
     return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag,
                          modality=modality)
 
-# @dataclass(frozen=True)
-# class Resource:
-#   path:str
-#   modality:Modality
-#   checksum:str|None = None
-#   @staticmethod
-#   def img(path):
-#     return Resource(path, Modality.Image)
+class Stream:
+  def __init__(self, generator):
+    self.generator = generator
+    self.stop = False
+    self.recording = None
+
+  def gen(self):
+    self.stop = False
+    for ch in self.generator:
+      if self.stop:
+        break
+      yield ch
+      if self.recording is None:
+        self.recording = ch
+      else:
+        self.recording += ch
+
+  def interrupt(self):
+    self.stop = True
+
+Contents = list[str|bytes|Stream]
 
 @dataclass
 class Utterance:
   actor_name: ActorName
   intention: Intention
-  contents: bytes|str|None = None
-  gen: Callable[["Utterance"],Iterable[str]]|None = None
-  def interrupt(self) -> None:
-    return NotImplementedError()
-  def init(name, intention, contents=None):
-    return Utterance(name, intention, contents=contents, gen=None)
+  contents: Contents
+  def init(name, intention, contents:Contents|None = None):
+    assert contents is None or isinstance(contents, list), contents
+    return Utterance(name, intention, contents or [])
   def is_empty(ut):
-    return ut.contents is None and ut.gen is None
+    return len(ut.contents)==0
 
 Utterances = list[Utterance]
 UtteranceId = int

@@ -1,0 +1,6 @@
+#!/usr/bin/env -S aicli --rc=none --readline-prompt=''
+/model "dummy:dummy"
+Foo
+/ask
+
+

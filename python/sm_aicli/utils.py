@@ -6,7 +6,8 @@ from glob import glob
 from sys import stderr
 from collections import OrderedDict
 
-from .types import Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName
+from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
+                    Stream)
 
 
 def err(s:str, actor:Actor|None=None)->None:
@@ -118,7 +119,7 @@ def uts_2sau(
     ut:Utterance = uts[i]
     name = names.get(ut.actor_name, default_name)
     # assert name in ['user','assistant'], f"Unknown SAU name {name}"
-    racc.append({'role':name, 'content':ut.contents or ''})
+    racc.append({'role':name, 'content':cont2str(ut.contents)})
   racc.append({'role':'system', 'content':system_prompt or ''})
   acc = list(reversed(racc))
   if cache is not None:
@@ -131,4 +132,46 @@ def ensure_quoted(s:str)->str:
   if not (len(s)>0 and s[-1]=='"'):
     s = s + '"'
   return s
+
+def cont2strm(c:str|bytes|Stream, allow_bytes=True) -> Stream:
+  if isinstance(c,str):
+    s = Stream([c])
+  elif isinstance(c, bytes):
+    if allow_bytes:
+      s = Stream([c])
+    else:
+      s = Stream(["<binary chunk>"])
+  elif isinstance(c, Stream):
+    s = c
+  else:
+    assert False, f"Invalid content chunk type {type(c)}"
+  return s
+
+
+def cont2str(cs:Contents, allow_bytes=True)->str|bytes:
+  assert isinstance(cs, list), cs
+  acc:str|bytes|None = None
+  for c in cs:
+    for token in cont2strm(c, allow_bytes=allow_bytes).gen():
+      acc = token if acc is None else (acc + token)
+  return acc
+
+# def cont2strbyte(cs:Contents, allow_bytes=True)->Iterable[str|bytes]:
+#   for c in cs:
+#     if isinstance(c, str):
+#       yield c
+#     elif isinstance(c, bytes):
+#       if allow_bytes:
+#         yield c
+#       else:
+#         yield "<binary chunk>"
+#     elif callable(c):
+#       yield from cont2strbyte(c)
+
+
+def firstfile(paths) -> str|None:
+  for p in paths:
+    if isfile(p):
+      return p
+  return None
 

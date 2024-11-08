@@ -1,0 +1,7 @@
+#!/usr/bin/env -S aicli --rc=none --readline-prompt=''
+/model "openai:dall-e-2"
+/apikey "file:_openai"
+/expect img
+Peaceful landscape
+/ask
+

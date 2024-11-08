@@ -6,8 +6,8 @@ from sm_aicli import *
 def actor(name):
   return ModelName('test',name)
 
-def ut(owner, contents, address):
-  return Utterance.init(owner, Intention.init(address), contents)
+def ut(owner, content, address):
+  return Utterance.init(owner, Intention.init(address), [content] if content else [])
 
 
 def test_uts_2sau():

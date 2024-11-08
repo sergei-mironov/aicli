@@ -141,6 +141,12 @@ ARG_PARSER.add_argument(
   default='_aicli,.aicli,_sm_aicli,.sm_aicli',
   help="List of config file names (','-separated, use empty or 'none' to disable)",
 )
+ARG_PARSER.add_argument(
+  'filenames',
+  type=str,
+  nargs='*',
+  help="List of filenames to process"
+)
 
 def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -> None:
   try:
@@ -222,12 +228,18 @@ def main(cmdline=None):
     header.write(f"/model {ensure_quoted(args.model)}\n")
   if args.model_apikey is not None:
     header.write(f"/apikey {ensure_quoted(args.model_apikey)}\n")
+
+  for file in args.filenames:
+    with open(file) as f:
+      info(f"Reading {file}")
+      header.write(f.read())
+
   parse_and_bind('tab: complete')
   parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
   hint = args.readline_key_send.replace('\\', '')
 
-  print(f"Type /help or a question followed by the /ask command (or by pressing "
-        f"`{hint}` key).", file=stderr)
+  info(f"Type /help or a question followed by the /ask command (or by pressing "
+        f"`{hint}` key).")
 
   reload_history(args)
 

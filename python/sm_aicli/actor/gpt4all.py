@@ -8,37 +8,21 @@ from dataclasses import dataclass
 from collections import OrderedDict
 
 from ..types import (Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance,
-                     Intention, ModelName, UserName, SAU)
-from ..utils import (expandpath, info, dbg, find_last_message, uts_lastfullref, uts_2sau)
-
-def firstfile(paths) -> str|None:
-  for p in paths:
-    if isfile(p):
-      return p
-  return None
+                     Intention, ModelName, UserName, SAU, Stream)
+from ..utils import (expandpath, info, dbg, find_last_message, uts_lastfullref, uts_2sau, firstfile)
 
 
-@dataclass
-class GPT4AllUtterance(Utterance):
-  actor:Any|None = None
-  def interrupt(self):
-    self.actor.break_request = True
-  def init(name, intention, actor):
-    def _gen(self):
-      actor.break_request = False
-      self.actor = actor
-      self.contents = ''
-      try:
-        for chunk in actor.chunks:
-          if actor.break_request:
-            break
-          self.contents += chunk
-          yield chunk
-        assert actor.gpt4all._history[-1]["role"] == "assistant"
-        del actor.gpt4all._history[-1]
-      finally:
-        actor.chunks = None
-    return GPT4AllUtterance(name, intention, contents=None, gen=_gen)
+class GPT4AllStream(Stream):
+  def __init__(self, actor):
+    super().__init__(actor.chunks)
+    self.actor = actor
+  def gen(self):
+    try:
+      yield from super().gen()
+      assert self.actor.gpt4all._history[-1]["role"] == "assistant"
+      del self.actor.gpt4all._history[-1]
+    finally:
+      self.actor.chunks = None
 
 
 class GPT4AllActor(Actor):
@@ -85,9 +69,8 @@ class GPT4AllActor(Actor):
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:
     assert self.chunks is None, "Re-entering is not allowed"
     sau, prompt = self._sync(cnv)
-    if self.opt.verbose>0:
-      dbg(f"sau: {sau}", actor=self)
-      dbg(f"prompt: {prompt}", actor=self)
+    dbg(f"sau: {sau}", actor=self)
+    dbg(f"prompt: {prompt}", actor=self)
     self.gpt4all._history = sau
     def _model_callback(*args, **kwargs):
       return not self.break_request
@@ -104,7 +87,7 @@ class GPT4AllActor(Actor):
       streaming=True,
       callback=_model_callback,
     )
-    return GPT4AllUtterance.init(self.name, Intention.init(actor_next=UserName()), self)
+    return Utterance.init(self.name, Intention.init(actor_next=UserName()), [GPT4AllStream(self)])
 
   def set_options(self, opt:ActorOptions)->None:
     self.opt = deepcopy(opt)

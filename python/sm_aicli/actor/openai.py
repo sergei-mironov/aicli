@@ -16,9 +16,9 @@ from pdb import set_trace as ST
 from collections import OrderedDict
 
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, Intention,
-                     ModelName, UserName, Utterance, Modality, ConversationException, SAU)
+                     ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream)
 from ..utils import (expand_apikey, dbg, find_last_message, err, uts_2sau, uts_lastfull,
-                     uts_lastref)
+                     uts_lastref, cont2str)
 
 
 def url2ext(url)->str|None:
@@ -48,6 +48,27 @@ def download_url(url, folder_path, ext=None)->str|None:
   return None
 
 
+class TextStream(Stream):
+  def __init__(self, chunks):
+    def _map(c):
+      res = c.choices[0].delta.content
+      return res or ''
+    super().__init__(map(_map, chunks))
+  def gen(self):
+    try:
+      yield from super().gen()
+    except OpenAIError as err:
+      yield f"<ERROR: {str(err)}>"
+
+class BinStream(Stream):
+  def __init__(self, chunks):
+    super().__init__(chunks.iter_content(4*1024))
+  def gen(self):
+    try:
+      yield from super().gen()
+    except RequestException as err:
+      yield f"<ERROR: {str(err)}>".decode()
+
 @dataclass
 class OpenAIUtterance(Utterance):
   chunks:Any|None=None
@@ -57,13 +78,13 @@ class OpenAIUtterance(Utterance):
   def init_text(name, intention, chunks):
     def _gen(self):
       self.stop = False
-      self.contents = ''
+      self.contents = ['']
       try:
         for chunk in chunks:
           if self.stop:
             break
           if text:=chunk.choices[0].delta.content:
-            self.contents += text
+            self.contents[-1] += text
             yield text
       except OpenAIError as err:
         yield f"<ERROR: {str(err)}>"
@@ -74,12 +95,12 @@ class OpenAIUtterance(Utterance):
   def init_request(name, intention, response):
     def _gen(self):
       self.stop = False
-      self.contents = b''
+      self.contents = [b'']
       try:
         for chunk in response.iter_content(4*1024):
           if self.stop:
             break
-          self.contents += chunk
+          self.contents[-1] += chunk
           yield chunk
       except RequestException as err:
         yield f"<ERROR: {str(err)}>".decode()
@@ -116,8 +137,7 @@ class OpenAIActor(Actor):
 
   def _react_text(self, act:ActorView, cnv:Conversation) -> Utterance:
     sau = self._cnv2sau(cnv)
-    if self.opt.verbose > 0:
-      dbg(f"sau: {sau}", actor=self)
+    dbg(f"sau: {sau}", actor=self)
     try:
       chunks = self.client.chat.completions.create(
         model=self.name.model,
@@ -125,7 +145,7 @@ class OpenAIActor(Actor):
         stream=True,
         temperature=self.opt.temperature,
       )
-      return OpenAIUtterance.init_text(self.name, Intention.init(actor_next=UserName()), chunks=chunks)
+      return Utterance.init(self.name, Intention.init(actor_next=UserName()), [TextStream(chunks)])
     except OpenAIError as err:
       raise ConversationException(str(err)) from err
 
@@ -136,7 +156,7 @@ class OpenAIActor(Actor):
       uid = uts_lastfull(cnv.utterances[:uid], refname)
     if uid is None:
       raise ConversationException("no prompt")
-    prompt = cnv.utterances[uid].contents
+    prompt = cont2str(cnv.utterances[uid].contents)
     assert prompt is not None, f"Prompt {uid} has no contents. Is it a thunk?"
     return prompt
 
@@ -162,21 +182,11 @@ class OpenAIActor(Actor):
         raise ConversationException(f"Datum url is None")
       dbg(url, actor=self)
       response = requests_get(url, stream=True)
-          # ext = url2ext(url)
-          # path = download_url(url, self.image_dir, ext)
-          # if path is not None:
-          #   dbg(f"Url successfully saved as '{path}'", actor=self)
-          #   resources.append(Resource.img(path))
-          # else:
-          #   err(f'Failed to download {url}', actor=self)
-      # else:
-        # dbg(f'Skipping non-image response {datum}', actor=self)
-
       response.raise_for_status()  # Check for HTTP errors
-      return OpenAIUtterance.init_request(
+      return Utterance.init(
         name=self.name,
         intention=Intention.init(actor_next=UserName()),
-        response=response
+        contents=[BinStream(response)]
       )
     except OpenAIError as err:
       raise ConversationException(str(err)) from err

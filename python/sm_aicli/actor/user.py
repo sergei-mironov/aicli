@@ -9,12 +9,12 @@ from sys import stdout
 from pdb import set_trace as ST
 
 from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Utterance,
-                     Conversation, ActorView, ModelName, Modality)
+                     Conversation, ActorView, ModelName, Modality, Stream)
 from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
                        CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
                        CMD_DBG, CMD_EXPECT, CMD_IMGSZ)
 
-from ..utils import info, err, with_sigint, dbg
+from ..utils import info, err, with_sigint, dbg, cont2strm
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
@@ -86,7 +86,7 @@ class Repl(Interpreter):
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
             name=self.aname,
-            contents=contents,
+            contents=[contents],
             intention=Intention.init(
               actor_next=self.actor_next,
               actor_updates=self.av,
@@ -220,6 +220,7 @@ class UserActor(Actor):
     self.stream = prefix_stream if prefix_stream is not None else ''
     self.args = args
     self.repl = Repl(name, args)
+    self.batch_mode = len(args.filenames)>0
     self.reset()
 
   def _sync(self, av:ActorView, cnv:Conversation):
@@ -230,14 +231,12 @@ class UserActor(Actor):
       u:Utterance = cnv.utterances[i]
       if u.actor_name != self.name:
         need_eol = False
-        if u.contents is not None:
-          need_eol = not u.contents.rstrip(' ').endswith("\n")
-          print(u.contents, end='')
-        elif u.gen is not None:
+        for cont in u.contents:
+          s = cont2strm(cont)
           def _handler(*args, **kwargs):
             u.interrupt()
           with with_sigint(_handler):
-            for token in u.gen(u):
+            for token in s.gen():
               if isinstance(token, bytes):
                 need_eol = True
                 stdout.buffer.write(token)
@@ -258,7 +257,10 @@ class UserActor(Actor):
       while True:
         try:
           if self.stream == '':
-            self.stream = input(self.args.readline_prompt)
+            if self.batch_mode:
+              break
+            else:
+              self.stream = input(self.args.readline_prompt)
           self.repl.visit(PARSER.parse(self.stream))
           if self.args.readline_history:
             write_history_file(self.args.readline_history)
@@ -269,11 +271,11 @@ class UserActor(Actor):
       self.stream = self.stream[p.unparsed:]
       return p.utterance
     except EOFError:
-      self.stream = ''
-      return Utterance.init(
-        name=self.name,
-        intention=Intention.init(exit_flag=True)
-      )
+      print()
+    return Utterance.init(
+      name=self.name,
+      intention=Intention.init(exit_flag=True)
+    )
 
   def set_options(self, opt:ActorOptions)->None:
     pass
