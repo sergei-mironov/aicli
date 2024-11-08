@@ -54,12 +54,9 @@ GRAMMAR = fr"""
                                          (/t/ | /temp/) / +/ (float | def) | \
                                          (/nt/ | /nthreads/) / +/ (number | def) | \
                                          /imgsz/ / +/ string | \
-                                         /verbosity/ / +/ (number | def) \
-                                        ) | \
+                                         /verbosity/ / +/ (number | def)) | \
                            (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
-                                                       /rawbin/ / +/ bool \
-                                                      ) \
-                          )
+                                                       /rawbin/ / +/ bool))
 
   string: "\"" string_quoted "\"" | string_raw
   string_quoted: /[^"]+/ -> string_value
@@ -115,9 +112,10 @@ class Repl(Interpreter):
       raise RuntimeError(no_model_is_active)
   def _reset(self):
     self.in_echo = 0
-    self.message = ""
+    self.buffer_main = ""
+    self.buffer_result = ""
   def reset(self):
-    old_message = self.message
+    old_message = self.buffer_main
     self._reset()
     if len(old_message)>0:
       info("Message buffer is now empty")
@@ -159,7 +157,7 @@ class Repl(Interpreter):
       self.in_echo = 1
     elif command == CMD_ASK:
       try:
-        contents=copy(self.message) if len(self.message.strip())>0 else None
+        contents=copy(self.buffer_main) if len(self.buffer_main.strip())>0 else None
         val = self.visit_children(tree)
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
@@ -174,7 +172,7 @@ class Repl(Interpreter):
           )
         )
       finally:
-        self.message = ''
+        self.buffer_main = ''
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
@@ -234,7 +232,7 @@ class Repl(Interpreter):
         raise ValueError(f"Unknown set section '{section}'")
     elif command == CMD_READ:
       args = self.visit_children(tree)
-      section, pname, pval = args[2], args[4], self.message.strip()
+      section, pname, pval = args[2], args[4], self.buffer_main.strip()
       assert section == 'model'
       self._check_next_actor()
       if pname == 'prompt':
@@ -242,19 +240,19 @@ class Repl(Interpreter):
         info(f"Setting actor prompt to '{pval[:10]}...'")
       else:
         raise ValueError(f"Unknown read parameter '{pname}'")
-      self.message = ''
+      self.buffer_main = ''
     elif command == CMD_LOAD:
       fname = self.visit_children(tree)[2][0][0]
       info(f"Loading text file '{fname}' into buffer")
       with open(fname) as f:
-        self.message += f.read()
+        self.buffer_main += f.read()
     elif command == CMD_LOADBIN:
       fname = self.visit_children(tree)[2][0][0]
       info(f"Loading binary file '{fname}' into buffer")
       acc = b''
       with open(fname, 'rb') as f:
         acc += f.read()
-      self.message = acc
+      self.buffer_main = acc
     elif command == CMD_CLEAR:
       info("Clearing message buffer")
       self.reset()
@@ -293,13 +291,13 @@ class Repl(Interpreter):
       for cmd in COMMANDS:
         if cmd in text:
           info(f"Warning: '{cmd}' was parsed as a text")
-      self.message += text
+      self.buffer_main += text
   def escape(self, tree):
     text = tree.children[0].value[1:]
     if self.in_echo:
       print(text, end='')
     else:
-      self.message += text
+      self.buffer_main += text
   def visit(self, tree):
     self.in_echo = 0
     try:
