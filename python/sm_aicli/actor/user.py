@@ -234,7 +234,7 @@ class UserActor(Actor):
         for cont in u.contents:
           s = cont2strm(cont)
           def _handler(*args, **kwargs):
-            u.interrupt()
+            s.interrupt()
           with with_sigint(_handler):
             for token in s.gen():
               if isinstance(token, bytes):
