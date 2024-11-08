@@ -5,9 +5,39 @@ from os.path import join, isfile, realpath, expanduser, abspath, sep
 from glob import glob
 from sys import stderr
 from collections import OrderedDict
+from subprocess import check_output, DEVNULL
+from os import environ
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
                     Stream)
+
+REVISION:str|None
+try:
+  REVISION=environ["AICLI_REVISION"]
+except Exception:
+  try:
+    REVISION=check_output(['git', 'rev-parse', 'HEAD'],
+                          cwd=environ['AICLI_ROOT'],
+                          stderr=DEVNULL).decode().strip()
+  except Exception:
+    try:
+      from .revision import REVISION as __rv__
+      REVISION = __rv__
+    except ImportError:
+      REVISION = None
+
+VERSION:str|None
+try:
+  from subprocess import check_output, DEVNULL
+  VERSION=check_output(['python3', 'setup.py', '--version'],
+                       cwd=environ['AICLI_ROOT'],
+                       stderr=DEVNULL).decode().strip()
+except Exception:
+  try:
+    from .revision import VERSION as __ver__
+    VERSION = __ver__
+  except ImportError:
+    VERSION = None
 
 
 def err(s:str, actor:Actor|None=None)->None:

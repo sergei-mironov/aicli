@@ -8,7 +8,7 @@ spawn aicli
 expect {
     ">>> " {
         send "/model \"dummy:dummy\"\r"
-        send "/apikey \"file:test/testkey.txt\"\r"
+        send "/set model apikey \"file:test/testkey.txt\"\r"
     }
     timeout {
         puts "Error: Did not receive prompt"

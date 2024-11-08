@@ -10,11 +10,78 @@ from pdb import set_trace as ST
 
 from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Utterance,
                      Conversation, ActorView, ModelName, Modality, Stream)
-from ..grammar import (GRAMMAR, CMD_HELP, CMD_ASK, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS,
-                       CMD_RESET, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE, CMD_IMG, COMMANDS, CMD_PROMPT,
-                       CMD_DBG, CMD_EXPECT, CMD_IMGSZ)
 
-from ..utils import info, err, with_sigint, dbg, cont2strm
+from ..utils import info, err, with_sigint, dbg, cont2strm, VERSION, REVISION
+
+CMD_HELP = "/help"
+CMD_ASK  = "/ask"
+CMD_EXIT = "/exit"
+CMD_ECHO = "/echo"
+CMD_MODEL = "/model"
+CMD_NTHREADS = "/nthreads"
+CMD_RESET = "/reset"
+CMD_CLEAR = "/clear"
+CMD_TEMP = "/temp"
+CMD_APIKEY = "/apikey"
+CMD_VERBOSE = "/verbose"
+CMD_IMG = "/img"
+CMD_PROMPT = "/prompt"
+CMD_DBG = "/dbg"
+CMD_EXPECT = "/expect"
+CMD_IMGSZ = "/imgsz"
+CMD_VERSION = "/version"
+CMD_LOAD = "/load"
+CMD_SET = "/set"
+CMD_READ = "/read"
+
+COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_NTHREADS, CMD_RESET, CMD_TEMP,
+            CMD_APIKEY, CMD_IMG, CMD_PROMPT, CMD_DBG, CMD_ASK, CMD_IMGSZ, CMD_VERSION, CMD_LOAD,
+            CMD_CLEAR, CMD_SET]
+COMMANDS_ARG = [CMD_MODEL, CMD_NTHREADS, CMD_TEMP, CMD_APIKEY, CMD_VERBOSE,
+                CMD_EXPECT, CMD_IMGSZ, CMD_IMG, CMD_LOAD, CMD_SET, CMD_READ]
+COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
+
+GRAMMAR = fr"""
+  start: (command | escape | text)? (command | escape | text)*
+  escape.3: /\\./
+  command.2: /{COMMANDS_NOARG}/ | \
+             /\/model/ / +/ model_string | \
+             /\/img/ / +/ string | \
+             /\/load/ / +/ filename | \
+             /\/read/ / +/ /model/ / +/ /prompt/ | \
+             /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ apikey_string | \
+                                         (/t/ | /temp/) / +/ (float | def) | \
+                                         (/nt/ | /nthreads/) / +/ (number | def) | \
+                                         /imgsz/ / +/ string | \
+                                         /verbosity/ / +/ (number | def) \
+                                        ) | \
+                           (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string \
+                                                      ) \
+                          )
+
+  string: "\"" string_quoted "\"" | string_raw
+  string_quoted: /[^"]+/ -> string_value
+  string_raw: /[^"][^ ]*/ -> string_value
+
+  model_string: "\"" model_quoted "\"" | model_raw
+  model_quoted: (model_provider ":")? string_quoted -> model
+  model_raw: (model_provider ":")? string_raw -> model
+  model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
+
+  modality_string: "\"" modality "\"" | modality
+  modality: /img/ -> modality_img | /text/ -> modality_text
+
+  apikey_string: "\"" apikey_quoted "\"" | apikey_raw
+  apikey_quoted: (apikey_schema ":")? string_quoted -> apikey
+  apikey_raw: (apikey_schema ":")? string_raw -> apikey
+  apikey_schema: "verbatim" -> as_verbatim | "file" -> as_file
+
+  filename: string
+  number: /[0-9]+/
+  float: /[0-9]+\.[0-9]*/
+  def: "default"
+  text.0: /(.(?!\/|\\))*./s
+"""
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
@@ -96,11 +163,11 @@ class Repl(Interpreter):
         )
       finally:
         self.message = ''
-    elif command == CMD_EXPECT:
-      val = self.visit_children(tree)
-      modality = val[2][0]
-      info(f"Setting expected modality to '{modality}'")
-      self.modality = modality
+    # elif command == CMD_EXPECT:
+    #   val = self.visit_children(tree)
+    #   modality = val[2][0]
+    #   info(f"Setting expected modality to '{modality}'")
+    #   self.modality = modality
     elif command == CMD_HELP:
       print(self.args.help)
       print("Command-line grammar:")
@@ -123,43 +190,59 @@ class Repl(Interpreter):
         self.actor_next = name
       else:
         raise ValueError("Invalid model format")
-        # self.actor_next = None
-        # info(f"Setting target actor to none")
-    elif command == CMD_NTHREADS:
-      n = as_int(tree.children[2].children[0].value, None)
+    elif command == CMD_SET:
+      args = self.visit_children(tree)
+      section, pname, pval = args[2], args[4], args[6][0]
+      if section == 'model':
+        self._check_next_actor()
+        if pname == 'apikey':
+          if not isinstance(pval, tuple) or len(pval)!=2:
+            raise ValueError("Model API key should be formatted as `schema:value`")
+          opts[self.actor_next].apikey = pval
+          info(f"Setting model API key to '{pval[0]}:{pval[1]}'")
+        elif pname in ['t','temp']:
+          opts[self.actor_next].temperature = pval
+          info(f"Setting model temperature to '{pval or 'default'}'")
+        elif pname in ['nt','nthreads']:
+          opts[self.actor_next].num_threads = pval
+          info(f"Setting model number of threads to '{pval or 'default'}'")
+        elif pname == 'imgsz':
+          opts[self.actor_next].imgsz = pval
+          info(f"Setting model image size to '{pval}'")
+        elif pname == 'verbosity':
+          opts[self.actor_next].verbose = pval
+          info(f"Setting actor verbosity to '{pval}'")
+        else:
+          raise ValueError(f"Unknown actor parameter '{pname}'")
+      elif section in ['term','terminal']:
+        if pname == 'modality':
+          info(f"Setting terminal expected modality to '{pval}'")
+          self.modality = pval
+        else:
+          raise ValueError(f"Unknown terminal parameter '{pname}'")
+      else:
+        raise ValueError(f"Unknown set section '{section}'")
+    elif command == CMD_READ:
+      args = self.visit_children(tree)
+      section, pname, pval = args[2], args[4], self.message.strip()
+      assert section == 'model'
       self._check_next_actor()
-      opts[self.actor_next].num_threads = n
-      info(f"Setting number of threads to '{n or 'default'}'")
-    elif command == CMD_TEMP:
-      t = as_float(tree.children[2].children[0].value, None)
-      self._check_next_actor()
-      opts[self.actor_next].temperature = t
-      info(f"Setting model temperature to '{t or 'default'}'")
-    elif command == CMD_APIKEY:
-      res = self.visit_children(tree)
-      if len(res)<2:
-        raise ValueError("API key should not be empty")
-      schema,arg = res[2][0]
-      self._check_next_actor()
-      opts[self.actor_next].apikey = (schema,arg)
-      info(f"Setting API key to '{schema}:{arg}'")
-    elif command == CMD_VERBOSE:
-      v = as_int(tree.children[2].children[0].value, 0)
-      self._check_next_actor()
-      opts[self.actor_next].verbose = v
-      info(f"Setting actor verbosity to '{v}'")
-    elif command == CMD_PROMPT:
-      self._check_next_actor()
-      opts[self.actor_next].prompt = self.message
-      info(f"Setting actor prompt to '{self.message[:10]}...'")
+      if pname == 'prompt':
+        opts[self.actor_next].prompt = pval
+        info(f"Setting actor prompt to '{pval[:10]}...'")
+      else:
+        raise ValueError(f"Unknown read parameter '{pname}'")
       self.message = ''
-    elif command == CMD_IMGSZ:
-      self._check_next_actor()
-      v = self.visit_children(tree)[2][0]
-      opts[self.actor_next].imgsz = v
-      info(f"Setting image size to '{v}'")
+    elif command == CMD_LOAD:
+      fname = self.visit_children(tree)[2][0]
+      info(f"Loading file '{fname}' into buffer")
+      with open(fname) as f:
+        self.message += f.read()
+    elif command == CMD_CLEAR:
+      info("Clearing message buffer")
+      self.reset()
     elif command == CMD_RESET:
-      info("Message buffer will be cleared")
+      info("Resetting conversation history and clearing message buffer")
       self.reset()
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,
@@ -177,6 +260,8 @@ class Repl(Interpreter):
           intention=Intention.init(dbg_flag=True)
         )
       )
+    elif command == CMD_VERSION:
+      print(f"{VERSION}+g{REVISION[:7]}")
     else:
       raise ValueError(f"Unknown command: {command}")
   def text(self, tree):
@@ -264,7 +349,7 @@ class UserActor(Actor):
           self.repl.visit(PARSER.parse(self.stream))
           if self.args.readline_history:
             write_history_file(self.args.readline_history)
-        except (ValueError, RuntimeError) as e:
+        except (ValueError, RuntimeError, FileNotFoundError) as e:
           err(str(e), actor=self)
         self.stream = ''
     except InterpreterPause as p:

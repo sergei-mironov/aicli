@@ -130,7 +130,7 @@ class ActorState:
     return ActorState({})
 
 class Actor:
-  """ Abstraction of model """
+  """ Abstraction of actor """
   def __init__(self, name:ActorName, opt:ActorOptions):
     self.name = name
     self.opt = opt

@@ -56,53 +56,77 @@ def test_parser():
   _assert(r'', r'''
     start
   ''')
-  _assert(r'/nthreads 3', r'''
+  _assert(r'/set model nthreads 3', r'''
     start
       command
-        /nthreads
+        /set
+
+        model
+
+        nthreads
 
         number       3
   ''')
-  _assert('/temp 3.4', r'''
+  _assert('/set model temp 3.4', r'''
     start
       command
-        /temp
+        /set
+
+        model
+
+        temp
 
         float       3.4
   ''')
-  _assert('/temp default', r'''
+  _assert('/set model temp default', r'''
     start
       command
-        /temp
+        /set
+
+        model
+
+        temp
 
         def
   ''')
 
 
 def test_apikey():
-  _assert('/apikey "keydata"', r'''
+  _assert('/set model apikey "keydata"', r'''
     start
       command
-        /apikey
+        /set
+
+        model
+
+        apikey
 
         apikey_string
           apikey
             string_value       keydata
   ''')
-  _assert('/apikey "file:keyfile"', r'''
+  _assert('/set model apikey "file:keyfile"', r'''
     start
       command
-        /apikey
+        /set
+
+        model
+
+        apikey
 
         apikey_string
           apikey
             as_file
             string_value       keyfile
   ''')
-  _assert('/apikey "verbatim:keydata"', r'''
+  _assert('/set model apikey "verbatim:keydata"', r'''
     start
       command
-        /apikey
+        /set
+
+        model
+
+        apikey
 
         apikey_string
           apikey

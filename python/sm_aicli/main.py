@@ -18,41 +18,6 @@ from lark.visitors import Interpreter
 from sm_aicli import *
 
 
-REVISION:str|None
-try:
-  REVISION=environ["AICLI_REVISION"]
-except Exception:
-  try:
-    from subprocess import check_output, DEVNULL
-    REVISION=check_output(['git', 'rev-parse', 'HEAD'],
-                          cwd=environ['AICLI_ROOT'],
-                          stderr=DEVNULL).decode().strip()
-  except Exception:
-    try:
-      from sm_aicli.revision import REVISION as __rv__
-      REVISION = __rv__
-    except ImportError:
-      REVISION = None
-
-VERSION:str|None
-try:
-  VERSION=check_output(['python3', 'setup.py', '--version'],
-                       cwd=environ['AICLI_ROOT'],
-                       stderr=DEVNULL).decode().strip()
-except Exception:
-  try:
-    from sm_aicli.revision import VERSION as __ver__
-    VERSION = __ver__
-  except ImportError:
-    VERSION = None
-
-def _get_cmd_prefix():
-  prefices = list({c[0] for c in COMMANDS if len(c)>0})
-  assert len(prefices) == 1
-  return prefices[0]
-
-CMDPREFIX = _get_cmd_prefix()
-
 ARG_PARSER = ArgumentParser(description="Command-line arguments")
 ARG_PARSER.add_argument(
   "--model-dir",
@@ -227,7 +192,7 @@ def main(cmdline=None):
   if args.model is not None:
     header.write(f"/model {ensure_quoted(args.model)}\n")
   if args.model_apikey is not None:
-    header.write(f"/apikey {ensure_quoted(args.model_apikey)}\n")
+    header.write(f"/set model apikey {ensure_quoted(args.model_apikey)}\n")
 
   for file in args.filenames:
     with open(file) as f:

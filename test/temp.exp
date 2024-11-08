@@ -9,7 +9,7 @@ spawn aicli --model=dummy:dummy
 expect {
     ">>> " {
         # Prompt received, proceed with sending the /temp command
-        send "/temp 25.5\r"
+        send "/set model temp 25.5\r"
     }
     timeout {
         # Exit with error if prompt is not received within timeout
