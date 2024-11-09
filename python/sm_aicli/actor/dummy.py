@@ -10,11 +10,15 @@ from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conve
 class DummyActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions):
     super().__init__(name, opt)
-    apikey = self.opt.apikey if self.opt.apikey else "<no-api-key>"
-    print(f"Dummy actor '{self.name.repr()}' apikey '{apikey}'")
 
   def reset(self):
     pass
 
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:
-    return Utterance.init(self.name, Intention.init(actor_next=UserName()), [Stream(['dummy']*10)])
+    response = [Stream([
+      f"I am a dummy actor '{self.name.repr()}'\n",
+      f"My api key is '{self.opt.apikey}'\n",
+      f"My temperature is '{self.opt.temperature}'\n",
+      f"My prompt is '{self.opt.prompt}'\n",
+    ])]
+    return Utterance.init(self.name, Intention.init(actor_next=UserName()), response)

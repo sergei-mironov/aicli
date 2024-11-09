@@ -5,12 +5,23 @@ set timeout 2
 spawn aicli --model=dummy:dummy
 
 expect {
-  ">>> " { send "PROMPT /read model prompt\r" }
+  ">>> " {
+    send "PROMPT /read model prompt\r"
+  }
   timeout { puts "Error: Did not receive prompt"; exit 1 }
 }
 
 expect {
-  "Setting actor prompt to 'PROMPT...'" { send "/exit\r" }
+  "Setting actor prompt to 'PROMPT...'" {
+    send "Hi dummy/ask\r"
+  }
+  timeout { puts "Error: Did not receive expected output"; exit 1 }
+}
+
+expect {
+  "PROMPT" {
+    send "/exit\r"
+  }
   timeout { puts "Error: Did not receive expected output"; exit 1 }
 }
 

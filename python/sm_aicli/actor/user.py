@@ -68,7 +68,7 @@ GRAMMAR = fr"""
   apikey_string: "\"" apikey_quoted "\"" | apikey_raw
   apikey_quoted: (apikey_schema ":")? string_quoted -> apikey
   apikey_raw: (apikey_schema ":")? string_raw -> apikey
-  apikey_schema: /verbatim/ | /file/ | /buf/ -> apikey_schema
+  apikey_schema: /verbatim/ | /file/ | /bfile/ | /buf/ -> apikey_schema
 
   filename: string
   number: /[0-9]+/
@@ -88,7 +88,7 @@ def as_int(val:str, default:int|None=None)->int|None:
   return int(val) if val not in {None,"def","default"} else default
 
 
-def ref_write(ref, val, buffers):
+def ref_write(ref, val:str|bytes, buffers):
   schema, name = ref
   if schema in 'file':
     try:
