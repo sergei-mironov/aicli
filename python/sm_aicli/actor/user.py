@@ -1,10 +1,11 @@
 from gnureadline import write_history_file
 from lark import Lark
+from lark.exceptions import LarkError
 from lark.visitors import Interpreter
 from dataclasses import dataclass
 from typing import Any
 from copy import deepcopy, copy
-from sys import stdout
+from sys import stdout, stderr
 from collections import defaultdict
 from os.path import expanduser
 
@@ -28,11 +29,12 @@ CMD_LOAD = "/load"
 CMD_LOADBIN = "/loadbin"
 CMD_SET = "/set"
 CMD_READ = "/read"
-CMD_COPY = "/copy"
+CMD_COPY = "/cp"
+CMD_CAT = "/cat"
 
 COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_RESET, CMD_LOADBIN, CMD_DBG,
-            CMD_ASK, CMD_VERSION, CMD_LOAD, CMD_CLEAR, CMD_SET, CMD_COPY]
-COMMANDS_ARG = [CMD_MODEL, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ, CMD_COPY]
+            CMD_ASK, CMD_VERSION, CMD_LOAD, CMD_CLEAR, CMD_SET, CMD_COPY, CMD_CAT]
+COMMANDS_ARG = [CMD_MODEL, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ, CMD_COPY, CMD_CAT, CMD_CLEAR]
 COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 
 GRAMMAR = fr"""
@@ -44,18 +46,20 @@ GRAMMAR = fr"""
              /\/load/ / +/ filename | \
              /\/loadbin/ / +/ filename | \
              /\/read/ / +/ /model/ / +/ /prompt/ | \
-             /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ apikey_string | \
+             /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref_string | \
                                          (/t/ | /temp/) / +/ (float | def) | \
                                          (/nt/ | /nthreads/) / +/ (number | def) | \
                                          /imgsz/ / +/ string | \
                                          /verbosity/ / +/ (number | def)) | \
                            (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
                                                        /rawbin/ / +/ bool)) | \
-             /\/copy/ / +/ apikey_string / +/ apikey_string
+             /\/cp/ / +/ ref_string / +/ ref_string | \
+             /\/cat/ / +/ ref_string | \
+             /\/clear/ / +/ ref_string
 
   string: "\"" string_quoted "\"" | string_raw
   string_quoted: /[^"]+/ -> string_value
-  string_raw: /[^"][^ ]*/ -> string_value
+  string_raw: /[^"][^ \/\n]*/ -> string_value
 
   model_string: "\"" model_quoted "\"" | model_raw
   model_quoted: (model_provider ":")? string_quoted -> model
@@ -65,17 +69,17 @@ GRAMMAR = fr"""
   modality_string: "\"" modality "\"" | modality
   modality: /img/ -> modality_img | /text/ -> modality_text
 
-  apikey_string: "\"" apikey_quoted "\"" | apikey_raw
-  apikey_quoted: (apikey_schema ":")? string_quoted -> apikey
-  apikey_raw: (apikey_schema ":")? string_raw -> apikey
-  apikey_schema: /verbatim/ | /file/ | /bfile/ | /buf/ -> apikey_schema
+  ref_string: "\"" ref_quoted "\"" | ref_raw
+  ref_quoted: (ref_schema ":")? string_quoted -> ref
+  ref_raw: (ref_schema ":")? string_raw -> ref
+  ref_schema: /verbatim/ | /file/ | /bfile/ | /buffer/ -> ref_schema
 
   filename: string
   number: /[0-9]+/
   float: /[0-9]+\.[0-9]*/
   def: "default"
   bool: /true/|/false/|/yes/|/no/|/1/|/0/
-  text.0: /(.(?!\/|\\))*./s
+  text.0: /([^\/](?!\/|\\))*[^\/]/s
 """
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
@@ -102,7 +106,7 @@ def ref_write(ref, val:str|bytes, buffers):
         f.write(val.decode() if isinstance(val, str) else val)
     except Exception as err:
       raise ValueError(str(err)) from err
-  elif schema == 'buf':
+  elif schema == 'buffer':
     buffers[name.lower()] = val
   else:
     raise ValueError(f"Unsupported target schema '{schema}'")
@@ -118,7 +122,7 @@ def ref_read(ref, buffers)->str|None:
         return f.read().strip()
     except Exception as err:
       raise ValueError(str(err)) from err
-  elif schema == 'buf':
+  elif schema == 'buffer':
     return buffers[name.lower()]
   else:
     raise ValueError(f"Unsupported reference schema '{schema}'")
@@ -140,6 +144,7 @@ class Repl(Interpreter):
     self.aname = name
     self.modality = Modality.Text
     self.rawbin = False
+    self.ref_schema_default = "verbatim"
     self._reset()
   def _check_next_actor(self):
     if self.actor_next is None:
@@ -159,11 +164,11 @@ class Repl(Interpreter):
     self.in_echo = 0
   def string_value(self, tree):
     return tree.children[0].value
-  def apikey_schema(self, tree):
+  def ref_schema(self, tree):
     return str(tree.children[0])
-  def apikey(self, tree):
+  def ref(self, tree):
     val = self.visit_children(tree)
-    return tuple(val) if len(val)==2 else ("verbatim",val[0])
+    return tuple(val) if len(val)==2 else (self.ref_schema_default,val[0])
   def mp_gpt4all(self, tree):
     return "gpt4all"
   def mp_openai(self, tree):
@@ -230,6 +235,7 @@ class Repl(Interpreter):
       else:
         raise ValueError("Invalid model format")
     elif command == CMD_SET:
+      self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
       section, pname, pval = args[2], args[4], args[6][0]
       if section == 'model':
@@ -291,8 +297,13 @@ class Repl(Interpreter):
         acc += f.read()
       self.buffers[IN] = acc
     elif command == CMD_CLEAR:
-      info("Clearing message buffer")
-      self.reset()
+      self.ref_schema_default = "buffer"
+      args = self.visit_children(tree)
+      (schema, name) = args[2][0]
+      if schema != 'buffer':
+        raise ValueError(f'Required reference to buffer, not {schema}')
+      info(f"Clearing buffer \"{name}\"")
+      self.buffers[name] = ''
     elif command == CMD_RESET:
       info("Resetting conversation history and clearing message buffer")
       self.reset()
@@ -313,9 +324,17 @@ class Repl(Interpreter):
         )
       )
     elif command == CMD_COPY:
+      self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       sref, dref = args[2][0], args[4][0]
       ref_write(dref, ref_read(sref, self.buffers), self.buffers)
+      info(f"Copied from {sref} to {dref}")
+    elif command == CMD_CAT:
+      self.ref_schema_default = "buffer"
+      args = self.visit_children(tree)
+      ref = args[2][0]
+      val = ref_read(ref, self.buffers)
+      print(val)
     elif command == CMD_VERSION:
       print(f"{VERSION}+g{REVISION[:7]}")
     else:
@@ -346,8 +365,6 @@ class Repl(Interpreter):
     finally:
       self._finish_echo()
     return res
-
-
 
 
 class UserActor(Actor):
@@ -384,7 +401,7 @@ class UserActor(Actor):
                 for token in s.gen():
                   f.write(token)
               info(f"Binary file has been saved to '{s.suggested_fname}'")
-              cmd = f"/loadbin \"{s.suggested_fname}\""
+              cmd = f"{CMD_COPY} \"bfile:{s.suggested_fname}\" \"buffer:out\""
               print(cmd, flush=True)
               self.stream = cmd + self.stream
             else:
@@ -412,11 +429,13 @@ class UserActor(Actor):
             if self.batch_mode:
               break
             else:
-              self.stream = input(self.args.readline_prompt)
-          self.repl.visit(PARSER.parse(self.stream))
+              self.stream = input(self.args.readline_prompt)+'\n'
+          tree = PARSER.parse(self.stream)
+          dbg(tree, self)
+          self.repl.visit(tree)
           if self.args.readline_history:
             write_history_file(self.args.readline_history)
-        except (ValueError, RuntimeError, FileNotFoundError) as e:
+        except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
           err(str(e), actor=self)
         self.stream = ''
     except InterpreterPause as p:

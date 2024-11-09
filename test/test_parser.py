@@ -1,5 +1,7 @@
 import re
 from textwrap import dedent
+from pytest import raises
+from lark.exceptions import LarkError
 
 from sm_aicli import *
 
@@ -101,8 +103,8 @@ def test_apikey():
 
         apikey
 
-        apikey_string
-          apikey
+        ref_string
+          ref
             string_value       keydata
   ''')
   _assert('/set model apikey "file:keyfile"', r'''
@@ -114,9 +116,9 @@ def test_apikey():
 
         apikey
 
-        apikey_string
-          apikey
-            apikey_schema       file
+        ref_string
+          ref
+            ref_schema       file
             string_value       keyfile
   ''')
   _assert('/set model apikey "verbatim:keydata"', r'''
@@ -128,9 +130,9 @@ def test_apikey():
 
         apikey
 
-        apikey_string
-          apikey
-            apikey_schema       verbatim
+        ref_string
+          ref
+            ref_schema       verbatim
             string_value       keydata
   ''')
 
@@ -144,3 +146,79 @@ def test_model():
          model
            string_value       aaa
   ''')
+
+
+def test_ref():
+  _assert('/cat "aaa"', r'''
+    start
+      command
+        /cat
+
+        ref_string
+          ref
+            string_value       aaa
+  ''')
+
+  _assert('/cat "file:aaa"', r'''
+    start
+      command
+        /cat
+
+        ref_string
+          ref
+            ref_schema       file
+            string_value       aaa
+  ''')
+
+  _assert('/cat "verbatim:aaa"', r'''
+    start
+      command
+        /cat
+
+        ref_string
+          ref
+            ref_schema       verbatim
+            string_value       aaa
+  ''')
+
+  _assert('/cat "buffer:aaa"', r'''
+    start
+      command
+        /cat
+
+        ref_string
+          ref
+            ref_schema       buffer
+            string_value       aaa
+  ''')
+
+  _assert('/cat aaa\n', r'''
+    start
+      command
+        /cat
+
+        ref_string
+          ref
+            string_value       aaa
+      text
+  ''')
+  _assert('/cat aaa/cat bbb\n', r'''
+    start
+      command
+        /cat
+
+        ref_string
+          ref
+            string_value       aaa
+      command
+        /cat
+
+        ref_string
+          ref
+            string_value       bbb
+      text
+  ''')
+
+  with raises(LarkError) as e:
+    # No closing dquote
+    PARSER.parse('/cat "aaa')
