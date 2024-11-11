@@ -86,7 +86,7 @@ GRAMMAR = fr"""
   float: /[0-9]+\.[0-9]*/
   def: "default"
   bool: /true/|/false/|/yes/|/no/|/1/|/0/
-  text.0: /([^\/](?!\/|\\))*[^\/]/s
+  text.0: /([^\/#](?!\/|\\))*[^\/#]/s
   %ignore /#[^\n]*/
 """
 
@@ -451,7 +451,7 @@ class UserActor(Actor):
       while True:
         try:
           if self.stream == '':
-            if self.batch_mode:
+            if self.batch_mode and not self.args.keep_running:
               break
             else:
               self.stream = input(self.args.readline_prompt)+'\n'

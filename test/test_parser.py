@@ -222,3 +222,13 @@ def test_ref():
   with raises(LarkError) as e:
     # No closing dquote
     PARSER.parse('/cat "aaa')
+
+
+def test_comment():
+  _assert('# /echo aaa\n/echo bbb', r'''
+    start
+      text       
+
+      command       /echo
+      text        bbb
+  ''')

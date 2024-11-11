@@ -107,6 +107,11 @@ ARG_PARSER.add_argument(
   help="List of config file names (','-separated, use empty or 'none' to disable)",
 )
 ARG_PARSER.add_argument(
+  '-K', '--keep-running',
+  action='store_true',
+  help="Open interactive shell after processing all positional arguments",
+)
+ARG_PARSER.add_argument(
   'filenames',
   type=str,
   nargs='*',
