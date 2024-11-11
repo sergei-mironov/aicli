@@ -1,0 +1,17 @@
+#!/usr/bin/env -S aicli --rc=none --keep-running
+/model "openai:gpt-4o"
+/set model apikey "file:_openai"
+Hi model. Could you reword the following text to match dall-e-2 input length requirements. Please
+fit the response in 800 characters. No code sections please. Please output just the new content,
+with no comments.
+The original text:
+/append file:README.md in
+/ask
+/cp out file:_out
+/model "openai:dall-e-2"
+/set model apikey "file:_openai"
+/set term modality img
+A future-looking picture mentioning
+/append out in
+/ask
+
