@@ -27,16 +27,23 @@ The following installation options are available:
 
 ### Pip
 
-```sh
+``` sh
 $ pip install sm_aicli
 ```
 
 ### Nix
 
-```sh
+``` sh
 $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 # Optionally, change the 'nixpkgs' input of the flake.nix to a more suitable
 $ nix profile install ".#python-aicli"
+```
+
+### Nix (development shell)
+
+``` sh
+$ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
+$ nix develop
 ```
 
 Usage
@@ -53,9 +60,13 @@ usage: aicli [-h] [--model-dir MODEL_DIR] [--image-dir IMAGE_DIR]
              [--model-apikey STR] [--model-temperature MODEL_TEMPERATURE]
              [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
              [--readline-prompt READLINE_PROMPT] [--readline-history FILE]
-             [--verbose NUM] [--revision] [--version] [--no-rc]
+             [--verbose NUM] [--revision] [--version] [--rc RC] [-K]
+             [filenames ...]
 
 Command-line arguments
+
+positional arguments:
+  filenames             List of filenames to process
 
 options:
   -h, --help            show this help message and exit
@@ -76,7 +87,7 @@ options:
                         intel. Defaults to CPU
   --readline-key-send READLINE_KEY_SEND
                         Terminal code to treat as Ctrl+Enter (default: \C-k)
-  --readline-prompt READLINE_PROMPT
+  --readline-prompt READLINE_PROMPT, -p READLINE_PROMPT
                         Input prompt (default: >>>)
   --readline-history FILE
                         History file name (default is '_sm_aicli_history'; set
@@ -84,7 +95,10 @@ options:
   --verbose NUM         Set the verbosity level 0-no,1-full
   --revision            Print the revision
   --version             Print the version
-  --no-rc               Do not read configuration files
+  --rc RC               List of config file names (','-separated, use empty or
+                        'none' to disable)
+  -K, --keep-running    Open interactive shell after processing all positional
+                        arguments
 ```
 
 The console accepts language defined by the following grammar:
@@ -100,19 +114,28 @@ print(dedent(GRAMMAR).strip())
 ``` result
 start: (command | escape | text)? (command | escape | text)*
 escape.3: /\\./
-command.2: /\/ask|\/dbg|\/echo|\/exit|\/help|\/prompt|\/reset/ | \
+command.2: /\/ask|\/dbg|\/echo|\/exit|\/help|\/reset|\/version/ | \
            /\/model/ / +/ model_string | \
-           /\/apikey/ / +/ apikey_string | \
-           /\/nthreads/ / +/ (number | def) | \
-           /\/verbose/ / +/ (number | def) | \
-           /\/temp/ / +/ (float | def ) | \
-           /\/expect/ / +/ modality_string | \
            /\/img/ / +/ string | \
-           /\/imgsz/ / +/ string
+           /\/load/ / +/ filename | \
+           /\/loadbin/ / +/ filename | \
+           /\/read/ / +/ /model/ / +/ /prompt/ | \
+           /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref_string | \
+                                       (/t/ | /temp/) / +/ (float | def) | \
+                                       (/nt/ | /nthreads/) / +/ (number | def) | \
+                                       /imgsz/ / +/ string | \
+                                       /verbosity/ / +/ (number | def)) | \
+                         (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
+                                                     /rawbin/ / +/ bool)) | \
+           /\/cp/ / +/ ref_string / +/ ref_string | \
+           /\/append/ / +/ ref_string / +/ ref_string | \
+           /\/cat/ / +/ ref_string | \
+           /\/clear/ / +/ ref_string | \
+           /\/shell/ / +/ ref_string
 
 string: "\"" string_quoted "\"" | string_raw
 string_quoted: /[^"]+/ -> string_value
-string_raw: /[^"][^ ]*/ -> string_value
+string_raw: /[^"][^ \/\n]*/ -> string_value
 
 model_string: "\"" model_quoted "\"" | model_raw
 model_quoted: (model_provider ":")? string_quoted -> model
@@ -122,15 +145,18 @@ model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_
 modality_string: "\"" modality "\"" | modality
 modality: /img/ -> modality_img | /text/ -> modality_text
 
-apikey_string: "\"" apikey_quoted "\"" | apikey_raw
-apikey_quoted: (apikey_schema ":")? string_quoted -> apikey
-apikey_raw: (apikey_schema ":")? string_raw -> apikey
-apikey_schema: "verbatim" -> as_verbatim | "file" -> as_file
+ref_string: "\"" ref_quoted "\"" | ref_raw
+ref_quoted: (ref_schema ":")? string_quoted -> ref
+ref_raw: (ref_schema ":")? string_raw -> ref
+ref_schema: /verbatim/ | /file/ | /bfile/ | /buffer/ -> ref_schema
 
+filename: string
 number: /[0-9]+/
 float: /[0-9]+\.[0-9]*/
 def: "default"
-text.0: /(.(?!\/|\\))*./s
+bool: /true/|/false/|/yes/|/no/|/1/|/0/
+text.0: /([^\/#](?!\/|\\))*[^\/#]/s
+%ignore /#[^\n]*/
 ```
 
 By default, the application tries to read configuration files starting from the `/` directory down
@@ -143,13 +169,11 @@ interpreted as commands.
 $ aicli
 ```
 ``` txt
-Type /help or a question followed by the /ask command (or by pressing `C-k` key).
->>> /model "~/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf"
->>> Hi!
->>> /ask
+INFO: Type /help or a question followed by the /ask command (or by pressing `C-k` key).
+>>> /model "./_model/Meta-Llama-3-8B-Instruct.Q4_0.gguf"
+>>> Hi!/ask
 Hello! I'm happy to help you. What's on your mind?^C
->>> What's your name?
->>> /ask
+>>> What's your name?/ask
 I don't really have a personal name, but you can call me "Assistant"
 ```
 
