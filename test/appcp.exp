@@ -1,0 +1,20 @@
+#!/usr/bin/env expect-f.sh
+
+# Set timeout for the expect script
+set timeout 2
+
+spawn aicli --model=dummy:dummy
+
+expect {
+  ">>> " { send "/clear \"IN\"abc/cp IN A/clear \"IN\"123/append A \"IN\"321/cat IN\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  "123abc321\r" { send "/exit\r" }
+  timeout { puts "Error: Did not receive input 123"; exit 1 }
+}
+expect {
+  eof {}
+  timeout { puts "Error: Did not receive eof"; exit 1 }
+}
+exit 0

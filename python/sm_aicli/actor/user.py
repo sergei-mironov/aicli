@@ -7,6 +7,7 @@ from typing import Any
 from copy import deepcopy, copy
 from sys import stdout, stderr
 from collections import defaultdict
+from os import system
 from os.path import expanduser
 
 from pdb import set_trace as ST
@@ -14,7 +15,7 @@ from pdb import set_trace as ST
 from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Utterance,
                      Conversation, ActorView, ModelName, Modality, Stream)
 
-from ..utils import info, err, with_sigint, dbg, cont2strm, VERSION, REVISION
+from ..utils import info, err, with_sigint, dbg, cont2strm, VERSION, REVISION, sys2exitcode
 
 CMD_HELP = "/help"
 CMD_ASK  = "/ask"
@@ -31,10 +32,14 @@ CMD_SET = "/set"
 CMD_READ = "/read"
 CMD_COPY = "/cp"
 CMD_CAT = "/cat"
+CMD_APPEND = "/append"
+CMD_SHELL = "/shell"
 
 COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_RESET, CMD_LOADBIN, CMD_DBG,
-            CMD_ASK, CMD_VERSION, CMD_LOAD, CMD_CLEAR, CMD_SET, CMD_COPY, CMD_CAT]
-COMMANDS_ARG = [CMD_MODEL, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ, CMD_COPY, CMD_CAT, CMD_CLEAR]
+            CMD_ASK, CMD_VERSION, CMD_LOAD, CMD_CLEAR, CMD_SET, CMD_COPY, CMD_CAT, CMD_APPEND,
+            CMD_SHELL]
+COMMANDS_ARG = [CMD_MODEL, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ, CMD_COPY, CMD_CAT, CMD_CLEAR,
+                CMD_APPEND, CMD_SHELL]
 COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
 
 GRAMMAR = fr"""
@@ -54,8 +59,10 @@ GRAMMAR = fr"""
                            (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
                                                        /rawbin/ / +/ bool)) | \
              /\/cp/ / +/ ref_string / +/ ref_string | \
+             /\/append/ / +/ ref_string / +/ ref_string | \
              /\/cat/ / +/ ref_string | \
-             /\/clear/ / +/ ref_string
+             /\/clear/ / +/ ref_string | \
+             /\/shell/ / +/ ref_string
 
   string: "\"" string_quoted "\"" | string_raw
   string_quoted: /[^"]+/ -> string_value
@@ -80,6 +87,7 @@ GRAMMAR = fr"""
   def: "default"
   bool: /true/|/false/|/yes/|/no/|/1/|/0/
   text.0: /([^\/](?!\/|\\))*[^\/]/s
+  %ignore /#[^\n]*/
 """
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
@@ -92,22 +100,26 @@ def as_int(val:str, default:int|None=None)->int|None:
   return int(val) if val not in {None,"def","default"} else default
 
 
-def ref_write(ref, val:str|bytes, buffers):
+def ref_write(ref, val:str|bytes, buffers, append:bool=False):
   schema, name = ref
+  a = "a" if append else ""
   if schema in 'file':
     try:
-      with open(name, "w") as f:
+      with open(name, f"w{a}") as f:
         f.write(val.encode('utf-8') if isinstance(val, bytes) else val)
     except Exception as err:
       raise ValueError(str(err)) from err
   elif schema in 'bfile':
     try:
-      with open(name, "bw") as f:
+      with open(name, f"bw{a}") as f:
         f.write(val.decode() if isinstance(val, str) else val)
     except Exception as err:
       raise ValueError(str(err)) from err
   elif schema == 'buffer':
-    buffers[name.lower()] = val
+    if append:
+      buffers[name.lower()] += val
+    else:
+      buffers[name.lower()] = val
   else:
     raise ValueError(f"Unsupported target schema '{schema}'")
 
@@ -196,13 +208,13 @@ class Repl(Interpreter):
       self.in_echo = 1
     elif command == CMD_ASK:
       try:
-        contents=copy(self.buffers[IN]) if len(self.buffers[IN].strip())>0 else None
+        contents=[copy(self.buffers[IN])] if len(self.buffers[IN].strip())>0 else []
         val = self.visit_children(tree)
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
             name=self.aname,
-            contents=[contents],
+            contents=contents,
             intention=Intention.init(
               actor_next=self.actor_next,
               actor_updates=self.av,
@@ -302,8 +314,8 @@ class Repl(Interpreter):
       (schema, name) = args[2][0]
       if schema != 'buffer':
         raise ValueError(f'Required reference to buffer, not {schema}')
-      info(f"Clearing buffer \"{name}\"")
-      self.buffers[name] = ''
+      info(f"Clearing buffer \"{name.lower()}\"")
+      ref_write((schema,name), '', self.buffers, append=False)
     elif command == CMD_RESET:
       info("Resetting conversation history and clearing message buffer")
       self.reset()
@@ -323,18 +335,27 @@ class Repl(Interpreter):
           intention=Intention.init(dbg_flag=True)
         )
       )
-    elif command == CMD_COPY:
+    elif command in [CMD_COPY, CMD_APPEND]:
+      append = (command == CMD_APPEND)
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       sref, dref = args[2][0], args[4][0]
-      ref_write(dref, ref_read(sref, self.buffers), self.buffers)
-      info(f"Copied from {sref} to {dref}")
+      val = ref_read(sref, self.buffers)
+      ref_write(dref, val, self.buffers, append=append)
+      info(f"{'Appended' if append else 'Copied'} from {sref} to {dref}")
     elif command == CMD_CAT:
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       ref = args[2][0]
       val = ref_read(ref, self.buffers)
       print(val)
+    elif command == CMD_SHELL:
+      self.ref_schema_default = "verbatim"
+      args = self.visit_children(tree)
+      ref = args[2][0]
+      val = ref_read(ref, self.buffers)
+      retcode = sys2exitcode(system(val))
+      info(f"Shell command '{val}' exited with code {retcode}")
     elif command == CMD_VERSION:
       print(f"{VERSION}+g{REVISION[:7]}")
     else:
@@ -405,6 +426,7 @@ class UserActor(Actor):
               print(cmd, flush=True)
               self.stream = cmd + self.stream
             else:
+              self.repl.buffers[OUT]=None
               for token in s.gen():
                 if isinstance(token, bytes):
                   need_eol = True
@@ -413,6 +435,9 @@ class UserActor(Actor):
                 elif isinstance(token, str):
                   need_eol = not token.rstrip(' ').endswith("\n")
                   print(token, end='', flush=True)
+                if self.repl.buffers[OUT] is None:
+                  self.repl.buffers[OUT] = b'' if isinstance(token, bytes) else ''
+                self.repl.buffers[OUT] += token
         if need_eol:
           print()
       self.cnv_top += 1

@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from os.path import join, isfile, realpath, expanduser, abspath, sep
 from glob import glob
-from sys import stderr
+from sys import stderr, platform
 from collections import OrderedDict
 from subprocess import check_output, DEVNULL
 from os import environ
@@ -171,7 +171,7 @@ def cont2str(cs:Contents, allow_bytes=True)->str|bytes:
   for c in cs:
     for token in cont2strm(c, allow_bytes=allow_bytes).gen():
       acc = token if acc is None else (acc + token)
-  return acc
+  return acc or ''
 
 # def cont2strbyte(cs:Contents, allow_bytes=True)->Iterable[str|bytes]:
 #   for c in cs:
@@ -191,4 +191,11 @@ def firstfile(paths) -> str|None:
     if isfile(p):
       return p
   return None
+
+def sys2exitcode(ret):
+  if platform.startswith("win"):
+    return ret
+  else: # Linux, etc
+    from os import WEXITSTATUS
+    return WEXITSTATUS(ret)
 
