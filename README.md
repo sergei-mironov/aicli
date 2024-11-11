@@ -13,6 +13,7 @@ Contents
 * [Install](#install)
     * [Pip](#pip)
     * [Nix](#nix)
+    * [Development shell](#nix-development-shell)
 * [Usage](#usage)
     * [Example session](#example-session)
 * [Vim integration](#vim-integration)
@@ -39,7 +40,7 @@ $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 $ nix profile install ".#python-aicli"
 ```
 
-### Nix (development shell)
+### Development shell
 
 ``` sh
 $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
@@ -101,7 +102,7 @@ options:
                         arguments
 ```
 
-The console accepts language defined by the following grammar:
+The console accepts the language defined by the following grammar:
 
 <!--
 ``` python
@@ -113,12 +114,31 @@ print(dedent(GRAMMAR).strip())
 
 ``` result
 start: (command | escape | text)? (command | escape | text)*
+# Commands start with `/`. Use `\/` to process next `/` as a regular text.
 escape.3: /\\./
-command.2: /\/ask|\/dbg|\/echo|\/exit|\/help|\/reset|\/version/ | \
+# The commands are:
+# /append TYPE:FROM TYPE:TO - Append a file, a buffer or a constant to a file or to a buffer.
+# /cat TYPE:WHAT            - Print a file or buffer to STDOUT.
+# /cp TYPE:FROM TYPE:TO     - Copy a file, a buffer or a constant into a file or into a buffer.
+# /model PROVIDER:NAME      - Set the current model to `model_string`. Allocate the model on first use.
+# /read WHERE               - Reads the content of the 'IN' buffer into a special variable.
+# /set WHAT                 - Set terminal or model option
+# /shell TYPE:FROM          - Run a shell command.
+# /clear                    - Clear the buffer named `ref_string`.
+# /reset                    - Reset the conversation and all the models
+# /version                  - Print version
+# /dbg                      - Run the Python debugger
+# /echo                     - Echo the following line to STDOUT
+# /exit                     - Exit
+# /help                     - Print help
+command.2: /\/version/ | \
+           /\/dbg/ | \
+           /\/reset/ | \
+           /\/echo/ | \
+           /\/ask/ | \
+           /\/help/ | \
+           /\/exit/ | \
            /\/model/ / +/ model_string | \
-           /\/img/ / +/ string | \
-           /\/load/ / +/ filename | \
-           /\/loadbin/ / +/ filename | \
            /\/read/ / +/ /model/ / +/ /prompt/ | \
            /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref_string | \
                                        (/t/ | /temp/) / +/ (float | def) | \
@@ -133,23 +153,29 @@ command.2: /\/ask|\/dbg|\/echo|\/exit|\/help|\/reset|\/version/ | \
            /\/clear/ / +/ ref_string | \
            /\/shell/ / +/ ref_string
 
+# Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
 string: "\"" string_quoted "\"" | string_raw
 string_quoted: /[^"]+/ -> string_value
 string_raw: /[^"][^ \/\n]*/ -> string_value
 
+# Model names have format "PROVIDER:NAME". Model names containing spaces must be double-quoted.
 model_string: "\"" model_quoted "\"" | model_raw
 model_quoted: (model_provider ":")? string_quoted -> model
 model_raw: (model_provider ":")? string_raw -> model
 model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
 
+# Modalities are either `img` or `text`.
 modality_string: "\"" modality "\"" | modality
 modality: /img/ -> modality_img | /text/ -> modality_text
 
+# References mention either a file (`file:filename`), a buffer (`buffer:a`) or a string constant
+# (`verbatim:ABC`).
 ref_string: "\"" ref_quoted "\"" | ref_raw
 ref_quoted: (ref_schema ":")? string_quoted -> ref
 ref_raw: (ref_schema ":")? string_raw -> ref
 ref_schema: /verbatim/ | /file/ | /bfile/ | /buffer/ -> ref_schema
 
+# Base token types
 filename: string
 number: /[0-9]+/
 float: /[0-9]+\.[0-9]*/

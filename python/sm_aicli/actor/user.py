@@ -17,70 +17,86 @@ from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Uttera
 
 from ..utils import info, err, with_sigint, dbg, cont2strm, VERSION, REVISION, sys2exitcode
 
-CMD_HELP = "/help"
-CMD_ASK  = "/ask"
-CMD_EXIT = "/exit"
-CMD_ECHO = "/echo"
-CMD_MODEL = "/model"
-CMD_RESET = "/reset"
-CMD_CLEAR = "/clear"
-CMD_DBG = "/dbg"
-CMD_VERSION = "/version"
-CMD_LOAD = "/load"
-CMD_LOADBIN = "/loadbin"
-CMD_SET = "/set"
-CMD_READ = "/read"
-CMD_COPY = "/cp"
-CMD_CAT = "/cat"
 CMD_APPEND = "/append"
+CMD_ASK  = "/ask"
+CMD_CAT = "/cat"
+CMD_CLEAR = "/clear"
+CMD_CP = "/cp"
+CMD_DBG = "/dbg"
+CMD_ECHO = "/echo"
+CMD_EXIT = "/exit"
+CMD_HELP = "/help"
+CMD_MODEL = "/model"
+CMD_READ = "/read"
+CMD_RESET = "/reset"
+CMD_SET = "/set"
 CMD_SHELL = "/shell"
-
-COMMANDS = [CMD_HELP, CMD_EXIT, CMD_ECHO, CMD_MODEL, CMD_RESET, CMD_LOADBIN, CMD_DBG,
-            CMD_ASK, CMD_VERSION, CMD_LOAD, CMD_CLEAR, CMD_SET, CMD_COPY, CMD_CAT, CMD_APPEND,
-            CMD_SHELL]
-COMMANDS_ARG = [CMD_MODEL, CMD_LOADBIN, CMD_LOAD, CMD_SET, CMD_READ, CMD_COPY, CMD_CAT, CMD_CLEAR,
-                CMD_APPEND, CMD_SHELL]
-COMMANDS_NOARG = r'|'.join(sorted(list(set(COMMANDS)-set(COMMANDS_ARG)))).replace('/','\\/')
+CMD_VERSION = "/version"
 
 GRAMMAR = fr"""
   start: (command | escape | text)? (command | escape | text)*
+  # Commands start with `/`. Use `\/` to process next `/` as a regular text.
   escape.3: /\\./
-  command.2: /{COMMANDS_NOARG}/ | \
-             /\/model/ / +/ model_string | \
-             /\/img/ / +/ string | \
-             /\/load/ / +/ filename | \
-             /\/loadbin/ / +/ filename | \
-             /\/read/ / +/ /model/ / +/ /prompt/ | \
-             /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref_string | \
+  # The commands are:
+  # {CMD_APPEND} TYPE:FROM TYPE:TO - Append a file, a buffer or a constant to a file or to a buffer.
+  # {CMD_CAT} TYPE:WHAT            - Print a file or buffer to STDOUT.
+  # {CMD_CP} TYPE:FROM TYPE:TO     - Copy a file, a buffer or a constant into a file or into a buffer.
+  # {CMD_MODEL} PROVIDER:NAME      - Set the current model to `model_string`. Allocate the model on first use.
+  # {CMD_READ} WHERE               - Reads the content of the 'IN' buffer into a special variable.
+  # {CMD_SET} WHAT                 - Set terminal or model option
+  # {CMD_SHELL} TYPE:FROM          - Run a shell command.
+  # {CMD_CLEAR}                    - Clear the buffer named `ref_string`.
+  # {CMD_RESET}                    - Reset the conversation and all the models
+  # {CMD_VERSION}                  - Print version
+  # {CMD_DBG}                      - Run the Python debugger
+  # {CMD_ECHO}                     - Echo the following line to STDOUT
+  # {CMD_EXIT}                     - Exit
+  # {CMD_HELP}                     - Print help
+  command.2: /\{CMD_VERSION}/ | \
+             /\{CMD_DBG}/ | \
+             /\{CMD_RESET}/ | \
+             /\{CMD_ECHO}/ | \
+             /\{CMD_ASK}/ | \
+             /\{CMD_HELP}/ | \
+             /\{CMD_EXIT}/ | \
+             /\{CMD_MODEL}/ / +/ model_string | \
+             /\{CMD_READ}/ / +/ /model/ / +/ /prompt/ | \
+             /\{CMD_SET}/ / +/ (/model/ / +/ (/apikey/ / +/ ref_string | \
                                          (/t/ | /temp/) / +/ (float | def) | \
                                          (/nt/ | /nthreads/) / +/ (number | def) | \
                                          /imgsz/ / +/ string | \
                                          /verbosity/ / +/ (number | def)) | \
                            (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
                                                        /rawbin/ / +/ bool)) | \
-             /\/cp/ / +/ ref_string / +/ ref_string | \
-             /\/append/ / +/ ref_string / +/ ref_string | \
-             /\/cat/ / +/ ref_string | \
-             /\/clear/ / +/ ref_string | \
-             /\/shell/ / +/ ref_string
+             /\{CMD_CP}/ / +/ ref_string / +/ ref_string | \
+             /\{CMD_APPEND}/ / +/ ref_string / +/ ref_string | \
+             /\{CMD_CAT}/ / +/ ref_string | \
+             /\{CMD_CLEAR}/ / +/ ref_string | \
+             /\{CMD_SHELL}/ / +/ ref_string
 
+  # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
   string: "\"" string_quoted "\"" | string_raw
   string_quoted: /[^"]+/ -> string_value
   string_raw: /[^"][^ \/\n]*/ -> string_value
 
+  # Model names have format "PROVIDER:NAME". Model names containing spaces must be double-quoted.
   model_string: "\"" model_quoted "\"" | model_raw
   model_quoted: (model_provider ":")? string_quoted -> model
   model_raw: (model_provider ":")? string_raw -> model
   model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
 
+  # Modalities are either `img` or `text`.
   modality_string: "\"" modality "\"" | modality
   modality: /img/ -> modality_img | /text/ -> modality_text
 
+  # References mention either a file (`file:filename`), a buffer (`buffer:a`) or a string constant
+  # (`verbatim:ABC`).
   ref_string: "\"" ref_quoted "\"" | ref_raw
   ref_quoted: (ref_schema ":")? string_quoted -> ref
   ref_raw: (ref_schema ":")? string_raw -> ref
   ref_schema: /verbatim/ | /file/ | /bfile/ | /buffer/ -> ref_schema
 
+  # Base token types
   filename: string
   number: /[0-9]+/
   float: /[0-9]+\.[0-9]*/
@@ -296,18 +312,6 @@ class Repl(Interpreter):
       else:
         raise ValueError(f"Unknown read parameter '{pname}'")
       self.buffers[IN] = ''
-    elif command == CMD_LOAD:
-      fname = self.visit_children(tree)[2][0][0]
-      info(f"Loading text file '{fname}' into buffer")
-      with open(fname) as f:
-        self.buffers[IN] += f.read()
-    elif command == CMD_LOADBIN:
-      fname = self.visit_children(tree)[2][0][0]
-      info(f"Loading binary file '{fname}' into buffer")
-      acc = b''
-      with open(fname, 'rb') as f:
-        acc += f.read()
-      self.buffers[IN] = acc
     elif command == CMD_CLEAR:
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
@@ -335,7 +339,7 @@ class Repl(Interpreter):
           intention=Intention.init(dbg_flag=True)
         )
       )
-    elif command in [CMD_COPY, CMD_APPEND]:
+    elif command in [CMD_CP, CMD_APPEND]:
       append = (command == CMD_APPEND)
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
@@ -369,9 +373,6 @@ class Repl(Interpreter):
       else:
         print(text, end='')
     else:
-      for cmd in COMMANDS:
-        if cmd in text:
-          info(f"Warning: '{cmd}' was parsed as a text")
       self.buffers[IN] += text
   def escape(self, tree):
     text = tree.children[0].value[1:]
@@ -422,7 +423,7 @@ class UserActor(Actor):
                 for token in s.gen():
                   f.write(token)
               info(f"Binary file has been saved to '{s.suggested_fname}'")
-              cmd = f"{CMD_COPY} \"bfile:{s.suggested_fname}\" \"buffer:out\""
+              cmd = f"{CMD_CP} \"bfile:{s.suggested_fname}\" \"buffer:out\""
               print(cmd, flush=True)
               self.stream = cmd + self.stream
             else:
