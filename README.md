@@ -233,7 +233,6 @@ def class_url(url_template, file_name, entity) -> str:
 
 def typelink(entity):
   url_template = './python/sm_aicli/types.py#L%L'
-  # url_template = 'https://github.com/sergei-mironov/aicli/blob/v2.0.0/python/sm_aicli/types.py#%L'
   file_name = './python/sm_aicli/types.py'
   url = class_url(url_template, file_name, entity)
   return f"[{entity}]({url})"
@@ -251,6 +250,23 @@ print()
 [Stream](./python/sm_aicli/types.py#L75)
 <!--noresult-->
 
+<!--
+``` python
+%%bash
+docpic.py '80%' <<"EOF"
+\begin{tikzcd}[column sep=large, row sep=large]
+\texttt{ModelName} \arrow[dashed, ->]{r} & \texttt{ActorName} \arrow[dashed, ->]{r} \arrow[dashed, ->]{d} & \texttt{Actor} \arrow[dashed, ->]{r} & \texttt{ActorState} \arrow[dashed, ->]{d} \\
+\texttt{UserName} \arrow[dashed, ->]{r} & \texttt{Utterance} \arrow[dashed, ->]{r} \arrow[dashed, ->]{d} & \texttt{Conversation} & \texttt{ActorView} \\
+\texttt{Stream} \arrow[dashed, ->]{r} & \texttt{Contents} \\
+\texttt{Modality} \arrow[dashed, ->, bend left=30]{uuu}
+\end{tikzcd}
+EOF
+```
+-->
+
+<!--result-->
+<img src="doc/be390b22ce.svg" width="80%" />
+<!--noresult-->
 
 Vim integration
 ---------------

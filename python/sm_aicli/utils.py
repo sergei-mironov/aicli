@@ -6,7 +6,9 @@ from glob import glob
 from sys import stderr, platform
 from collections import OrderedDict
 from subprocess import check_output, DEVNULL
-from os import environ
+from os import environ, makedirs, system
+from hashlib import sha256
+from textwrap import dedent
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
                     Stream)
@@ -159,7 +161,7 @@ def cont2strm(c:str|bytes|Stream, allow_bytes=True) -> Stream:
     else:
       s = Stream(["<binary chunk>"])
   elif isinstance(c, Stream):
-    s = c
+    s = Stream([c.recording]) if c.recording is not None else c
   else:
     assert False, f"Invalid content chunk type {type(c)}"
   return s
@@ -172,19 +174,6 @@ def cont2str(cs:Contents, allow_bytes=True)->str|bytes:
     for token in cont2strm(c, allow_bytes=allow_bytes).gen():
       acc = token if acc is None else (acc + token)
   return acc or ''
-
-# def cont2strbyte(cs:Contents, allow_bytes=True)->Iterable[str|bytes]:
-#   for c in cs:
-#     if isinstance(c, str):
-#       yield c
-#     elif isinstance(c, bytes):
-#       if allow_bytes:
-#         yield c
-#       else:
-#         yield "<binary chunk>"
-#     elif callable(c):
-#       yield from cont2strbyte(c)
-
 
 def firstfile(paths) -> str|None:
   for p in paths:

@@ -6,7 +6,8 @@
 let
   local = rec {
 
-    inherit (pkgs) cmake fmt shaderc vulkan-headers vulkan-loader wayland pkg-config expect;
+    inherit (pkgs) cmake fmt shaderc vulkan-headers vulkan-loader wayland
+                   pkg-config expect fim pdf2svg;
     inherit (pkgs.lib) fileContents;
 
     python = pkgs.python3;
@@ -128,6 +129,16 @@ let
 
     python-aicli = aicli python.pkgs;
 
+    texlive-dev =
+      (let
+        texlive = pkgs.texlive;
+      in
+        texlive.combine {
+          scheme-medium = texlive.scheme-medium;
+          inherit (texlive) pgfopts pgf tikz-cd tikzsymbols standalone;
+        }
+      );
+
     shell = pkgs.mkShell {
       name = "shell";
       buildInputs = [
@@ -140,6 +151,9 @@ let
         pkg-config
         python-dev
         expect
+        fim
+        texlive-dev
+        pdf2svg
         # litrepl.litrepl-release
       ];
 
