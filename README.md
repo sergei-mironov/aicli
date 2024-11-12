@@ -238,14 +238,17 @@ def typelink(entity):
   url = class_url(url_template, file_name, entity)
   return f"[{entity}]({url})"
 
-print(' | '.join([typelink(x) for x in ["Utterance", "Actor", "Conversation", "Intention"]]))
+print(' | '.join([typelink(x) for x in [
+  "Actor", "Conversation", "Utterance", "Intention", "Stream"]
+]))
 print()
 ```
 -->
 
 <!--result-->
-[Utterance](./python/sm_aicli/types.py#L108) | [Actor](./python/sm_aicli/types.py#L28) |
-[Conversation](./python/sm_aicli/types.py#L6) | [Intention](./python/sm_aicli/types.py#L59)
+[Actor](./python/sm_aicli/types.py#L28) | [Conversation](./python/sm_aicli/types.py#L6) |
+[Utterance](./python/sm_aicli/types.py#L108) | [Intention](./python/sm_aicli/types.py#L59) |
+[Stream](./python/sm_aicli/types.py#L75)
 <!--noresult-->
 
 
