@@ -218,31 +218,11 @@ Architecture
 In this project we try to keep the code base as small as possible. The main data types are defined
 as follows:
 
-<!--
-``` python
-def class_url(url_template, file_name, entity) -> str:
-  line_number = None
-  with open(file_name, 'r') as file:
-    for i, line in enumerate(file, start=1):
-      if f"class {entity}" in line.strip():
-        line_number = i
-        break
-  if line_number is None:
-    raise ValueError(f"Class '{entity}' not found in file '{file_name}'.")
-  return url_template.replace("%L", str(line_number))
-
-def typelink(entity):
-  url_template = './python/sm_aicli/types.py#L%L'
-  file_name = './python/sm_aicli/types.py'
-  url = class_url(url_template, file_name, entity)
-  return f"[{entity}]({url})"
-
-print(' | '.join([typelink(x) for x in [
-  "Actor", "Conversation", "Utterance", "Intention", "Stream"]
-]))
-print()
-```
--->
+<!--``` python
+%%bash
+mdlink.py --file ./python/sm_aicli/types.py \
+    Actor Conversation Utterance Intention Stream
+```-->
 
 <!--result-->
 [Actor](./python/sm_aicli/types.py#L28) | [Conversation](./python/sm_aicli/types.py#L6) |
@@ -250,8 +230,7 @@ print()
 [Stream](./python/sm_aicli/types.py#L75)
 <!--noresult-->
 
-<!--
-``` python
+<!--``` python
 %%bash
 docpic.py '80%' <<"EOF"
 \begin{tikzcd}[column sep=large, row sep=large]
@@ -261,8 +240,7 @@ docpic.py '80%' <<"EOF"
 \texttt{Modality} \arrow[dashed, ->, bend left=30]{uuu}
 \end{tikzcd}
 EOF
-```
--->
+```-->
 
 <!--result-->
 <img src="doc/be390b22ce.svg" width="80%" />
