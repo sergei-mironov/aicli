@@ -28,13 +28,13 @@ Install
 
 The following installation options are available:
 
-### Using Pip
+### Stable release, using Pip
 
 ``` sh
 $ pip install sm_aicli
 ```
 
-### Using Nix
+### Latest version, using Nix
 
 ``` sh
 $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
@@ -42,8 +42,7 @@ $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 $ nix profile install ".#python-aicli"
 ```
 
-Develop
--------
+### Development shell
 
 This project relies on Nix development infrastructure.
 
