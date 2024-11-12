@@ -212,6 +212,42 @@ Hello! I'm happy to help you. What's on your mind?^C
 I don't really have a personal name, but you can call me "Assistant"
 ```
 
+Architecture
+------------
+
+In this project we try to keep the code base as small as possible. The main data types are defined
+as follows:
+
+<!--
+``` python
+def class_url(url_template, file_name, entity) -> str:
+  line_number = None
+  with open(file_name, 'r') as file:
+    for i, line in enumerate(file, start=1):
+      if f"class {entity}" in line.strip():
+        line_number = i
+        break
+  if line_number is None:
+    raise ValueError(f"Class '{entity}' not found in file '{file_name}'.")
+  return url_template.replace("%L", str(line_number))
+
+def typelink(entity):
+  url_template = './python/sm_aicli/types.py#%L'
+  file_name = './python/sm_aicli/types.py'
+  url = class_url(url_template, file_name, entity)
+  return f"[{entity}]({url})"
+
+print(' | '.join([typelink(x) for x in ["Utterance", "Actor", "Conversation", "Intention"]]))
+print()
+```
+-->
+
+<!--result-->
+[Utterance](./python/sm_aicli/types.py#108) | [Actor](./python/sm_aicli/types.py#28) |
+[Conversation](./python/sm_aicli/types.py#6) | [Intention](./python/sm_aicli/types.py#59)
+<!--noresult-->
+
+
 Vim integration
 ---------------
 
