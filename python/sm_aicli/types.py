@@ -6,21 +6,27 @@ from enum import Enum
 class ConversationException(ValueError):
   pass
 
+# PathStr is a string holding a path to a file
+PathStr = str
+
 @dataclass(frozen=True)
 class ModelName:
+  """ Name of an AI model, containing a model provider name (such as `openai` or `gpt4all`) and a
+  model name or path to a file. """
   provider:str
-  model:str
+  model:str|PathStr
 
   def repr(self)->str:
     return f"{self.provider}:{self.model}"
 
 @dataclass(frozen=True)
 class UserName:
+  """ A tag representing a user-facing actor """
   pass
 
 @dataclass
 class ActorOptions:
-  """ Model options """
+  """ Structure encoding all possible options an actor might accept. """
   verbose:int=0
   apikey:str|None = None
   temperature:float|None = None
@@ -32,12 +38,12 @@ class ActorOptions:
   def init():
     return ActorOptions()
 
-PathStr = str
-
+# Actor name is either an AI model name or a tag representing a user actor.
 ActorName = ModelName | UserName
 
 @dataclass
 class ActorView:
+  """ Serializable subset of actor options """
   options: dict[ActorName, ActorOptions]
 
   @staticmethod
@@ -50,12 +56,14 @@ class Modality(Enum):
 
 @dataclass
 class Intention:
-  actor_next: ActorName|None
-  actor_updates: ActorView|None
-  exit_flag:bool
-  reset_flag:bool
-  dbg_flag:bool
-  modality:Modality=Modality.Text
+  """ Intention encodes actions that actors might want to perform in addition to saying an
+  utterance """
+  actor_next: ActorName|None      # Select next actor
+  actor_updates: ActorView|None   # Update the list of actors
+  exit_flag:bool                  # Exit the application
+  reset_flag:bool                 # Reset the conversation
+  dbg_flag:bool                   # Run the Python debugger
+  modality:Modality=Modality.Text # Ask for a non-text response
 
   @staticmethod
   def init(actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False,
@@ -64,14 +72,18 @@ class Intention:
                          modality=modality)
 
 class Stream:
-  def __init__(self, generator, binary=False, suggested_fname:str|None=None):
-    self.generator = generator
-    self.stop = False
-    self.recording = None
-    self.binary = binary
-    self.suggested_fname = suggested_fname
+  """ Stream represents a promise to fetch the content from a remote source of some kind. The
+  convention is to call gen() only once for every stream. The returned tokens are also stored in the
+  `recording` array. All tokens must be of a same type (str or bytes). """
+  def __init__(self, generator, binary:bool=False, suggested_fname:str|None=None):
+    self.generator = generator    # Descendant-specific token generator
+    self.stop = False             # Interrupt flag
+    self.recording = None         # Stream recording
+    self.binary = binary          # Type of content (False => str; True => bytes)
+    self.suggested_fname = suggested_fname # Suggested filename with extension
 
   def gen(self):
+    """ Iterate over tokens. Should be called once in the object's lifetime. """
     self.stop = False
     for ch in self.generator:
       if self.stop:
@@ -83,12 +95,18 @@ class Stream:
         self.recording += ch
 
   def interrupt(self):
+    """ Send a message that no more tokens are going to be fetched from this stream. """
     self.stop = True
 
+# Utterance content is a list of items, where item is either a string, an array of bytes (for
+# pictures), or a stream of thereof. The stream represents a promise to fetch the data from a remote
+# source of some kind.
 Contents = list[str|bytes|Stream]
 
 @dataclass
 class Utterance:
+  """ An abstraction over conversation utterances. An utterance has its owner (issuer), a target
+  actor, a contents, and an (non-verbal) intention. """
   actor_name: ActorName
   intention: Intention
   contents: Contents
@@ -104,7 +122,8 @@ UID = UtteranceId
 
 @dataclass
 class Conversation:
-  """ A conversation between a user and one or more AI models. """
+  """ A conversation actors, a chain of utterances. The convention is to either add new utterances
+  to the end of the list or reset the conversation to the initial (empty) state. """
   utterances:Utterances
 
   def reset(self):
@@ -116,15 +135,18 @@ class Conversation:
     return Conversation([])
 
 
-# Well-known [ {'role':'user'|'assistant', 'content':str} ]
+# A well-known JSON `[{'role':'user'|'assistant', 'content':str}]` format, accepted by both OpenAI
+# and GPT4All APIs.
 SAU = list[dict[str, str]]
 
 @dataclass
 class ActorState:
-  """ Non-serializable interpreter state. Allocated models, pending options, current model name."""
+  """ Actor state represent a set of non-serializable resources allocated by conversation
+  participants - actors."""
   actors: dict[ActorName, "Actor"]
 
   def get_view(self) -> ActorView:
+    """ For each actor, produce a serializable set of options. """
     return ActorView({n:deepcopy(a.get_options()) for n,a in self.actors.items()})
 
   @staticmethod
@@ -132,22 +154,27 @@ class ActorState:
     return ActorState({})
 
 class Actor:
-  """ Abstraction of actor """
+  """ A conversation participant, known by name. The descendants track actor resources such as
+  remote API authorization tokens or AI models themselves. """
   def __init__(self, name:ActorName, opt:ActorOptions):
     self.name = name
     self.opt = opt
 
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:
-    """ Return a token generator object, responding the message. """
+    """ Take a view on participants, and a conversation object, produce a new Utterance to be added
+    to the conversation. Actors are allowed to cache the conversation in some actor-specific way.
+    """
     raise NotImplementedError()
 
   def reset(self):
-    """ Resets cached conversation """
+    """ Clear cached conversation data. """
     raise NotImplementedError()
 
   def set_options(self, opt:ActorOptions)->None:
+    """ Set new actor options """
     self.opt = opt
 
   def get_options(self)->ActorOptions:
+    """ Get actor's options """
     return self.opt
 
