@@ -26,7 +26,8 @@ class UserName:
 
 @dataclass
 class ActorOptions:
-  """ Structure encoding all possible options an actor might accept. """
+  """ Structure encoding all supported options an actor might accept. Unused options are to be
+  ignored with a warning. """
   verbose:int=0
   apikey:str|None = None
   temperature:float|None = None

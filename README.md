@@ -11,10 +11,12 @@ Contents
 <!-- vim-markdown-toc GFM -->
 
 * [Install](#install)
-    * [Pip](#pip)
-    * [Nix](#nix)
-    * [Development shell](#nix-development-shell)
+    * [Using Pip](#using-pip)
+    * [Using Nix](#using-nix)
+* [Develop](#develop)
 * [Usage](#usage)
+    * [Command-line reference](#command-line-reference)
+    * [Grammar reference](#grammar-reference)
     * [Example session](#example-session)
 * [Vim integration](#vim-integration)
 * [Roadmap](#roadmap)
@@ -26,13 +28,13 @@ Install
 
 The following installation options are available:
 
-### Pip
+### Using Pip
 
 ``` sh
 $ pip install sm_aicli
 ```
 
-### Nix
+### Using Nix
 
 ``` sh
 $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
@@ -40,7 +42,10 @@ $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 $ nix profile install ".#python-aicli"
 ```
 
-### Development shell
+Develop
+-------
+
+This project relies on Nix development infrastructure.
 
 ``` sh
 $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
@@ -49,6 +54,8 @@ $ nix develop
 
 Usage
 -----
+
+### Command-line reference
 
 <!--
 ``` python
@@ -102,7 +109,9 @@ options:
                         arguments
 ```
 
-The console accepts the language defined by the following grammar:
+### Grammar reference
+
+The console accepts a language defined by the following grammar:
 
 <!--
 ``` python
@@ -194,6 +203,7 @@ interpreted as commands.
 ``` sh
 $ aicli
 ```
+
 ``` txt
 INFO: Type /help or a question followed by the /ask command (or by pressing `C-k` key).
 >>> /model "./_model/Meta-Llama-3-8B-Instruct.Q4_0.gguf"
@@ -216,10 +226,10 @@ Roadmap
 
 Some thoughts on adding image support:
 
-- App must work with different model providers at once.
-- App must provide a common conversation schema and translate it to model provider languages, rather
-  than stick to provider's conversation schemas.
-- App must allow to work with different models even for same modality. A good feature would be to
-  re-ask different models to generate response for the given conversation. So, basically, we need a
+- [x] App must work with different model providers at once.
+- [x] App must provide a common conversation schema and translate it to model provider languages,
+  rather than stick to provider's conversation schemas.
+- [ ] App must allow to work with different models even for the same modality. A good feature would
+  be to re-ask different models to generate response candidate for a given conversation tip. So, a
   conversation editor.
 
