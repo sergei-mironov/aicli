@@ -232,8 +232,8 @@ def class_url(url_template, file_name, entity) -> str:
   return url_template.replace("%L", str(line_number))
 
 def typelink(entity):
-  # url_template = './python/sm_aicli/types.py#%L'
-  url_template = 'https://github.com/sergei-mironov/aicli/blob/v2.0.0/python/sm_aicli/types.py#%L'
+  url_template = './python/sm_aicli/types.py#L%L'
+  # url_template = 'https://github.com/sergei-mironov/aicli/blob/v2.0.0/python/sm_aicli/types.py#%L'
   file_name = './python/sm_aicli/types.py'
   url = class_url(url_template, file_name, entity)
   return f"[{entity}]({url})"
@@ -244,10 +244,8 @@ print()
 -->
 
 <!--result-->
-[Utterance](https://github.com/sergei-mironov/aicli/blob/v2.0.0/python/sm_aicli/types.py#108) |
-[Actor](https://github.com/sergei-mironov/aicli/blob/v2.0.0/python/sm_aicli/types.py#28) |
-[Conversation](https://github.com/sergei-mironov/aicli/blob/v2.0.0/python/sm_aicli/types.py#6) |
-[Intention](https://github.com/sergei-mironov/aicli/blob/v2.0.0/python/sm_aicli/types.py#59)
+[Utterance](./python/sm_aicli/types.py#L108) | [Actor](./python/sm_aicli/types.py#L28) |
+[Conversation](./python/sm_aicli/types.py#L6) | [Intention](./python/sm_aicli/types.py#L59)
 <!--noresult-->
 
 
