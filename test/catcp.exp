@@ -14,7 +14,7 @@ expect {
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
-  "123\r" { send "/clear \"in\"abc/cp IN A/cat A\r" }
+  "123\r" { send "/clear \"in\"abc/cp IN \"A\"/cat A\r" }
   timeout { puts "Error: Did not receive input 123"; exit 1 }
 }
 expect {

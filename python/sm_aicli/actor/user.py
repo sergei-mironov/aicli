@@ -1,5 +1,5 @@
 from gnureadline import write_history_file
-from lark import Lark
+from lark import Lark, Token
 from lark.exceptions import LarkError
 from lark.visitors import Interpreter
 from dataclasses import dataclass
@@ -66,10 +66,10 @@ GRAMMAR = fr"""
            /\{CMD_MODEL}/ / +/ model_ref | \
            /\{CMD_READ}/ / +/ /model/ / +/ /prompt/ | \
            /\{CMD_SET}/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
-                                       (/t/ | /temp/) / +/ (float | DEF) | \
-                                       (/nt/ | /nthreads/) / +/ (number | DEF) | \
+                                       (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                       (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                        /imgsz/ / +/ string | \
-                                       /verbosity/ / +/ (number | DEF)) | \
+                                       /verbosity/ / +/ (NUMBER | DEF)) | \
                              (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
                                                          /rawbin/ / +/ bool)) | \
            /\{CMD_CP}/ / +/ ref / +/ ref | \
@@ -101,9 +101,9 @@ GRAMMAR = fr"""
        /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
 
   # bufname: BUFNAME
-  number: NUMBER
+  # number: NUMBER
   bool: BOOL
-  float: FLOAT
+  # float: FLOAT
 
   # Base token types
   ESCAPE.5: /\\./
@@ -123,10 +123,12 @@ PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
 no_model_is_active = "No model is active, use /model first"
 
-def as_float(val:str, default:float|None=None)->float|None:
-  return float(val) if val not in {None,"def","default"} else default
-def as_int(val:str, default:int|None=None)->int|None:
-  return int(val) if val not in {None,"def","default"} else default
+def as_float(val:Token, default:float|None=None)->float|None:
+  assert val.type == 'FLOAT', val
+  return float(val) if str(val) not in {"def","default"} else default
+def as_int(val:Token, default:int|None=None)->int|None:
+  assert val.type == 'NUMBER', val
+  return int(val) if str(val) not in {"def","default"} else default
 
 
 def ref_write(ref, val:str|bytes, buffers, append:bool=False):
@@ -208,9 +210,8 @@ class Repl(Interpreter):
   # def ref_schema(self, tree):
   #   return str(tree.children[0])
   def ref(self, tree):
-    # ST()
     val = self.visit_children(tree)
-    return tuple(val) if len(val)==2 else (self.ref_schema_default,val[0])
+    return (str(val[0]), val[1][0]) if len(val)==2 else (self.ref_schema_default, val[0][0])
   def mp_gpt4all(self, tree):
     return "gpt4all"
   def mp_openai(self, tree):
@@ -279,7 +280,7 @@ class Repl(Interpreter):
     elif command == CMD_SET:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
-      section, pname, pval = args[2], args[4], args[6][0]
+      section, pname, pval = args[2], args[4], args[6]
       if section == 'model':
         self._check_next_actor()
         if pname == 'apikey':
@@ -329,7 +330,7 @@ class Repl(Interpreter):
     elif command == CMD_CLEAR:
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
-      (schema, name) = args[2][0]
+      (schema, name) = args[2]
       if schema != 'buffer':
         raise ValueError(f'Required reference to buffer, not {schema}')
       info(f"Clearing buffer \"{name.lower()}\"")
@@ -357,20 +358,20 @@ class Repl(Interpreter):
       append = (command == CMD_APPEND)
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
-      sref, dref = args[2][0], args[4][0]
+      sref, dref = args[2], args[4]
       val = ref_read(sref, self.buffers)
       ref_write(dref, val, self.buffers, append=append)
       info(f"{'Appended' if append else 'Copied'} from {sref} to {dref}")
     elif command == CMD_CAT:
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
-      ref = args[2][0]
+      ref = args[2]
       val = ref_read(ref, self.buffers)
       print(val)
     elif command == CMD_SHELL:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
-      ref = args[2][0]
+      ref = args[2]
       val = ref_read(ref, self.buffers)
       retcode = sys2exitcode(system(val))
       info(f"Shell command '{val}' exited with code {retcode}")

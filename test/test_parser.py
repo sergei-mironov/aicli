@@ -67,7 +67,7 @@ def test_parser():
 
         nthreads
 
-        number       3
+        3
   ''')
   _assert('/set model temp 3.4', r'''
     start
@@ -78,7 +78,7 @@ def test_parser():
 
         temp
 
-        float       3.4
+        3.4
   ''')
   _assert('/set model temp default', r'''
     start
@@ -105,7 +105,7 @@ def test_apikey():
 
         ref
           string
-            string_quoted       keydata
+            string_value       keydata
   ''')
   _assert('/set model apikey file:"key file"', r'''
     start
@@ -119,7 +119,7 @@ def test_apikey():
         ref
           file
           string
-            string_quoted       key file
+            string_value       key file
   ''')
   _assert('/set model apikey verbatim:keydata', r'''
     start
@@ -133,7 +133,7 @@ def test_apikey():
         ref
           verbatim
           string
-            string_unquoted       keydata
+            string_value       keydata
   ''')
 
 def test_model_1():
@@ -144,7 +144,7 @@ def test_model_1():
 
         model_ref
           string
-            string_quoted       aaa
+            string_value       aaa
   ''')
 
 def test_model_2():
@@ -156,7 +156,7 @@ def test_model_2():
         model_ref
           openai
           string
-            string_quoted       aaa bbb
+            string_value       aaa bbb
   ''')
 
 def test_ref_01():
@@ -167,7 +167,7 @@ def test_ref_01():
 
          ref
            string
-             string_unquoted       aaa
+             string_value       aaa
   ''')
 
 def test_ref_1():
@@ -178,7 +178,7 @@ def test_ref_1():
 
         ref
           string
-            string_quoted       aaa
+            string_value       aaa
   ''')
 
 def test_ref_2():
@@ -190,7 +190,7 @@ def test_ref_2():
         ref
           file
           string
-            string_unquoted       aaa
+            string_value       aaa
   ''')
 
 def test_ref_3():
@@ -202,7 +202,7 @@ def test_ref_3():
         ref
           verbatim
           string
-            string_unquoted       aaa
+            string_value       aaa
   ''')
 
 def test_ref_4():
@@ -214,7 +214,7 @@ def test_ref_4():
         ref
           buffer
           string
-            string_unquoted       aaa
+            string_value       aaa
   ''')
 
 def test_ref_5():
@@ -226,7 +226,7 @@ def test_ref_5():
         ref
           verbatim
           string
-            string_unquoted       aaa
+            string_value       aaa
   ''')
   _assert('/cat verbatim:aaa\n', r'''
     start
@@ -236,7 +236,7 @@ def test_ref_5():
         ref
           verbatim
           string
-            string_unquoted       aaa
+            string_value       aaa
       text
   ''')
 
@@ -250,7 +250,7 @@ def test_ref_6():
         ref
           file
           string
-            string_unquoted       aaa/cat
+            string_value       aaa/cat
       text        text
   ''')
 
@@ -263,7 +263,7 @@ def test_ref_7():
         ref
           file
           string
-            string_quoted       file with spaces
+            string_value       file with spaces
   ''')
 
 def test_ref_file():
@@ -278,7 +278,7 @@ def test_ref_file():
           ref
             buffer
             string
-              string_unquoted       a
+              string_value       a
           )
   ''')
 

@@ -6,7 +6,7 @@ set timeout 2
 spawn aicli --model=dummy:dummy
 
 expect {
-  ">>> " { send "/clear \"IN\"abc/cp IN A/clear \"IN\"123/append A \"IN\"321/cat IN\r" }
+  ">>> " { send "/clear \"IN\"abc/cp IN \"A\"/clear \"IN\"123/append A \"IN\"321/cat IN\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
