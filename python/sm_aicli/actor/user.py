@@ -33,6 +33,7 @@ CMD_SET = "/set"
 CMD_SHELL = "/shell"
 CMD_VERSION = "/version"
 CMD_CD = "/cd"
+CMD_PASTE = "/paste"
 
 SCHEMAS = ["buf", "buffer", "file", "bfile", "verbatim"]
 PROVIDERS = ["openai", "gpt4all", "dummy"]
@@ -58,6 +59,7 @@ GRAMMAR = fr"""
   # {CMD_EXIT}                     - Exit
   # {CMD_HELP}                     - Print help
   # {CMD_CD} REF                   - Change the current directory to the specified path
+  # {CMD_PASTE} BOOL               - Enable or disable paste mode
   command: /\{CMD_VERSION}/ | \
            /\{CMD_DBG}/ | \
            /\{CMD_RESET}/ | \
@@ -79,7 +81,8 @@ GRAMMAR = fr"""
            /\{CMD_CAT}/ / +/ ref | \
            /\{CMD_CLEAR}/ / +/ ref | \
            /\{CMD_SHELL}/ / +/ ref | \
-           /\{CMD_CD}/ / +/ ref
+           /\{CMD_CD}/ / +/ ref | \
+           /\{CMD_PASTE}/ / +/ BOOL
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
   string: "\"" string_quoted "\"" | string_unquoted
@@ -191,6 +194,7 @@ class Repl(Interpreter):
     self.rawbin = False
     self.ref_schema_default = "verbatim"
     self._reset()
+    self.paste_mode = False
 
   def _check_next_actor(self):
     if self.actor_next is None:
@@ -407,6 +411,15 @@ class Repl(Interpreter):
         raise ValueError(str(err)) from err
     elif command == CMD_VERSION:
       print(f"{VERSION}+g{REVISION[:7]}")
+    elif command == CMD_PASTE:
+      args = self.visit_children(tree)
+      paste_state = as_bool(args[2])
+      if paste_state:
+        info("Entering paste mode. Type '/paste off' to finish.")
+        self.paste_mode = True
+      else:
+        info("Exiting paste mode.")
+        self.paste_mode = False
     else:
       raise ValueError(f"Unknown command: {command}")
 
@@ -504,6 +517,13 @@ class UserActor(Actor):
               break
             else:
               self.stream = input(self.args.readline_prompt) + '\n'
+              if self.repl.paste_mode:
+                while True:
+                  line = input()
+                  if line.strip() == '/paste off':
+                    break
+                  self.repl.buffers[IN] += line + '\n'
+                self.stream = ' '.join(['/paste off'])
           tree = PARSER.parse(self.stream)
           dbg(tree, self)
           self.repl.visit(tree)
@@ -527,4 +547,3 @@ class UserActor(Actor):
 
   def get_options(self)->ActorOptions:
     return ActorOptions.init()
-
