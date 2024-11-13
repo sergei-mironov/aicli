@@ -83,11 +83,6 @@ GRAMMAR = fr"""
   string_quoted: STRING_QUOTED -> string_value
   string_unquoted: STRING_UNQUOTED -> string_value
 
-  # Model names have format "PROVIDER:NAME". Model names containing spaces must be double-quoted.
-  # model_string: "\"" model_quoted "\"" | model_raw
-  # model_quoted: (model_provider ":")? STRING_QUOTED -> model
-  # model_raw: (model_provider ":")? STRING_UNQUOTED -> model
-
   model_ref: (PROVIDER ":")? string
 
   # Modalities are either `img` or `text`.
@@ -100,10 +95,7 @@ GRAMMAR = fr"""
   ref: (SCHEMA ":")? string -> ref | \
        /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
 
-  # bufname: BUFNAME
-  # number: NUMBER
   bool: BOOL
-  # float: FLOAT
 
   # Base token types
   ESCAPE.5: /\\./
