@@ -158,6 +158,17 @@ def test_model_2():
           string
             string_value       aaa bbb
   ''')
+  _assert('/model openai:gpt-4o xxx', r'''
+    start
+      command
+        /model
+
+        model_ref
+          openai
+          string
+            string_value       gpt-4o
+      text        xxx
+  ''')
 
 def test_ref_01():
   _assert('/cat aaa', r'''
