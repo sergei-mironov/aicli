@@ -185,6 +185,10 @@ def ref_quote(ref, prefixes):
 
 def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
+
+  if args.readline_history:
+    args.readline_history = abspath(expanduser(args.readline_history))
+
   args.help = get_help_string(ARG_PARSER)
   if args.revision or args.version:
     if args.revision:
@@ -277,4 +281,3 @@ def main(cmdline=None):
       err(e)
       current_actor = UserName()
       current_modality = Modality.Text
-
