@@ -71,7 +71,7 @@ GRAMMAR = fr"""
                                        /imgsz/ / +/ string | \
                                        /verbosity/ / +/ (NUMBER | DEF)) | \
                              (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
-                                                         /rawbin/ / +/ bool)) | \
+                                                         /rawbin/ / +/ BOOL)) | \
            /\{CMD_CP}/ / +/ ref / +/ ref | \
            /\{CMD_APPEND}/ / +/ ref / +/ ref | \
            /\{CMD_CAT}/ / +/ ref | \
@@ -94,8 +94,6 @@ GRAMMAR = fr"""
   # (`verbatim:ABC`).
   ref: (SCHEMA ":")? string -> ref | \
        /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
-
-  bool: BOOL
 
   # Base token types
   ESCAPE.5: /\\./
@@ -121,7 +119,14 @@ def as_float(val:Token, default:float|None=None)->float|None:
 def as_int(val:Token, default:int|None=None)->int|None:
   assert val.type == 'NUMBER', val
   return int(val) if str(val) not in {"def","default"} else default
-
+def as_bool(val:Token):
+  assert val.type == 'BOOL', val
+  if str(val) in ['true','yes','1']:
+    return True
+  elif str(val) in ['false','no','0']:
+    return False
+  else:
+    raise ValueError(f"Invalid boolean value {val}")
 
 def ref_write(ref, val:str|bytes, buffers, append:bool=False):
   schema, name = ref
@@ -199,11 +204,13 @@ class Repl(Interpreter):
     self.in_echo = 0
   def string_value(self, tree):
     return tree.children[0].value
-  # def ref_schema(self, tree):
-  #   return str(tree.children[0])
   def ref(self, tree):
     val = self.visit_children(tree)
     return (str(val[0]), val[1][0]) if len(val)==2 else (self.ref_schema_default, val[0][0])
+  def ref_file(self, tree):
+    args = self.visit_children(tree)
+    val = ref_read(args[2], self.buffers)
+    return ("file", val.strip())
   def mp_gpt4all(self, tree):
     return "gpt4all"
   def mp_openai(self, tree):
@@ -302,8 +309,9 @@ class Repl(Interpreter):
           info(f"Setting terminal expected modality to '{pval}'")
           self.modality = pval
         elif pname == 'rawbin':
-          info(f"Setting terminal raw binary mode to '{pval}'")
-          self.rawbin = pval
+          val = as_bool(pval)
+          info(f"Setting terminal raw binary mode to '{val}'")
+          self.rawbin = val
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
