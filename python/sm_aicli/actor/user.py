@@ -517,6 +517,8 @@ class UserActor(Actor):
               break
             else:
               self.stream = input(self.args.readline_prompt) + '\n'
+              # FIMXE: there is a problem here: interpreter eats the input first, and handles the
+              # paste mode after that. It should raise InterpreterPause instead.
               if self.repl.paste_mode:
                 while True:
                   line = input()
