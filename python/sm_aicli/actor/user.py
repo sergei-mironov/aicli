@@ -7,7 +7,7 @@ from typing import Any
 from copy import deepcopy, copy
 from sys import stdout, stderr
 from collections import defaultdict
-from os import system
+from os import system, chdir
 from os.path import expanduser
 
 from pdb import set_trace as ST
@@ -32,6 +32,7 @@ CMD_RESET = "/reset"
 CMD_SET = "/set"
 CMD_SHELL = "/shell"
 CMD_VERSION = "/version"
+CMD_CD = "/cd"
 
 SCHEMAS = ["buf", "buffer", "file", "bfile", "verbatim"]
 PROVIDERS = ["openai", "gpt4all", "dummy"]
@@ -56,6 +57,7 @@ GRAMMAR = fr"""
   # {CMD_ECHO}                     - Echo the following line to STDOUT
   # {CMD_EXIT}                     - Exit
   # {CMD_HELP}                     - Print help
+  # {CMD_CD} REF                   - Change the current directory to the specified path
   command: /\{CMD_VERSION}/ | \
            /\{CMD_DBG}/ | \
            /\{CMD_RESET}/ | \
@@ -76,7 +78,8 @@ GRAMMAR = fr"""
            /\{CMD_APPEND}/ / +/ ref / +/ ref | \
            /\{CMD_CAT}/ / +/ ref | \
            /\{CMD_CLEAR}/ / +/ ref | \
-           /\{CMD_SHELL}/ / +/ ref
+           /\{CMD_SHELL}/ / +/ ref | \
+           /\{CMD_CD}/ / +/ ref
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
   string: "\"" string_quoted "\"" | string_unquoted
@@ -116,9 +119,11 @@ no_model_is_active = "No model is active, use /model first"
 def as_float(val:Token, default:float|None=None)->float|None:
   assert val.type == 'FLOAT', val
   return float(val) if str(val) not in {"def","default"} else default
+
 def as_int(val:Token, default:int|None=None)->int|None:
   assert val.type == 'NUMBER', val
   return int(val) if str(val) not in {"def","default"} else default
+
 def as_bool(val:Token):
   assert val.type == 'BOOL', val
   if str(val) in ['true','yes','1']:
@@ -186,50 +191,65 @@ class Repl(Interpreter):
     self.rawbin = False
     self.ref_schema_default = "verbatim"
     self._reset()
+
   def _check_next_actor(self):
     if self.actor_next is None:
       raise RuntimeError(no_model_is_active)
+
   def _reset(self):
     self.in_echo = 0
     self.buffers[IN] = ""
     self.buffers[OUT] = ""
+
   def reset(self):
     old_message = self.buffers[IN]
     self._reset()
-    if len(old_message)>0:
+    if len(old_message) > 0:
       info("Message buffer is now empty")
+
   def _finish_echo(self):
     if self.in_echo:
       print()
     self.in_echo = 0
+
   def string_value(self, tree):
     return tree.children[0].value
+
   def ref(self, tree):
     val = self.visit_children(tree)
-    return (str(val[0]), val[1][0]) if len(val)==2 else (self.ref_schema_default, val[0][0])
+    return (str(val[0]), val[1][0]) if len(val) == 2 else (self.ref_schema_default, val[0][0])
+
   def ref_file(self, tree):
     args = self.visit_children(tree)
     val = ref_read(args[2], self.buffers)
     return ("file", val.strip())
+
   def mp_gpt4all(self, tree):
     return "gpt4all"
+
   def mp_openai(self, tree):
     return "openai"
+
   def mp_dummy(self, tree):
     return "dummy"
+
   def bool(self, tree):
     val = self.visit_children(tree)[0]
-    if val in ['true','yes','1']:
+    if val in ['true', 'yes', '1']:
       return [True]
-    elif val in ['false','no','0']:
+    elif val in ['false', 'no', '0']:
       return [False]
     else:
       raise ValueError(f"Invalid boolean value {val}")
+
   def model_ref(self, tree):
     val = self.visit_children(tree)
-    return (str(val[0]), val[1][0]) if len(val)==2 else (val[0][0],"default")
+    return (str(val[0]), val[1][0]) if len(val) == 2 else (val[0][0], "default")
+
   def modality_img(self, tree): return Modality.Image
+
   def modality_text(self, tree): return Modality.Text
+
   def command(self, tree):
     self._finish_echo()
     command = tree.children[0].value
@@ -238,7 +258,7 @@ class Repl(Interpreter):
       self.in_echo = 1
     elif command == CMD_ASK:
       try:
-        contents=[copy(self.buffers[IN])] if len(self.buffers[IN].strip())>0 else []
+        contents = [copy(self.buffers[IN])] if len(self.buffers[IN].strip()) > 0 else []
         val = self.visit_children(tree)
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
@@ -268,7 +288,7 @@ class Repl(Interpreter):
       )
     elif command == CMD_MODEL:
       res = self.visit_children(tree)
-      if len(res)>2:
+      if len(res) > 2:
         name = ModelName(*res[2])
         opt = opts.get(name, ActorOptions.init())
         info(f"Setting target actor to '{name.repr()}'")
@@ -283,15 +303,15 @@ class Repl(Interpreter):
       if section == 'model':
         self._check_next_actor()
         if pname == 'apikey':
-          if not isinstance(pval, tuple) or len(pval)!=2:
+          if not isinstance(pval, tuple) or len(pval) != 2:
             raise ValueError("Model API key should be formatted as `schema:value`")
           opts[self.actor_next].apikey = ref_read(pval, self.buffers)
           info(f"Setting model API key to the contents of '{pval[0]}:{pval[1]}'")
-        elif pname in ['t','temp']:
+        elif pname in ['t', 'temp']:
           val = as_float(pval)
           opts[self.actor_next].temperature = val
           info(f"Setting model temperature to '{val or 'default'}'")
-        elif pname in ['nt','nthreads']:
+        elif pname in ['nt', 'nthreads']:
           val = as_int(pval)
           opts[self.actor_next].num_threads = val
           info(f"Setting model number of threads to '{val or 'default'}'")
@@ -304,7 +324,7 @@ class Repl(Interpreter):
           info(f"Setting actor verbosity to '{val}'")
         else:
           raise ValueError(f"Unknown actor parameter '{pname}'")
-      elif section in ['term','terminal']:
+      elif section in ['term', 'terminal']:
         if pname == 'modality':
           info(f"Setting terminal expected modality to '{pval}'")
           self.modality = pval
@@ -334,7 +354,7 @@ class Repl(Interpreter):
       if schema != 'buffer':
         raise ValueError(f'Required reference to buffer, not {schema}')
       info(f"Clearing buffer \"{name.lower()}\"")
-      ref_write((schema,name), '', self.buffers, append=False)
+      ref_write((schema, name), '', self.buffers, append=False)
     elif command == CMD_RESET:
       info("Resetting conversation history and clearing message buffer")
       self.reset()
@@ -375,10 +395,21 @@ class Repl(Interpreter):
       val = ref_read(ref, self.buffers)
       retcode = sys2exitcode(system(val))
       info(f"Shell command '{val}' exited with code {retcode}")
+    elif command == CMD_CD:
+      self.ref_schema_default = "verbatim"
+      args = self.visit_children(tree)
+      ref = args[2]
+      path = ref_read(ref, self.buffers)
+      try:
+        chdir(path)
+        info(f"Changed current directory to '{path}'")
+      except Exception as err:
+        raise ValueError(str(err)) from err
     elif command == CMD_VERSION:
       print(f"{VERSION}+g{REVISION[:7]}")
     else:
       raise ValueError(f"Unknown command: {command}")
+
   def text(self, tree):
     text = tree.children[0].value
     if self.in_echo:
@@ -389,12 +420,14 @@ class Repl(Interpreter):
         print(text, end='')
     else:
       self.buffers[IN] += text
+
   def escape(self, tree):
     text = tree.children[0].value[1:]
     if self.in_echo:
       print(text, end='')
     else:
       self.buffers[IN] += text
+
   def visit(self, tree):
     self.in_echo = 0
     try:
@@ -410,12 +443,12 @@ class UserActor(Actor):
                name:ActorName,
                opt:ActorOptions,
                args:Any,
-               prefix_stream:str|None=None):
+               prefix_stream:str|None = None):
     super().__init__(name, opt)
     self.stream = prefix_stream if prefix_stream is not None else ''
     self.args = args
     self.repl = Repl(name, args)
-    self.batch_mode = len(args.filenames)>0
+    self.batch_mode = len(args.filenames) > 0
     self.reset()
 
   def _sync(self, av:ActorView, cnv:Conversation):
@@ -442,7 +475,7 @@ class UserActor(Actor):
               print(cmd, flush=True)
               self.stream = cmd + self.stream
             else:
-              self.repl.buffers[OUT]=None
+              self.repl.buffers[OUT] = None
               for token in s.gen():
                 if isinstance(token, bytes):
                   need_eol = True
@@ -470,7 +503,7 @@ class UserActor(Actor):
             if self.batch_mode and not self.args.keep_running:
               break
             else:
-              self.stream = input(self.args.readline_prompt)+'\n'
+              self.stream = input(self.args.readline_prompt) + '\n'
           tree = PARSER.parse(self.stream)
           dbg(tree, self)
           self.repl.visit(tree)
@@ -489,7 +522,7 @@ class UserActor(Actor):
       intention=Intention.init(exit_flag=True)
     )
 
-  def set_options(self, opt:ActorOptions)->None:
+  def set_options(self, opt:ActorOptions) -> None:
     pass
 
   def get_options(self)->ActorOptions:
