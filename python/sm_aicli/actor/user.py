@@ -33,10 +33,14 @@ CMD_SET = "/set"
 CMD_SHELL = "/shell"
 CMD_VERSION = "/version"
 
+SCHEMAS = ["buf", "buffer", "file", "bfile", "verbatim"]
+PROVIDERS = ["openai", "gpt4all", "dummy"]
+
 GRAMMAR = fr"""
   start: (command | escape | text)? (command | escape | text)*
+  text: TEXT
+  escape: ESCAPE
   # Commands start with `/`. Use `\/` to process next `/` as a regular text.
-  escape.3: /\\./
   # The commands are:
   # {CMD_APPEND} TYPE:FROM TYPE:TO - Append a file, a buffer or a constant to a file or to a buffer.
   # {CMD_CAT} TYPE:WHAT            - Print a file or buffer to STDOUT.
@@ -52,57 +56,66 @@ GRAMMAR = fr"""
   # {CMD_ECHO}                     - Echo the following line to STDOUT
   # {CMD_EXIT}                     - Exit
   # {CMD_HELP}                     - Print help
-  command.2: /\{CMD_VERSION}/ | \
-             /\{CMD_DBG}/ | \
-             /\{CMD_RESET}/ | \
-             /\{CMD_ECHO}/ | \
-             /\{CMD_ASK}/ | \
-             /\{CMD_HELP}/ | \
-             /\{CMD_EXIT}/ | \
-             /\{CMD_MODEL}/ / +/ model_string | \
-             /\{CMD_READ}/ / +/ /model/ / +/ /prompt/ | \
-             /\{CMD_SET}/ / +/ (/model/ / +/ (/apikey/ / +/ ref_string | \
-                                         (/t/ | /temp/) / +/ (float | def) | \
-                                         (/nt/ | /nthreads/) / +/ (number | def) | \
-                                         /imgsz/ / +/ string | \
-                                         /verbosity/ / +/ (number | def)) | \
-                           (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
-                                                       /rawbin/ / +/ bool)) | \
-             /\{CMD_CP}/ / +/ ref_string / +/ ref_string | \
-             /\{CMD_APPEND}/ / +/ ref_string / +/ ref_string | \
-             /\{CMD_CAT}/ / +/ ref_string | \
-             /\{CMD_CLEAR}/ / +/ ref_string | \
-             /\{CMD_SHELL}/ / +/ ref_string
+  command: /\{CMD_VERSION}/ | \
+           /\{CMD_DBG}/ | \
+           /\{CMD_RESET}/ | \
+           /\{CMD_ECHO}/ | \
+           /\{CMD_ASK}/ | \
+           /\{CMD_HELP}/ | \
+           /\{CMD_EXIT}/ | \
+           /\{CMD_MODEL}/ / +/ model_ref | \
+           /\{CMD_READ}/ / +/ /model/ / +/ /prompt/ | \
+           /\{CMD_SET}/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
+                                       (/t/ | /temp/) / +/ (float | DEF) | \
+                                       (/nt/ | /nthreads/) / +/ (number | DEF) | \
+                                       /imgsz/ / +/ string | \
+                                       /verbosity/ / +/ (number | DEF)) | \
+                             (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
+                                                         /rawbin/ / +/ bool)) | \
+           /\{CMD_CP}/ / +/ ref / +/ ref | \
+           /\{CMD_APPEND}/ / +/ ref / +/ ref | \
+           /\{CMD_CAT}/ / +/ ref | \
+           /\{CMD_CLEAR}/ / +/ ref | \
+           /\{CMD_SHELL}/ / +/ ref
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
-  string: "\"" string_quoted "\"" | string_raw
-  string_quoted: /[^"]+/ -> string_value
-  string_raw: /[^"][^ \/\n]*/ -> string_value
+  string: "\"" string_quoted "\"" | string_unquoted
+  string_quoted: STRING_QUOTED -> string_value
+  string_unquoted: STRING_UNQUOTED -> string_value
 
   # Model names have format "PROVIDER:NAME". Model names containing spaces must be double-quoted.
-  model_string: "\"" model_quoted "\"" | model_raw
-  model_quoted: (model_provider ":")? string_quoted -> model
-  model_raw: (model_provider ":")? string_raw -> model
-  model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
+  # model_string: "\"" model_quoted "\"" | model_raw
+  # model_quoted: (model_provider ":")? STRING_QUOTED -> model
+  # model_raw: (model_provider ":")? STRING_UNQUOTED -> model
+
+  model_ref: (PROVIDER ":")? string
 
   # Modalities are either `img` or `text`.
   modality_string: "\"" modality "\"" | modality
   modality: /img/ -> modality_img | /text/ -> modality_text
 
-  # References mention either a file (`file:filename`), a buffer (`buffer:a`) or a string constant
+  # References mention locations which could be either a file (`file:path/to/file`), a binary file
+  # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
   # (`verbatim:ABC`).
-  ref_string: "\"" ref_quoted "\"" | ref_raw
-  ref_quoted: (ref_schema ":")? string_quoted -> ref
-  ref_raw: (ref_schema ":")? string_raw -> ref
-  ref_schema: /verbatim/ | /file/ | /bfile/ | /buffer/ -> ref_schema
+  ref: (SCHEMA ":")? string -> ref | \
+       /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
+
+  # bufname: BUFNAME
+  number: NUMBER
+  bool: BOOL
+  float: FLOAT
 
   # Base token types
-  filename: string
-  number: /[0-9]+/
-  float: /[0-9]+\.[0-9]*/
-  def: "default"
-  bool: /true/|/false/|/yes/|/no/|/1/|/0/
-  text.0: /([^\/#](?!\/|\\))*[^\/#]/s
+  ESCAPE.5: /\\./
+  SCHEMA.4: {'|'.join([f"/{s}/" for s in SCHEMAS])}
+  PROVIDER.4: {'|'.join([f"/{p}/" for p in PROVIDERS])}
+  STRING_QUOTED.3: /[^"]+/
+  STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
+  TEXT.0: /([^\/#](?!\/|\\))*[^\/#]/s
+  NUMBER: /[0-9]+/
+  FLOAT: /[0-9]+\.[0-9]*/
+  DEF: "default"
+  BOOL: /true/|/false/|/yes/|/no/|/1/|/0/
   %ignore /#[^\n]*/
 """
 
@@ -192,9 +205,10 @@ class Repl(Interpreter):
     self.in_echo = 0
   def string_value(self, tree):
     return tree.children[0].value
-  def ref_schema(self, tree):
-    return str(tree.children[0])
+  # def ref_schema(self, tree):
+  #   return str(tree.children[0])
   def ref(self, tree):
+    # ST()
     val = self.visit_children(tree)
     return tuple(val) if len(val)==2 else (self.ref_schema_default,val[0])
   def mp_gpt4all(self, tree):
@@ -211,9 +225,9 @@ class Repl(Interpreter):
       return [False]
     else:
       raise ValueError(f"Invalid boolean value {val}")
-  def model(self, tree):
+  def model_ref(self, tree):
     val = self.visit_children(tree)
-    return tuple(val) if len(val)==2 else (val[0],"default")
+    return (str(val[0]), val[1][0]) if len(val)==2 else (val[0][0],"default")
   def modality_img(self, tree): return Modality.Image
   def modality_text(self, tree): return Modality.Text
   def command(self, tree):
@@ -255,7 +269,7 @@ class Repl(Interpreter):
     elif command == CMD_MODEL:
       res = self.visit_children(tree)
       if len(res)>2:
-        name = ModelName(*res[2][0])
+        name = ModelName(*res[2])
         opt = opts.get(name, ActorOptions.init())
         info(f"Setting target actor to '{name.repr()}'")
         opts[name] = opt

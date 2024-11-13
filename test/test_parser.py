@@ -89,7 +89,7 @@ def test_parser():
 
         temp
 
-        def
+        default
   ''')
 
 
@@ -103,11 +103,11 @@ def test_apikey():
 
         apikey
 
-        ref_string
-          ref
-            string_value       keydata
+        ref
+          string
+            string_quoted       keydata
   ''')
-  _assert('/set model apikey "file:keyfile"', r'''
+  _assert('/set model apikey file:"key file"', r'''
     start
       command
         /set
@@ -116,12 +116,12 @@ def test_apikey():
 
         apikey
 
-        ref_string
-          ref
-            ref_schema       file
-            string_value       keyfile
+        ref
+          file
+          string
+            string_quoted       key file
   ''')
-  _assert('/set model apikey "verbatim:keydata"', r'''
+  _assert('/set model apikey verbatim:keydata', r'''
     start
       command
         /set
@@ -130,95 +130,159 @@ def test_apikey():
 
         apikey
 
-        ref_string
-          ref
-            ref_schema       verbatim
-            string_value       keydata
+        ref
+          verbatim
+          string
+            string_unquoted       keydata
   ''')
 
-def test_model():
+def test_model_1():
   _assert('/model "aaa"', r'''
-   start
-     command
-       /model
+    start
+      command
+        /model
 
-       model_string
-         model
-           string_value       aaa
+        model_ref
+          string
+            string_quoted       aaa
   ''')
 
+def test_model_2():
+  _assert('/model openai:"aaa bbb"', r'''
+    start
+      command
+        /model
 
-def test_ref():
+        model_ref
+          openai
+          string
+            string_quoted       aaa bbb
+  ''')
+
+def test_ref_01():
+  _assert('/cat aaa', r'''
+     start
+       command
+         /cat
+
+         ref
+           string
+             string_unquoted       aaa
+  ''')
+
+def test_ref_1():
   _assert('/cat "aaa"', r'''
     start
       command
         /cat
 
-        ref_string
-          ref
-            string_value       aaa
+        ref
+          string
+            string_quoted       aaa
   ''')
 
-  _assert('/cat "file:aaa"', r'''
+def test_ref_2():
+  _assert('/cat file:aaa', r'''
     start
       command
         /cat
 
-        ref_string
-          ref
-            ref_schema       file
-            string_value       aaa
+        ref
+          file
+          string
+            string_unquoted       aaa
   ''')
 
-  _assert('/cat "verbatim:aaa"', r'''
+def test_ref_3():
+  _assert('/cat verbatim:aaa', r'''
     start
       command
         /cat
 
-        ref_string
-          ref
-            ref_schema       verbatim
-            string_value       aaa
+        ref
+          verbatim
+          string
+            string_unquoted       aaa
   ''')
 
-  _assert('/cat "buffer:aaa"', r'''
+def test_ref_4():
+  _assert('/cat buffer:aaa', r'''
     start
       command
         /cat
 
-        ref_string
-          ref
-            ref_schema       buffer
-            string_value       aaa
+        ref
+          buffer
+          string
+            string_unquoted       aaa
   ''')
 
-  _assert('/cat aaa\n', r'''
+def test_ref_5():
+  _assert('/cat verbatim:aaa', r'''
     start
       command
         /cat
 
-        ref_string
-          ref
-            string_value       aaa
+        ref
+          verbatim
+          string
+            string_unquoted       aaa
+  ''')
+  _assert('/cat verbatim:aaa\n', r'''
+    start
+      command
+        /cat
+
+        ref
+          verbatim
+          string
+            string_unquoted       aaa
       text
   ''')
-  _assert('/cat aaa/cat bbb\n', r'''
+
+def test_ref_6():
+  """ Here the `aaa/cat` is parsed as a file name and the `verbatim:bbb` is parsed as text """
+  _assert('/cat file:aaa/cat text', r'''
     start
       command
         /cat
 
-        ref_string
-          ref
-            string_value       aaa
+        ref
+          file
+          string
+            string_unquoted       aaa/cat
+      text        text
+  ''')
+
+def test_ref_7():
+  _assert('/cat file:"file with spaces"', r'''
+    start
       command
         /cat
 
-        ref_string
-          ref
-            string_value       bbb
-      text
+        ref
+          file
+          string
+            string_quoted       file with spaces
   ''')
 
+def test_ref_file():
+  _assert('/cat file(buffer:a)', r'''
+    start
+      command
+        /cat
+
+        ref_file
+          file
+          (
+          ref
+            buffer
+            string
+              string_unquoted       a
+          )
+  ''')
+
+def test_ref_8():
   with raises(LarkError) as e:
     # No closing dquote
     PARSER.parse('/cat "aaa')

@@ -177,6 +177,12 @@ def reload_history(args):
   else:
     info(f"History file is not used")
 
+def ref_quote(ref, prefixes):
+  for p in [(p+':') for p in prefixes]:
+    if ref.startswith(p) and (' ' in ref[len(p):]):
+      return f"{schema}\"{ref[len(p):]}\""
+  return ref
+
 def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
   args.help = get_help_string(ARG_PARSER)
@@ -195,9 +201,9 @@ def main(cmdline=None):
   else:
     info("Skipping configuration files")
   if args.model is not None:
-    header.write(f"/model {ensure_quoted(args.model)}\n")
+    header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
   if args.model_apikey is not None:
-    header.write(f"/set model apikey {ensure_quoted(args.model_apikey)}\n")
+    header.write(f"/set model apikey {ref_quote(args.model_apikey, SCHEMAS)}\n")
 
   for file in args.filenames:
     with open(file) as f:
