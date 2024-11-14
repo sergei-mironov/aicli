@@ -500,37 +500,37 @@ model = { " openai:":{"gpt-4o":{}}, " gpt4all:":{"FILE":{}}, " dummy":{"dummy":{
 vbool = { " yes": {}, " no": {}, " on": {}, " off": {} }
 
 commands = {
-  "/version": {},
-  "/dbg":     {},
-  "/reset":   {},
-  "/echo":    {},
-  "/ask":     {},
-  "/help":    {},
-  "/exit":    {},
-  "/paste":   vbool,
-  "/model":   model,
-  "/read":    {},
-  "/set":     {
+  CMD_VERSION: {},
+  CMD_DBG:     {},
+  CMD_RESET:   {},
+  CMD_ECHO:    {},
+  CMD_ASK:     {},
+  CMD_HELP:    {},
+  CMD_EXIT:    {},
+  CMD_PASTE:   vbool,
+  CMD_MODEL:   model,
+  CMD_READ:    {},
+  CMD_SET: {
     " model": {
       " apikey":    ref,
-      " imgsz":     { " string": {} },
-      " temp":      { " FLOAT":  {}, " default": {} },
-      " nt":        { " NUMBER": {}, " default": {} },
-      " verbosity": { " NUMBER": {}, " default": {} }
+      " imgsz":     {" string": {}},
+      " temp":      {" FLOAT":  {}, " default": {}},
+      " nt":        {" NUMBER": {}, " default": {}},
+      " verbosity": {" NUMBER": {}, " default": {}}
     },
-    " term":  {
+    " term": {
       " modality": {
         " modality_string": {}
       },
-      " rawbin":   vbool
+      " rawbin": vbool
     }
   },
-  "/cp":      ref_ref,
-  "/append":  ref_ref,
-  "/cat":     ref,
-  "/clear":   ref,
-  "/shell":   ref,
-  "/cd":      ref
+  CMD_CP:      ref_ref,
+  CMD_APPEND:  ref_ref,
+  CMD_CAT:     ref,
+  CMD_CLEAR:   ref,
+  CMD_SHELL:   ref,
+  CMD_CD:      ref
 }
 
 class UserActor(Actor):
