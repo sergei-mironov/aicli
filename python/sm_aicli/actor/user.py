@@ -75,7 +75,7 @@ GRAMMAR = fr"""
                                        (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                        /imgsz/ / +/ string | \
                                        /verbosity/ / +/ (NUMBER | DEF)) | \
-                             (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
+                             (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
                                                          /rawbin/ / +/ BOOL)) | \
            /\{CMD_CP}/ / +/ ref / +/ ref | \
            /\{CMD_APPEND}/ / +/ ref / +/ ref | \
@@ -91,10 +91,6 @@ GRAMMAR = fr"""
   string_unquoted: STRING_UNQUOTED -> string_value
 
   model_ref: (PROVIDER ":")? string
-
-  # Modalities are either `img` or `text`.
-  modality_string: "\"" modality "\"" | modality
-  modality: /img/ -> modality_img | /text/ -> modality_text
 
   # References mention locations which could be either a file (`file:path/to/file`), a binary file
   # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
@@ -113,6 +109,7 @@ GRAMMAR = fr"""
   FLOAT: /[0-9]+\.[0-9]*/
   DEF: "default"
   BOOL: /true/|/false/|/yes/|/no/|/1/|/0/|/on/|/off/
+  MODALITY: /img/ | /text/
   %ignore /#[^\n]*/
 """
 
@@ -258,10 +255,6 @@ class Repl(Interpreter):
     val = self.visit_children(tree)
     return (str(val[0]), val[1][0]) if len(val) == 2 else (val[0][0], "default")
 
-  def modality_img(self, tree): return Modality.Image
-
-  def modality_text(self, tree): return Modality.Text
-
   def command(self, tree):
     self._finish_echo()
     command = tree.children[0].value
@@ -328,8 +321,8 @@ class Repl(Interpreter):
           opts[self.actor_next].num_threads = val
           info(f"Setting model number of threads to '{val or 'default'}'")
         elif pname == 'imgsz':
-          opts[self.actor_next].imgsz = pval
-          info(f"Setting model image size to '{pval}'")
+          opts[self.actor_next].imgsz = pval[0]
+          info(f"Setting model image size to '{pval[0]}'")
         elif pname == 'verbosity':
           val = as_int(pval)
           opts[self.actor_next].verbose = val
@@ -338,8 +331,14 @@ class Repl(Interpreter):
           raise ValueError(f"Unknown actor parameter '{pname}'")
       elif section in ['term', 'terminal']:
         if pname == 'modality':
-          info(f"Setting terminal expected modality to '{pval}'")
-          self.modality = pval
+          if str(pval) == 'img':
+            mod = Modality.Image
+          elif str(pval) == 'text':
+            mod = Modality.Text
+          else:
+            raise ValueError(f"Invalid modality {pval}")
+          info(f"Setting terminal expected modality to '{mod}'")
+          self.modality = mod
         elif pname == 'rawbin':
           val = as_bool(pval)
           info(f"Setting terminal raw binary mode to '{val}'")
@@ -404,9 +403,9 @@ class Repl(Interpreter):
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
       ref = args[2]
-      val = ref_read(ref, self.buffers)
-      retcode = sys2exitcode(system(val))
-      info(f"Shell command '{val}' exited with code {retcode}")
+      cmd = ref_read(ref, self.buffers).strip()
+      retcode = sys2exitcode(system(cmd))
+      info(f"Shell command '{cmd}' exited with code {retcode}")
     elif command == CMD_CD:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
@@ -495,7 +494,7 @@ def _mkref(tail):
 ref = _mkref({})
 ref_ref = _mkref(ref)
 
-model = { " openai:":{"gpt-4o":{}}, " gpt4all:":{"FILE":{}}, " dummy":{"dummy":{}} }
+model = { " openai:":{"gpt-4o":{}, "dall-e-2":{}, "dall-e-3":{}}, " gpt4all:":{"FILE":{}}, " dummy":{"dummy":{}} }
 
 vbool = { " yes": {}, " no": {}, " on": {}, " off": {} }
 
@@ -659,6 +658,7 @@ class UserActor(Actor):
           def _handler(*args, **kwargs):
             s.interrupt()
           with with_sigint(_handler):
+            self.repl.buffers[OUT] = None
             if s.binary and not self.repl.rawbin:
               assert s.suggested_fname is not None, \
                 f"Suggested file name for binary stream must be set"
@@ -666,11 +666,12 @@ class UserActor(Actor):
                 for token in s.gen():
                   f.write(token)
               info(f"Binary file has been saved to '{s.suggested_fname}'")
-              cmd = f"{CMD_CP} \"bfile:{s.suggested_fname}\" \"buffer:out\""
-              print(cmd, flush=True)
-              self.stream = cmd + self.stream
+              # cmd = f"{CMD_CP} \"bfile:{s.suggested_fname}\" \"buffer:out\""
+              # print(cmd, flush=True)
+              # self.stream = cmd + self.stream
+              print(s.suggested_fname)
+              self.repl.buffers[OUT] = s.suggested_fname
             else:
-              self.repl.buffers[OUT] = None
               for token in s.gen():
                 if isinstance(token, bytes):
                   need_eol = True

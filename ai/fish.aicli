@@ -1,5 +1,5 @@
 #!/usr/bin/env -S aicli --rc=none
-/model "gpt4all:_model/Meta-Llama-3-8B-Instruct.Q4_0.gguf"
+/model gpt4all:"_model/Meta-Llama-3-8B-Instruct.Q4_0.gguf"
 Tell me about fishes. Please be very brief.
 /ask
 
