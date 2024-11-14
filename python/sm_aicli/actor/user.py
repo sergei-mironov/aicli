@@ -1,4 +1,5 @@
-from gnureadline import parse_and_bind, clear_history, read_history_file, write_history_file
+from gnureadline import (parse_and_bind, clear_history, read_history_file,
+                         write_history_file, set_completer)
 from lark import Lark, Token
 from lark.exceptions import LarkError
 from lark.visitors import Interpreter
@@ -110,7 +111,7 @@ GRAMMAR = fr"""
   NUMBER: /[0-9]+/
   FLOAT: /[0-9]+\.[0-9]*/
   DEF: "default"
-  BOOL: /true/|/false/|/yes/|/no/|/1/|/0/
+  BOOL: /true/|/false/|/yes/|/no/|/1/|/0/|/on/|/off/
   %ignore /#[^\n]*/
 """
 
@@ -128,9 +129,9 @@ def as_int(val:Token, default:int|None=None)->int|None:
 
 def as_bool(val:Token):
   assert val.type == 'BOOL', val
-  if str(val) in ['true','yes','1']:
+  if str(val) in ['true','yes','1','on']:
     return True
-  elif str(val) in ['false','no','0']:
+  elif str(val) in ['false','no','0','off']:
     return False
   else:
     raise ValueError(f"Invalid boolean value {val}")
@@ -419,13 +420,12 @@ class Repl(Interpreter):
       print(f"{VERSION}+g{REVISION[:7]}")
     elif command == CMD_PASTE:
       args = self.visit_children(tree)
-      paste_state = as_bool(args[2])
-      if paste_state:
+      val = as_bool(args[2])
+      if val:
         info("Entering paste mode. Type '/paste off' to finish.")
-        self.paste_mode = True
       else:
         info("Exiting paste mode.")
-        self.paste_mode = False
+      self.paste_mode = val
     else:
       raise ValueError(f"Unknown command: {command}")
 
@@ -484,6 +484,60 @@ def read_configs(args, rcnames:list[str])->list[str]:
             acc.append(line.strip())
   return acc
 
+commands = {
+  "/version": [],
+  "/dbg": [],
+  "/reset": [],
+  "/echo": [],
+  "/ask": [],
+  "/help": [],
+  "/exit": [],
+  "/paste": [],
+  "/model": ["model_ref"],
+  "/read": [],
+  "/set": [
+    "model apikey ref",
+    "model (t|temp) (FLOAT|DEF)",
+    "model (nt|nthreads) (NUMBER|DEF)",
+    "model imgsz string",
+    "model verbosity (NUMBER|DEF)",
+    "term modality modality_string",
+    "term rawbin BOOL"
+  ],
+  "/cp": ["ref ref"],
+  "/append": ["ref ref"],
+  "/cat": ["ref"],
+  "/clear": ["ref"],
+  "/shell": ["ref"],
+  "/cd": ["ref"]
+}
+
+def _complete(text:str, state:int):
+  """ `text` is the text to complete, `state` is an increasing number.
+  Function should return the completion text or None if no more completions
+  exist.
+  """
+  # All possible completions
+  matches = []
+  text = '/'+text
+
+  # Check if the text matches the start of any command
+  for cmd, patterns in commands.items():
+    if text.startswith(cmd):
+      remaining_text = text[len(cmd):].strip()
+      if not remaining_text:  # If no additional text, suggest patterns or just the command itself
+        if patterns:
+          matches.extend(f"{cmd} {p}" for p in patterns)
+        else:
+          matches.append(cmd)
+      else:
+        for pattern in patterns:
+          potential_completion = f"{cmd} {pattern}"
+          if potential_completion.startswith(text):
+            matches.append(potential_completion)
+    elif cmd.startswith(text):  # Suggest full command names if starting text matches
+      matches.append(cmd)
+  return matches[state][1:] if state < len(matches) else None
 
 class UserActor(Actor):
 
@@ -514,13 +568,7 @@ class UserActor(Actor):
         info(f"Reading {file}")
         header.write(f.read())
 
-    # def _complete(text, state):
-    #   if state>2:
-    #     return None
-    #   # print('text', f"'{text}'", 'state', state, file=stderr)
-    #   return text+'a'
-    #   # pass
-    # set_completer(_complete)
+    set_completer(_complete)
     parse_and_bind('tab: complete')
     parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
     hint = args.readline_key_send.replace('\\', '')
@@ -588,18 +636,17 @@ class UserActor(Actor):
               break
             else:
               self.stream = input(self.args.readline_prompt) + '\n'
-              # FIMXE: there is a problem here: interpreter eats the input first, and handles the
-              # paste mode after that. It should raise InterpreterPause instead.
-              if self.repl.paste_mode:
-                while True:
-                  line = input()
-                  if line.strip() == '/paste off':
-                    break
-                  self.repl.buffers[IN] += line + '\n'
-                self.stream = ' '.join(['/paste off'])
           tree = PARSER.parse(self.stream)
           dbg(tree, self)
           self.repl.visit(tree)
+          # FIMXE: there is a problem here: interpreter eats the input first, and handles the
+          # paste mode after that. It should raise InterpreterPause instead.
+          while self.repl.paste_mode:
+            line = input('P>')
+            if line.strip() == '/paste off':
+              self.repl.paste_mode = False
+            else:
+              self.repl.buffers[IN] += line + '\n'
           if self.args.readline_history:
             write_history_file(self.args.readline_history)
         except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
