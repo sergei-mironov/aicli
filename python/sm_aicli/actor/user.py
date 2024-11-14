@@ -8,8 +8,8 @@ from typing import Any
 from copy import copy
 from sys import stdout
 from collections import defaultdict
-from os import system, chdir, environ, getcwd
-from os.path import expanduser, abspath, sep, join, isfile
+from os import system, chdir, environ, getcwd, listdir
+from os.path import expanduser, abspath, sep, join, isfile, isdir, split
 from io import StringIO
 from pdb import set_trace
 
@@ -540,10 +540,24 @@ def _complete(text:str, state:int):
 
   while True:
     matched = None
-    for key in current_dict.keys():
-      if text.startswith(str(key)):
-        matched = str(key)
-        break
+    if current_dict == {'FILE':{}}:
+      path, partial = split(text)
+      if not path:
+        path = '.'
+      try:
+        entries = listdir(path)
+        file_dict = {entry: {} for entry in entries if isfile(join(path, entry))}
+        dir_dict = {entry: {'FILE': {}} for entry in entries if isdir(join(path, entry))}
+        current_dict = {**file_dict, **dir_dict}
+      except FileNotFoundError:
+        current_dict = {}
+      candidates = [join(path, k) for k in current_dict if k.startswith(partial)]
+      break
+    else:
+      for key in current_dict.keys():
+        if text.startswith(str(key)):
+          matched = str(key)
+          break
     if matched:
       text = text[len(matched):]
       prefix += matched
