@@ -89,28 +89,31 @@ COMPLETION = {
 SCHEMAS = [str(k).strip().replace(':','') for k in REF.keys()]
 PROVIDERS = [str(p).strip().replace(':','') for p in MODEL.keys()]
 
+CMDHELP = {
+  CMD_APPEND:  ("REF REF",       "Append a file, a buffer or a constant to a file or to a buffer."),
+  CMD_CAT:     ("REF",           "Print a file or buffer to STDOUT."),
+  CMD_CD:      ("REF",           "Change the current directory to the specified path"),
+  CMD_CLEAR:   ("",              "Clear the buffer named `ref_string`."),
+  CMD_CP:      ("REF REF",       "Copy a file, a buffer or a constant into a file or into a buffer."),
+  CMD_DBG:     ("",              "Run the Python debugger"),
+  CMD_ECHO:    ("",              "Echo the following line to STDOUT"),
+  CMD_EXIT:    ("",              "Exit"),
+  CMD_HELP:    ("",              "Print help"),
+  CMD_MODEL:   ("PROVIDER:NAME", "Set the current model to `model_string`. Allocate the model on first use."),
+  CMD_PASTE:   ("BOOL",          "Enable or disable paste mode."),
+  CMD_READ:    ("WHERE",         "Reads the content of the 'IN' buffer into a special variable."),
+  CMD_RESET:   ("",              "Reset the conversation and all the models"),
+  CMD_SET:     ("WHAT",          "Set terminal or model option, check the Grammar for a full list of options."),
+  CMD_SHELL:   ("REF",           "Run a system shell command."),
+  CMD_VERSION: ("",              "Print version"),
+}
+
 GRAMMAR = fr"""
   start: (command | escape | text)? (command | escape | text)*
   text: TEXT
   escape: ESCAPE
   # Commands start with `/`. Use `\/` to process next `/` as a regular text.
   # The commands are:
-  # {CMD_APPEND} TYPE:FROM TYPE:TO - Append a file, a buffer or a constant to a file or to a buffer.
-  # {CMD_CAT} TYPE:WHAT            - Print a file or buffer to STDOUT.
-  # {CMD_CP} TYPE:FROM TYPE:TO     - Copy a file, a buffer or a constant into a file or into a buffer.
-  # {CMD_MODEL} PROVIDER:NAME      - Set the current model to `model_string`. Allocate the model on first use.
-  # {CMD_READ} WHERE               - Reads the content of the 'IN' buffer into a special variable.
-  # {CMD_SET} WHAT                 - Set terminal or model option
-  # {CMD_SHELL} TYPE:FROM          - Run a shell command.
-  # {CMD_CLEAR}                    - Clear the buffer named `ref_string`.
-  # {CMD_RESET}                    - Reset the conversation and all the models
-  # {CMD_VERSION}                  - Print version
-  # {CMD_DBG}                      - Run the Python debugger
-  # {CMD_ECHO}                     - Echo the following line to STDOUT
-  # {CMD_EXIT}                     - Exit
-  # {CMD_HELP}                     - Print help
-  # {CMD_CD} REF                   - Change the current directory to the specified path
-  # {CMD_PASTE} BOOL               - Enable or disable paste mode
   command: /\{CMD_VERSION}/ | \
            /\{CMD_DBG}/ | \
            /\{CMD_RESET}/ | \
@@ -324,6 +327,8 @@ class Repl(Interpreter):
       print(self.args.help)
       print("Command-line grammar:")
       print(GRAMMAR)
+      print("Commands summary:\n")
+      print('\n'.join([f"  {c:12s} {h[0]:15s} {h[1]}" for c,h in CMDHELP.items()]))
     elif command == CMD_EXIT:
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,

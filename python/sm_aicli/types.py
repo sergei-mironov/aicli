@@ -52,6 +52,7 @@ class ActorView:
     return ActorView({})
 
 class Modality(Enum):
+  """ A primitive mime-type for content """
   Text = 0
   Image = 1
 
@@ -96,7 +97,7 @@ class Stream:
         self.recording += ch
 
   def interrupt(self):
-    """ Send a message that no more tokens are going to be fetched from this stream. """
+    """ Declare that no more tokens are going to be fetched from this stream. """
     self.stop = True
 
 # Utterance content is a list of items, where item is either a string, an array of bytes (for
