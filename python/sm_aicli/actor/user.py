@@ -36,8 +36,58 @@ CMD_VERSION = "/version"
 CMD_CD = "/cd"
 CMD_PASTE = "/paste"
 
-SCHEMAS = ["buf", "buffer", "file", "bfile", "verbatim"]
-PROVIDERS = ["openai", "gpt4all", "dummy"]
+def _mkref(tail):
+  return {
+    " verbatim:":{"STRING":tail},
+    " file:":{"FILE":tail},
+    " bfile:":{"FILE":tail},
+    " buffer:":{"BUFFER":tail}}
+
+REF = _mkref({})
+REF_REF = _mkref(REF)
+
+MODEL = { " openai:":{"gpt-4o":{}, "dall-e-2":{}, "dall-e-3":{}},
+          " gpt4all:":{"FILE":{}},
+          " dummy":{"dummy":{}} }
+
+VBOOL = { " true":{}, " false":{}, " yes": {}, " no": {}, " on": {}, " off": {}, " 1": {}, " 0":{} }
+
+COMPLETION = {
+  CMD_VERSION: {},
+  CMD_DBG:     {},
+  CMD_RESET:   {},
+  CMD_ECHO:    {},
+  CMD_ASK:     {},
+  CMD_HELP:    {},
+  CMD_EXIT:    {},
+  CMD_PASTE:   VBOOL,
+  CMD_MODEL:   MODEL,
+  CMD_READ:    {},
+  CMD_SET: {
+    " model": {
+      " apikey":    REF,
+      " imgsz":     {" string": {}},
+      " temp":      {" FLOAT":  {}, " default": {}},
+      " nt":        {" NUMBER": {}, " default": {}},
+      " verbosity": {" NUMBER": {}, " default": {}}
+    },
+    " term": {
+      " modality": {
+        " modality_string": {}
+      },
+      " rawbin": VBOOL
+    }
+  },
+  CMD_CP:      REF_REF,
+  CMD_APPEND:  REF_REF,
+  CMD_CAT:     REF,
+  CMD_CLEAR:   REF,
+  CMD_SHELL:   REF,
+  CMD_CD:      REF
+}
+
+SCHEMAS = [str(k).strip().replace(':','') for k in REF.keys()]
+PROVIDERS = [str(p).strip().replace(':','') for p in MODEL.keys()]
 
 GRAMMAR = fr"""
   start: (command | escape | text)? (command | escape | text)*
@@ -108,7 +158,7 @@ GRAMMAR = fr"""
   NUMBER: /[0-9]+/
   FLOAT: /[0-9]+\.[0-9]*/
   DEF: "default"
-  BOOL: /true/|/false/|/yes/|/no/|/1/|/0/|/on/|/off/
+  BOOL: {'|'.join(['/'+str(k).strip()+'/' for k in VBOOL.keys()])}
   MODALITY: /img/ | /text/
   %ignore /#[^\n]*/
 """
@@ -232,15 +282,6 @@ class Repl(Interpreter):
     args = self.visit_children(tree)
     val = ref_read(args[2], self.buffers)
     return ("file", val.strip())
-
-  def mp_gpt4all(self, tree):
-    return "gpt4all"
-
-  def mp_openai(self, tree):
-    return "openai"
-
-  def mp_dummy(self, tree):
-    return "dummy"
 
   def bool(self, tree):
     val = self.visit_children(tree)[0]
@@ -473,7 +514,6 @@ def read_configs(args, rcnames:list[str])->list[str]:
   path_parts = current_dir.split(sep)
   for depth in range(2, len(path_parts) + 1):
     directory = sep.join(path_parts[:depth])
-    # for fn in ['_aicli', '.aicli', '_sm_aicli', '.sm_aicli']:
     for fn in rcnames:
       candidate_file = join(directory, fn)
       if isfile(candidate_file):
@@ -483,54 +523,6 @@ def read_configs(args, rcnames:list[str])->list[str]:
             info(line.strip())
             acc.append(line.strip())
   return acc
-
-def _mkref(tail):
-  return {
-    " verbatim:":{"STRING":tail},
-    " file:":{"FILE":tail},
-    " bfile:":{"FILE":tail},
-    " buffer:":{"BUFFER":tail}}
-
-ref = _mkref({})
-ref_ref = _mkref(ref)
-
-model = { " openai:":{"gpt-4o":{}, "dall-e-2":{}, "dall-e-3":{}}, " gpt4all:":{"FILE":{}}, " dummy":{"dummy":{}} }
-
-vbool = { " yes": {}, " no": {}, " on": {}, " off": {} }
-
-commands = {
-  CMD_VERSION: {},
-  CMD_DBG:     {},
-  CMD_RESET:   {},
-  CMD_ECHO:    {},
-  CMD_ASK:     {},
-  CMD_HELP:    {},
-  CMD_EXIT:    {},
-  CMD_PASTE:   vbool,
-  CMD_MODEL:   model,
-  CMD_READ:    {},
-  CMD_SET: {
-    " model": {
-      " apikey":    ref,
-      " imgsz":     {" string": {}},
-      " temp":      {" FLOAT":  {}, " default": {}},
-      " nt":        {" NUMBER": {}, " default": {}},
-      " verbosity": {" NUMBER": {}, " default": {}}
-    },
-    " term": {
-      " modality": {
-        " modality_string": {}
-      },
-      " rawbin": vbool
-    }
-  },
-  CMD_CP:      ref_ref,
-  CMD_APPEND:  ref_ref,
-  CMD_CAT:     ref,
-  CMD_CLEAR:   ref,
-  CMD_SHELL:   ref,
-  CMD_CD:      ref
-}
 
 class UserActor(Actor):
 
@@ -577,13 +569,10 @@ class UserActor(Actor):
     self.batch_mode = len(args.filenames) > 0
     self.reset()
 
-  def _complete(self, text:str, state:int):
-    """
-    `text` is the text to complete, `state` is an increasing number.
-    Function should return the completion text or None if no more completions
-    exist.
-    """
-    current_dict = commands
+  def _complete(self, text:str, state:int) -> str|None:
+    """ `text` is the text to complete, `state` is an increasing number.
+    Function returns the completion text or None if no completions exist. """
+    current_dict = COMPLETION
     candidates = []
     prefix = ''
 
@@ -691,6 +680,9 @@ class UserActor(Actor):
     self.cnv_top = 0
 
   def react(self, av:ActorView, cnv:Conversation) -> Utterance:
+    # FIMXE: A minor problem here in the paste_mode [1]: interpreter eats the
+    # input first, and handles the paste mode after that. It should raise
+    # InterpreterPause instead.
     self._sync(av, cnv)
     try:
       while True:
@@ -703,9 +695,7 @@ class UserActor(Actor):
           tree = PARSER.parse(self.stream)
           dbg(tree, self)
           self.repl.visit(tree)
-          # FIMXE: there is a problem here: interpreter eats the input first, and handles the
-          # paste mode after that. It should raise InterpreterPause instead.
-          while self.repl.paste_mode:
+          while self.repl.paste_mode: # [1]
             line = input('P>')
             if line.strip() == '/paste off':
               self.repl.paste_mode = False
