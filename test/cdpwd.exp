@@ -5,20 +5,16 @@ set timeout 2
 spawn aicli --model=dummy:dummy
 
 expect {
-  ">>> " { send "/clear \"in\"123/cp IN A\r" }
+  ">>> " { send "/cd /\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
-  ">>> " { send "/cat A\r" }
+  "Changed current directory to '/'" { send "/shell pwd\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
-  "123\r" { send "/clear \"in\"abc/cp IN \"A\"/cat A\r" }
+  "/\r" { send "/exit\r" }
   timeout { puts "Error: Did not receive input 123"; exit 1 }
-}
-expect {
-  "abc\r" { send "/exit\r" }
-  timeout { puts "Error: Did not receive input abc"; exit 1 }
 }
 expect {
   eof {}

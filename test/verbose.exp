@@ -1,32 +1,24 @@
 #!/usr/bin/env expect-f.sh
 
-# Set timeout for the expect script
 set timeout 2
 
-# Start the console application
 spawn aicli --model=dummy:dummy
 
-# Wait for the prompt (assuming it's a '> ' prompt)
 expect {
     ">>> " {
-        # Prompt received, proceed with sending the /echo command
         send "/set model verbosity 10\r"
     }
     timeout {
-        # Exit with error if prompt is not received within timeout
         puts "Error: Did not receive prompt"
         exit 1
     }
 }
 
-# Expect the echoed output
 expect {
     "Setting actor verbosity to '10'" {
-        # Expected output received, proceed with exiting the application
         send "/exit\r"
     }
     timeout {
-        # Exit with error if expected output is not received within timeout
         puts "Error: Did not receive expected output"
         exit 1
     }

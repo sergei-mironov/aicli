@@ -114,29 +114,29 @@ GRAMMAR = fr"""
   escape: ESCAPE
   # Commands start with `/`. Use `\/` to process next `/` as a regular text.
   # The commands are:
-  command: /\{CMD_VERSION}/ | \
-           /\{CMD_DBG}/ | \
-           /\{CMD_RESET}/ | \
-           /\{CMD_ECHO}/ | \
-           /\{CMD_ASK}/ | \
-           /\{CMD_HELP}/ | \
-           /\{CMD_EXIT}/ | \
-           /\{CMD_MODEL}/ / +/ model_ref | \
-           /\{CMD_READ}/ / +/ /model/ / +/ /prompt/ | \
-           /\{CMD_SET}/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
-                                       (/t/ | /temp/) / +/ (FLOAT | DEF) | \
-                                       (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
-                                       /imgsz/ / +/ string | \
-                                       /verbosity/ / +/ (NUMBER | DEF)) | \
-                             (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
-                                                         /rawbin/ / +/ BOOL)) | \
-           /\{CMD_CP}/ / +/ ref / +/ ref | \
-           /\{CMD_APPEND}/ / +/ ref / +/ ref | \
-           /\{CMD_CAT}/ / +/ ref | \
-           /\{CMD_CLEAR}/ / +/ ref | \
-           /\{CMD_SHELL}/ / +/ ref | \
-           /\{CMD_CD}/ / +/ ref | \
-           /\{CMD_PASTE}/ / +/ BOOL
+  command.1: /\{CMD_VERSION}/ | \
+             /\{CMD_DBG}/ | \
+             /\{CMD_RESET}/ | \
+             /\{CMD_ECHO}/ | \
+             /\{CMD_ASK}/ | \
+             /\{CMD_HELP}/ | \
+             /\{CMD_EXIT}/ | \
+             /\{CMD_MODEL}/ / +/ model_ref | \
+             /\{CMD_READ}/ / +/ /model/ / +/ /prompt/ | \
+             /\{CMD_SET}/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
+                                         (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                         (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
+                                         /imgsz/ / +/ string | \
+                                         /verbosity/ / +/ (NUMBER | DEF)) | \
+                               (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
+                                                           /rawbin/ / +/ BOOL)) | \
+             /\{CMD_CP}/ / +/ ref / +/ ref | \
+             /\{CMD_APPEND}/ / +/ ref / +/ ref | \
+             /\{CMD_CAT}/ / +/ ref | \
+             /\{CMD_CLEAR}/ / +/ ref | \
+             /\{CMD_SHELL}/ / +/ ref | \
+             /\{CMD_CD}/ / +/ ref | \
+             /\{CMD_PASTE}/ / +/ BOOL
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
   string: "\"" string_quoted "\"" | string_unquoted
@@ -157,7 +157,7 @@ GRAMMAR = fr"""
   PROVIDER.4: {'|'.join([f"/{p}/" for p in PROVIDERS])}
   STRING_QUOTED.3: /[^"]+/
   STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
-  TEXT.0: /([^\/#](?!\/|\\))*[^\/#]/s
+  TEXT.0: /([^#](?!\/))*[^\/#]/s
   NUMBER: /[0-9]+/
   FLOAT: /[0-9]+\.[0-9]*/
   DEF: "default"
@@ -484,6 +484,12 @@ class Repl(Interpreter):
       else:
         print(text, end='')
     else:
+      commands = []
+      for cmd in list(CMDHELP.keys()):
+        if cmd in text:
+          commands.append(cmd)
+      if commands:
+        info(f"Warning: {', '.join(['`'+c+'`' for c in commands])} were parsed as a text")
       self.buffers[IN] += text
 
   def escape(self, tree):

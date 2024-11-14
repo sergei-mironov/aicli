@@ -293,11 +293,20 @@ def test_ref_file():
           )
   ''')
 
-def test_ref_8():
-  with raises(LarkError) as e:
-    # No closing dquote
-    PARSER.parse('/cat "aaa')
+def test_invalid_string():
+  """ Does not raise an error on ill-formatted strings """
+  _assert('/cat "aaa', r'''
+    start
+      text       /cat "aaa
+  ''')
 
+def test_slash():
+  """ Does not raise an error on command-looking texts """
+  _assert('just/text', r'''
+    start
+      text       just
+      text       /text
+  ''')
 
 def test_comment():
   _assert('# /echo aaa\n/echo bbb', r'''
