@@ -1,5 +1,5 @@
 from gnureadline import (parse_and_bind, clear_history, read_history_file,
-                         write_history_file, set_completer)
+                         write_history_file, set_completer, set_completer_delims)
 from lark import Lark, Token
 from lark.exceptions import LarkError
 from lark.visitors import Interpreter
@@ -11,6 +11,7 @@ from collections import defaultdict
 from os import system, chdir, environ, getcwd
 from os.path import expanduser, abspath, sep, join, isfile
 from io import StringIO
+from pdb import set_trace
 
 from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality)
@@ -484,60 +485,83 @@ def read_configs(args, rcnames:list[str])->list[str]:
             acc.append(line.strip())
   return acc
 
+ref = {" verbatim:":{"STRING":{}},
+       " file:":{"FILE":{}},
+       " bfile:":{"FILE":{}},
+       " buffer:":{"FILE":{}}}
+
+model = { " openai:":{"gpt-4o":{}}, " gpt4all:":{"FILE":{}}, " dummy":{"dummy":{}} }
+
+vbool = { " yes": {}, " no": {}, " on": {}, " off": {} }
+
 commands = {
-  "/version": [],
-  "/dbg": [],
-  "/reset": [],
-  "/echo": [],
-  "/ask": [],
-  "/help": [],
-  "/exit": [],
-  "/paste": [],
-  "/model": ["model_ref"],
-  "/read": [],
-  "/set": [
-    "model apikey ref",
-    "model (t|temp) (FLOAT|DEF)",
-    "model (nt|nthreads) (NUMBER|DEF)",
-    "model imgsz string",
-    "model verbosity (NUMBER|DEF)",
-    "term modality modality_string",
-    "term rawbin BOOL"
-  ],
-  "/cp": ["ref ref"],
-  "/append": ["ref ref"],
-  "/cat": ["ref"],
-  "/clear": ["ref"],
-  "/shell": ["ref"],
-  "/cd": ["ref"]
+  "/version": {},
+  "/dbg":     {},
+  "/reset":   {},
+  "/echo":    {},
+  "/ask":     {},
+  "/help":    {},
+  "/exit":    {},
+  "/paste":   vbool,
+  "/model":   model,
+  "/read":    {},
+  "/set":     {
+    " model": {
+      " apikey":    ref,
+      " imgsz":     { " string": {} },
+      " t":         { " FLOAT":  {}, " default": {} },
+      " temp":      { " FLOAT":  {}, " default": {} },
+      " nt":        { " NUMBER": {}, " default": {} },
+      " verbosity": { " NUMBER": {}, " default": {} }
+    },
+    " term":  {
+      " modality": {
+        " modality_string": {}
+      },
+      " rawbin":   vbool
+    }
+  },
+  "/cp":      {" ref ref": {}},
+  "/append":  {" ref ref": {}},
+  "/cat":     ref,
+  "/clear":   ref,
+  "/shell":   ref,
+  "/cd":      ref
 }
 
 def _complete(text:str, state:int):
-  """ `text` is the text to complete, `state` is an increasing number.
+  """
+  `text` is the text to complete, `state` is an increasing number.
   Function should return the completion text or None if no more completions
   exist.
   """
-  # All possible completions
-  matches = []
   text = '/'+text
+  current_dict = commands
+  candidates = []
+  prefix = ''
 
-  # Check if the text matches the start of any command
-  for cmd, patterns in commands.items():
-    if text.startswith(cmd):
-      remaining_text = text[len(cmd):].strip()
-      if not remaining_text:  # If no additional text, suggest patterns or just the command itself
-        if patterns:
-          matches.extend(f"{cmd} {p}" for p in patterns)
-        else:
-          matches.append(cmd)
-      else:
-        for pattern in patterns:
-          potential_completion = f"{cmd} {pattern}"
-          if potential_completion.startswith(text):
-            matches.append(potential_completion)
-    elif cmd.startswith(text):  # Suggest full command names if starting text matches
-      matches.append(cmd)
-  return matches[state][1:] if state < len(matches) else None
+  while True:
+    matched = None
+    for key in current_dict.keys():
+      if text.startswith(str(key)):
+        matched = str(key)
+        break
+    if matched:
+      text = text[len(matched):]
+      prefix += matched
+      current_dict = current_dict[matched]
+    elif isinstance(current_dict, dict):
+      candidates = [k for k in current_dict if k.startswith(text)]
+      break
+    else:
+      break
+  if not candidates:
+    candidates = list(current_dict.keys())
+  candidates.sort()
+  try:
+    return (prefix + candidates[state])[1:]
+  except IndexError:
+    return None
 
 class UserActor(Actor):
 
@@ -568,6 +592,7 @@ class UserActor(Actor):
         info(f"Reading {file}")
         header.write(f.read())
 
+    set_completer_delims('/')
     set_completer(_complete)
     parse_and_bind('tab: complete')
     parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
