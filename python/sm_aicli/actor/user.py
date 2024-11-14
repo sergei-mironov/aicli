@@ -485,10 +485,15 @@ def read_configs(args, rcnames:list[str])->list[str]:
             acc.append(line.strip())
   return acc
 
-ref = {" verbatim:":{"STRING":{}},
-       " file:":{"FILE":{}},
-       " bfile:":{"FILE":{}},
-       " buffer:":{"FILE":{}}}
+def _mkref(tail):
+  return {
+    " verbatim:":{"STRING":tail},
+    " file:":{"FILE":tail},
+    " bfile:":{"FILE":tail},
+    " buffer:":{"BUFFER":tail}}
+
+ref = _mkref({})
+ref_ref = _mkref(ref)
 
 model = { " openai:":{"gpt-4o":{}}, " gpt4all:":{"FILE":{}}, " dummy":{"dummy":{}} }
 
@@ -520,60 +525,13 @@ commands = {
       " rawbin":   vbool
     }
   },
-  "/cp":      {" ref ref": {}},
-  "/append":  {" ref ref": {}},
+  "/cp":      ref_ref,
+  "/append":  ref_ref,
   "/cat":     ref,
   "/clear":   ref,
   "/shell":   ref,
   "/cd":      ref
 }
-
-def _complete(text:str, state:int):
-  """
-  `text` is the text to complete, `state` is an increasing number.
-  Function should return the completion text or None if no more completions
-  exist.
-  """
-  current_dict = commands
-  candidates = []
-  prefix = ''
-
-  while True:
-    matched = None
-    if current_dict == {'FILE':{}}:
-      path, partial = split(text)
-      if not path:
-        path = '.'
-      try:
-        entries = listdir(path)
-        file_dict = {entry: {} for entry in entries if isfile(join(path, entry))}
-        dir_dict = {entry: {'FILE': {}} for entry in entries if isdir(join(path, entry))}
-        current_dict = {**file_dict, **dir_dict}
-      except FileNotFoundError:
-        current_dict = {}
-      candidates = [join(path, k) for k in current_dict if k.startswith(partial)]
-      break
-    else:
-      for key in current_dict.keys():
-        if text.startswith(str(key)):
-          matched = str(key)
-          break
-    if matched:
-      text = text[len(matched):]
-      prefix += matched
-      current_dict = current_dict[matched]
-    elif isinstance(current_dict, dict):
-      candidates = [k for k in current_dict if k.startswith(text)]
-      break
-    else:
-      break
-  if not candidates:
-    candidates = list(current_dict.keys())
-  candidates.sort()
-  try:
-    return prefix + candidates[state]
-  except IndexError:
-    return None
 
 class UserActor(Actor):
 
@@ -605,7 +563,7 @@ class UserActor(Actor):
         header.write(f.read())
 
     set_completer_delims('')
-    set_completer(_complete)
+    set_completer(self._complete)
     parse_and_bind('tab: complete')
     parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
     hint = args.readline_key_send.replace('\\', '')
@@ -619,6 +577,74 @@ class UserActor(Actor):
     self.repl = Repl(name, args)
     self.batch_mode = len(args.filenames) > 0
     self.reset()
+
+  def _complete(self, text:str, state:int):
+    """
+    `text` is the text to complete, `state` is an increasing number.
+    Function should return the completion text or None if no more completions
+    exist.
+    """
+    current_dict = commands
+    candidates = []
+    prefix = ''
+
+    while True:
+      matched = None
+      if list(current_dict.keys()) == ['FILE']:
+        dnext = current_dict['FILE']
+        fname = text.split()[0] if text.split() else None
+        if isfile(fname):
+          text = text[len(fname):]
+          prefix += fname
+          current_dict = dnext
+          continue
+        else:
+          path, partial = split(fname)
+          if not path:
+            path = '.'
+          try:
+            entries = listdir(path)
+            file_dict = {entry: dnext for entry in entries if isfile(join(path, entry))}
+            dir_dict = {entry: {'FILE': dnext} for entry in entries if isdir(join(path, entry))}
+            current_dict = {**file_dict, **dir_dict}
+          except FileNotFoundError:
+            current_dict = {}
+          candidates = [join(path, k) for k in current_dict if k.startswith(partial)]
+          break
+      elif list(current_dict.keys()) == ['BUFFER']:
+        buf = text.split()[0] if text.split() else None
+        if buf and (buf in self.repl.buffers):
+          text = text[len(buf):]
+          prefix += buf
+          current_dict = current_dict['BUFFER']
+          continue
+        else:
+          candidates = [n for n in self.repl.buffers.keys() if n.startswith(text)]
+          current_dict = {}
+          break
+      else:
+        for key in current_dict.keys():
+          if text.startswith(str(key)):
+            matched = str(key)
+            break
+        if matched:
+          text = text[len(matched):]
+          prefix += matched
+          current_dict = current_dict[matched]
+          continue
+        elif isinstance(current_dict, dict):
+          candidates = [k for k in current_dict if k.startswith(text)]
+          break
+        else:
+          break
+    if not candidates:
+      candidates = list(current_dict.keys())
+    candidates.sort()
+    try:
+      return prefix + candidates[state]
+    except IndexError:
+      return None
+
 
   def _sync(self, av:ActorView, cnv:Conversation):
     assert self.cnv_top <= len(cnv.utterances)
