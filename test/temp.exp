@@ -26,6 +26,16 @@ expect {
 
 expect {
   "25.5" {
+    send "/set model temp default Dummy/ask\r"
+  }
+  timeout {
+    puts "Error: Did not receive expected output"
+    exit 1
+  }
+}
+
+expect {
+  "None" {
     send "/exit\r"
   }
   timeout {
