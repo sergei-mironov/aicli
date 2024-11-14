@@ -121,11 +121,11 @@ PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 no_model_is_active = "No model is active, use /model first"
 
 def as_float(val:Token, default:float|None=None)->float|None:
-  assert val.type == 'FLOAT', val
+  assert val.type == 'FLOAT' or str(val) in {"def","default"}, val
   return float(val) if str(val) not in {"def","default"} else default
 
 def as_int(val:Token, default:int|None=None)->int|None:
-  assert val.type == 'NUMBER', val
+  assert val.type == 'NUMBER' or str(val) in {"def","default"}, val
   return int(val) if str(val) not in {"def","default"} else default
 
 def as_bool(val:Token):
@@ -509,7 +509,6 @@ commands = {
     " model": {
       " apikey":    ref,
       " imgsz":     { " string": {} },
-      " t":         { " FLOAT":  {}, " default": {} },
       " temp":      { " FLOAT":  {}, " default": {} },
       " nt":        { " NUMBER": {}, " default": {} },
       " verbosity": { " NUMBER": {}, " default": {} }
@@ -535,7 +534,6 @@ def _complete(text:str, state:int):
   Function should return the completion text or None if no more completions
   exist.
   """
-  text = '/'+text
   current_dict = commands
   candidates = []
   prefix = ''
@@ -559,7 +557,7 @@ def _complete(text:str, state:int):
     candidates = list(current_dict.keys())
   candidates.sort()
   try:
-    return (prefix + candidates[state])[1:]
+    return prefix + candidates[state]
   except IndexError:
     return None
 
@@ -592,7 +590,7 @@ class UserActor(Actor):
         info(f"Reading {file}")
         header.write(f.read())
 
-    set_completer_delims('/')
+    set_completer_delims('')
     set_completer(_complete)
     parse_and_bind('tab: complete')
     parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
