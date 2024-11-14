@@ -1,10 +1,10 @@
-A (yet another) GNU Readline-based application for interaction with chat-oriented AI models.
+A (yet another) GNU Readline-based application for interacting with chat-oriented AI models.
 
 Features
 --------
 
-This application is designed with compact code size in mind. As a Unix-style application, it can be
-used both as an interactive terminal with command completion or as a shebang batch processor.
+This application is designed with a focus on minimizing code size. As a Unix-style program, it can
+be used both as an interactive terminal with command completion or as a shebang script runner.
 
 Supported model providers:
 
