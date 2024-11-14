@@ -1,4 +1,4 @@
-#!/usr/bin/env -S aicli --rc=none
+#!/usr/bin/env -S aicli --rc=none --keep-running
 /model openai:"gpt-4o"
 /set model apikey file:"_openai"
 Tell me about monkeys

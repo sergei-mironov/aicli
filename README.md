@@ -1,9 +1,21 @@
 A (yet another) GNU Readline-based application for interaction with chat-oriented AI models.
 
+Features
+--------
+
+This application is designed with compact code size in mind. As a Unix-style application, it can be
+used both as an interactive terminal with command completion or as a shebang batch processor.
+
 Supported model providers:
 
-* [OpenAI](https://www.openai.com) via REST API
+* [OpenAI](https://www.openai.com) via REST API. We tested the text `gpt-4o` model and the graphic
+  `dall-e-2` and `dall-e-3` models.
 * [GPT4All](https://www.nomic.ai/gpt4all) via Python bindings
+
+The scripting language allows basic processing involving buffer variables and file manipulaitons.
+For advanced scripting, we suggest using text session management tools such as
+[Expect](https://core.tcl-lang.org/expect/index) or
+[Litrepl](https://github.com/sergei-mironov/litrepl) (by the same author).
 
 Contents
 --------
@@ -11,15 +23,17 @@ Contents
 <!-- vim-markdown-toc GFM -->
 
 * [Install](#install)
-    * [Using Pip](#using-pip)
-    * [Using Nix](#using-nix)
-* [Develop](#develop)
-* [Usage](#usage)
+    * [Stable release, using Pip](#stable-release-using-pip)
+    * [Latest version, using Pip](#latest-version-using-pip)
+    * [Latest version, using Nix](#latest-version-using-nix)
+    * [Development shell](#development-shell)
+* [Quick start](#quick-start)
+* [Reference](#reference)
     * [Command-line reference](#command-line-reference)
+    * [Commands overview](#commands-overview)
     * [Grammar reference](#grammar-reference)
-    * [Example session](#example-session)
+* [Architecture](#architecture)
 * [Vim integration](#vim-integration)
-* [Roadmap](#roadmap)
 
 <!-- vim-markdown-toc -->
 
@@ -30,11 +44,26 @@ The following installation options are available:
 
 ### Stable release, using Pip
 
+You can install the stable release of the project using Pip, a default package manager for Python.
+
 ``` sh
 $ pip install sm_aicli
 ```
 
+### Latest version, using Pip
+
+To install the latest version of `sm_aicli` directly from the GitHub repository, you can use Pip
+with the Git URL.
+
+``` sh
+$ pip install git+https://github.com/sergei-mironov/aicli.git
+```
+
 ### Latest version, using Nix
+
+To install the latest version of `aicli` using Nix, you first need to clone the repository. Nix will
+automatically manage and bring in all necessary dependencies, ensuring a seamless installation
+experience.
 
 ``` sh
 $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
@@ -44,15 +73,47 @@ $ nix profile install ".#python-aicli"
 
 ### Development shell
 
-This project relies on Nix development infrastructure.
+Set up a development environment using Nix to work on the project. Clone the repository and activate
+the development shell with the following commands:
 
 ``` sh
 $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 $ nix develop
 ```
 
-Usage
------
+Quick start
+-----------
+
+Below is a simple OpenAI terminal session. The commands start with `/`, while lines following `#`
+are ignored. Other text is collected into a buffer and is sent to the model by the `/ask` command.
+Please replace `YOUR_API_KEY` with your actual API key.
+
+``` sh
+$ aicli
+>>> /model openai:"gpt-4o"
+>>> /set model apikey verbatim:YOUR_API_KEY # <--- Your OpenAI API key goes here
+# Other option here is:
+# /set model apikey file:"/path/to/your/openai/apikey"
+>>> Tell me about monkeys
+>>> /ask
+
+Monkeys are fascinating primates that belong to two main groups: New World monkeys and
+Old World monkeys. Here's a brief overview of ...
+```
+
+The last model answer is recorded into the `out` buffer. Let's print it again and save it to a file
+using the `/cp` command:
+
+``` sh
+>>> /cat buffer:out
+..
+>>> /cp buffer:out file:monkey.txt
+```
+
+The [ai](./ai) folder contains script examples illustrating command usage.
+
+Reference
+---------
 
 ### Command-line reference
 
@@ -108,6 +169,41 @@ options:
                         arguments
 ```
 
+### Commands overview
+
+<!--
+``` python
+from sm_aicli.actor.user import *
+print("| Command         | Arguments       | Description |")
+print("|-----------------|-----------------|-------------|")
+for command, (arguments, description) in CMDHELP.items():
+  print(f"| {command:15s} | {arguments:15s} | {description} |")
+```
+-->
+
+
+<!--result-->
+| Command         | Arguments       | Description |
+|:----------------|:----------------|-------------|
+| /append         | REF REF         | Append a file, a buffer or a constant to a file or to a buffer. |
+| /cat            | REF             | Print a file or buffer to STDOUT. |
+| /cd             | REF             | Change the current directory to the specified path |
+| /clear          |                 | Clear the buffer named `ref_string`. |
+| /cp             | REF REF         | Copy a file, a buffer or a constant into a file or into a buffer. |
+| /dbg            |                 | Run the Python debugger |
+| /echo           |                 | Echo the following line to STDOUT |
+| /exit           |                 | Exit |
+| /help           |                 | Print help |
+| /model          | PROVIDER:NAME   | Set the current model to `model_string`. Allocate the model on first use. |
+| /paste          | BOOL            | Enable or disable paste mode. |
+| /read           | WHERE           | Reads the content of the 'IN' buffer into a special variable. |
+| /reset          |                 | Reset the conversation and all the models |
+| /set            | WHAT            | Set terminal or model option, check the Grammar for a full list of options. |
+| /shell          | REF             | Run a system shell command. |
+| /version        |                 | Print version |
+<!--noresult-->
+
+
 ### Grammar reference
 
 The console accepts a language defined by the following grammar:
@@ -122,95 +218,65 @@ print(dedent(GRAMMAR).strip())
 
 ``` result
 start: (command | escape | text)? (command | escape | text)*
+text: TEXT
+escape: ESCAPE
 # Commands start with `/`. Use `\/` to process next `/` as a regular text.
-escape.3: /\\./
 # The commands are:
-# /append TYPE:FROM TYPE:TO - Append a file, a buffer or a constant to a file or to a buffer.
-# /cat TYPE:WHAT            - Print a file or buffer to STDOUT.
-# /cp TYPE:FROM TYPE:TO     - Copy a file, a buffer or a constant into a file or into a buffer.
-# /model PROVIDER:NAME      - Set the current model to `model_string`. Allocate the model on first use.
-# /read WHERE               - Reads the content of the 'IN' buffer into a special variable.
-# /set WHAT                 - Set terminal or model option
-# /shell TYPE:FROM          - Run a shell command.
-# /clear                    - Clear the buffer named `ref_string`.
-# /reset                    - Reset the conversation and all the models
-# /version                  - Print version
-# /dbg                      - Run the Python debugger
-# /echo                     - Echo the following line to STDOUT
-# /exit                     - Exit
-# /help                     - Print help
-command.2: /\/version/ | \
-           /\/dbg/ | \
-           /\/reset/ | \
-           /\/echo/ | \
-           /\/ask/ | \
-           /\/help/ | \
-           /\/exit/ | \
-           /\/model/ / +/ model_string | \
-           /\/read/ / +/ /model/ / +/ /prompt/ | \
-           /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref_string | \
-                                       (/t/ | /temp/) / +/ (float | def) | \
-                                       (/nt/ | /nthreads/) / +/ (number | def) | \
-                                       /imgsz/ / +/ string | \
-                                       /verbosity/ / +/ (number | def)) | \
-                         (/term/ | /terminal/) / +/ (/modality/ / +/ modality_string | \
-                                                     /rawbin/ / +/ bool)) | \
-           /\/cp/ / +/ ref_string / +/ ref_string | \
-           /\/append/ / +/ ref_string / +/ ref_string | \
-           /\/cat/ / +/ ref_string | \
-           /\/clear/ / +/ ref_string | \
-           /\/shell/ / +/ ref_string
+command: /\/version/ | \
+         /\/dbg/ | \
+         /\/reset/ | \
+         /\/echo/ | \
+         /\/ask/ | \
+         /\/help/ | \
+         /\/exit/ | \
+         /\/model/ / +/ model_ref | \
+         /\/read/ / +/ /model/ / +/ /prompt/ | \
+         /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
+                                     (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                     (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
+                                     /imgsz/ / +/ string | \
+                                     /verbosity/ / +/ (NUMBER | DEF)) | \
+                           (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
+                                                       /rawbin/ / +/ BOOL)) | \
+         /\/cp/ / +/ ref / +/ ref | \
+         /\/append/ / +/ ref / +/ ref | \
+         /\/cat/ / +/ ref | \
+         /\/clear/ / +/ ref | \
+         /\/shell/ / +/ ref | \
+         /\/cd/ / +/ ref | \
+         /\/paste/ / +/ BOOL
 
 # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
-string: "\"" string_quoted "\"" | string_raw
-string_quoted: /[^"]+/ -> string_value
-string_raw: /[^"][^ \/\n]*/ -> string_value
+string: "\"" string_quoted "\"" | string_unquoted
+string_quoted: STRING_QUOTED -> string_value
+string_unquoted: STRING_UNQUOTED -> string_value
 
-# Model names have format "PROVIDER:NAME". Model names containing spaces must be double-quoted.
-model_string: "\"" model_quoted "\"" | model_raw
-model_quoted: (model_provider ":")? string_quoted -> model
-model_raw: (model_provider ":")? string_raw -> model
-model_provider: "gpt4all" -> mp_gpt4all | "openai" -> mp_openai | "dummy" -> mp_dummy
+model_ref: (PROVIDER ":")? string
 
-# Modalities are either `img` or `text`.
-modality_string: "\"" modality "\"" | modality
-modality: /img/ -> modality_img | /text/ -> modality_text
-
-# References mention either a file (`file:filename`), a buffer (`buffer:a`) or a string constant
+# References mention locations which could be either a file (`file:path/to/file`), a binary file
+# (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
 # (`verbatim:ABC`).
-ref_string: "\"" ref_quoted "\"" | ref_raw
-ref_quoted: (ref_schema ":")? string_quoted -> ref
-ref_raw: (ref_schema ":")? string_raw -> ref
-ref_schema: /verbatim/ | /file/ | /bfile/ | /buffer/ -> ref_schema
+ref: (SCHEMA ":")? string -> ref | \
+     /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
 
 # Base token types
-filename: string
-number: /[0-9]+/
-float: /[0-9]+\.[0-9]*/
-def: "default"
-bool: /true/|/false/|/yes/|/no/|/1/|/0/
-text.0: /([^\/#](?!\/|\\))*[^\/#]/s
+ESCAPE.5: /\\./
+SCHEMA.4: /verbatim/|/file/|/bfile/|/buffer/
+PROVIDER.4: /openai/|/gpt4all/|/dummy/
+STRING_QUOTED.3: /[^"]+/
+STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
+TEXT.0: /([^\/#](?!\/|\\))*[^\/#]/s
+NUMBER: /[0-9]+/
+FLOAT: /[0-9]+\.[0-9]*/
+DEF: "default"
+BOOL: /true/|/false/|/yes/|/no/|/on/|/off/|/1/|/0/
+MODALITY: /img/ | /text/
 %ignore /#[^\n]*/
 ```
 
 By default, the application tries to read configuration files starting from the `/` directory down
 to the current directory. The contents of `_aicli`, `.aicli`, `_sm_aicli` and `.sm_aicli` files is
 interpreted as commands.
-
-### Example session
-
-``` sh
-$ aicli
-```
-
-``` txt
-INFO: Type /help or a question followed by the /ask command (or by pressing `C-k` key).
->>> /model "./_model/Meta-Llama-3-8B-Instruct.Q4_0.gguf"
->>> Hi!/ask
-Hello! I'm happy to help you. What's on your mind?^C
->>> What's your name?/ask
-I don't really have a personal name, but you can call me "Assistant"
-```
 
 Architecture
 ------------
@@ -225,9 +291,8 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Actor](./python/sm_aicli/types.py#L28) | [Conversation](./python/sm_aicli/types.py#L6) |
-[Utterance](./python/sm_aicli/types.py#L108) | [Intention](./python/sm_aicli/types.py#L59) |
-[Stream](./python/sm_aicli/types.py#L75)
+[Actor](./python/sm_aicli/types.py#L28) | [Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L109) | [Intention](./python/sm_aicli/types.py#L60) | [Stream](./python/sm_aicli/types.py#L76)
+
 <!--noresult-->
 
 <!--``` python
@@ -253,16 +318,4 @@ Aicli is supported by the [Litrepl](https://github.com/sergei-mironov/litrepl) t
 
 ![Peek 2024-07-19 00-11](https://github.com/user-attachments/assets/7e5e59ea-bb96-4ebe-988f-726e83929dab)
 
-
-Roadmap
--------
-
-Some thoughts on adding image support:
-
-- [x] App must work with different model providers at once.
-- [x] App must provide a common conversation schema and translate it to model provider languages,
-  rather than stick to provider's conversation schemas.
-- [ ] App must allow to work with different models even for the same modality. A good feature would
-  be to re-ask different models to generate response candidate for a given conversation tip. So, a
-  conversation editor.
 
