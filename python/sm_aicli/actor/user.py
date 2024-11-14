@@ -1,19 +1,18 @@
-from gnureadline import write_history_file
+from gnureadline import parse_and_bind, clear_history, read_history_file, write_history_file
 from lark import Lark, Token
 from lark.exceptions import LarkError
 from lark.visitors import Interpreter
 from dataclasses import dataclass
 from typing import Any
-from copy import deepcopy, copy
-from sys import stdout, stderr
+from copy import copy
+from sys import stdout
 from collections import defaultdict
-from os import system, chdir
-from os.path import expanduser
+from os import system, chdir, environ, getcwd
+from os.path import expanduser, abspath, sep, join, isfile
+from io import StringIO
 
-from pdb import set_trace as ST
-
-from ..types import (Actor, ActorName, ActorOptions, Intention, UserName, Utterance,
-                     Conversation, ActorView, ModelName, Modality, Stream)
+from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
+                     Conversation, ActorView, ModelName, Modality)
 
 from ..utils import info, err, with_sigint, dbg, cont2strm, VERSION, REVISION, sys2exitcode
 
@@ -174,6 +173,13 @@ def ref_read(ref, buffers)->str|None:
     return buffers[name.lower()]
   else:
     raise ValueError(f"Unsupported reference schema '{schema}'")
+
+def ref_quote(ref, prefixes):
+  for p in [(p+':') for p in prefixes]:
+    if ref.startswith(p) and (' ' in ref[len(p):]):
+      return f"{schema}\"{ref[len(p):]}\""
+  return ref
+
 
 @dataclass
 class InterpreterPause(Exception):
@@ -450,6 +456,35 @@ class Repl(Interpreter):
     return res
 
 
+def reload_history(args):
+  if args.readline_history:
+    try:
+      clear_history()
+      read_history_file(args.readline_history)
+      info(f"History file loaded")
+    except FileNotFoundError:
+      info(f"History file not loaded")
+  else:
+    info(f"History file is not used")
+
+def read_configs(args, rcnames:list[str])->list[str]:
+  acc = []
+  current_dir = abspath(getcwd())
+  path_parts = current_dir.split(sep)
+  for depth in range(2, len(path_parts) + 1):
+    directory = sep.join(path_parts[:depth])
+    # for fn in ['_aicli', '.aicli', '_sm_aicli', '.sm_aicli']:
+    for fn in rcnames:
+      candidate_file = join(directory, fn)
+      if isfile(candidate_file):
+        with open(candidate_file, 'r') as file:
+          info(f"Reading {candidate_file}")
+          for line in file.readlines():
+            info(line.strip())
+            acc.append(line.strip())
+  return acc
+
+
 class UserActor(Actor):
 
   def __init__(self,
@@ -458,7 +493,43 @@ class UserActor(Actor):
                args:Any,
                prefix_stream:str|None = None):
     super().__init__(name, opt)
-    self.stream = prefix_stream if prefix_stream is not None else ''
+
+    if args.readline_history:
+      args.readline_history = abspath(expanduser(args.readline_history))
+
+    header = StringIO()
+    rcnames = environ.get('AICLI_RC', args.rc)
+    if rcnames is not None and len(rcnames)>0 and rcnames!='none':
+      for line in read_configs(args, rcnames.split(',')):
+        header.write(line+'\n')
+    else:
+      info("Skipping configuration files")
+    if args.model is not None:
+      header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
+    if args.model_apikey is not None:
+      header.write(f"/set model apikey {ref_quote(args.model_apikey, SCHEMAS)}\n")
+
+    for file in args.filenames:
+      with open(file) as f:
+        info(f"Reading {file}")
+        header.write(f.read())
+
+    # def _complete(text, state):
+    #   if state>2:
+    #     return None
+    #   # print('text', f"'{text}'", 'state', state, file=stderr)
+    #   return text+'a'
+    #   # pass
+    # set_completer(_complete)
+    parse_and_bind('tab: complete')
+    parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
+    hint = args.readline_key_send.replace('\\', '')
+    info(f"Type /help or a question followed by the /ask command (or by pressing "
+          f"`{hint}` key).")
+
+    reload_history(args)
+
+    self.stream = header.getvalue()
     self.args = args
     self.repl = Repl(name, args)
     self.batch_mode = len(args.filenames) > 0

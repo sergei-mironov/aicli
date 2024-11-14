@@ -1,21 +1,20 @@
 import re
 from io import StringIO
-from os import environ, getcwd
-from os.path import join, isfile, realpath, expanduser, abspath, sep
-from gnureadline import (parse_and_bind, set_completer, read_history_file, write_history_file,
-                         clear_history)
-from argparse import ArgumentParser
+from os.path import expanduser
 from contextlib import contextmanager
-from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
-from textwrap import dedent
-from functools import partial
-from sys import _getframe, stderr
+from signal import signal, SIGINT
+from sys import _getframe
 from pdb import Pdb
+from argparse import ArgumentParser
 
-from lark import Lark
 from lark.visitors import Interpreter
+from lark import Lark
 
-from sm_aicli import *
+from sm_aicli import (
+  Conversation, ActorState, ActorName, Utterance, UserName, Modality,
+  UserActor, ActorOptions, onematch, expanddir, OpenAIActor, GPT4AllActor,
+  DummyActor, info, err, reload_history, with_sigint
+)
 
 
 ARG_PARSER = ArgumentParser(description="Command-line arguments")
@@ -144,50 +143,13 @@ def ask_for_comment_as_text(ast:ActorState, cnv:Conversation, aname:ActorName) -
   finally:
     print()
 
-def read_configs(args, rcnames:list[str])->list[str]:
-  acc = []
-  current_dir = abspath(getcwd())
-  path_parts = current_dir.split(sep)
-  for depth in range(2, len(path_parts) + 1):
-    directory = sep.join(path_parts[:depth])
-    # for fn in ['_aicli', '.aicli', '_sm_aicli', '.sm_aicli']:
-    for fn in rcnames:
-      candidate_file = join(directory, fn)
-      if isfile(candidate_file):
-        with open(candidate_file, 'r') as file:
-          info(f"Reading {candidate_file}")
-          for line in file.readlines():
-            info(line.strip())
-            acc.append(line.strip())
-  return acc
-
 def get_help_string(arg_parser):
   help_output = StringIO()
   arg_parser.print_help(help_output)
   return help_output.getvalue()
 
-def reload_history(args):
-  if args.readline_history:
-    try:
-      clear_history()
-      read_history_file(args.readline_history)
-      info(f"History file loaded")
-    except FileNotFoundError:
-      info(f"History file not loaded")
-  else:
-    info(f"History file is not used")
-
-def ref_quote(ref, prefixes):
-  for p in [(p+':') for p in prefixes]:
-    if ref.startswith(p) and (' ' in ref[len(p):]):
-      return f"{schema}\"{ref[len(p):]}\""
-  return ref
-
 def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
-
-  if args.readline_history:
-    args.readline_history = abspath(expanduser(args.readline_history))
 
   args.help = get_help_string(ARG_PARSER)
   if args.revision or args.version:
@@ -197,37 +159,11 @@ def main(cmdline=None):
       print(VERSION)
     return 0
 
-  header = StringIO()
-  rcnames = environ.get('AICLI_RC', args.rc)
-  if rcnames is not None and len(rcnames)>0 and rcnames!='none':
-    for line in read_configs(args, rcnames.split(',')):
-      header.write(line+'\n')
-  else:
-    info("Skipping configuration files")
-  if args.model is not None:
-    header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
-  if args.model_apikey is not None:
-    header.write(f"/set model apikey {ref_quote(args.model_apikey, SCHEMAS)}\n")
-
-  for file in args.filenames:
-    with open(file) as f:
-      info(f"Reading {file}")
-      header.write(f.read())
-
-  parse_and_bind('tab: complete')
-  parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
-  hint = args.readline_key_send.replace('\\', '')
-
-  info(f"Type /help or a question followed by the /ask command (or by pressing "
-        f"`{hint}` key).")
-
-  reload_history(args)
-
   cnv = Conversation.init()
   st = ActorState.init()
   current_actor = UserName()
   current_modality = Modality.Text
-  st.actors[current_actor] = UserActor(UserName(), ActorOptions.init(), args, header.getvalue())
+  st.actors[current_actor] = UserActor(UserName(), ActorOptions.init(), args)
 
   model_dir = onematch(expanddir(args.model_dir))
   image_dir = onematch(expanddir(args.image_dir))
@@ -281,3 +217,4 @@ def main(cmdline=None):
       err(e)
       current_actor = UserName()
       current_modality = Modality.Text
+

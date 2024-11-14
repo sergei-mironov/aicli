@@ -124,6 +124,7 @@ let
         ipython
         (gpt4all-bindings pp)
         openai
+        hypothesis
       ]
     );
 
