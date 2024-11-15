@@ -371,9 +371,10 @@ Roadmap
 * Usability:
   - [x] Command completion in terminal.
   - [x] `/shell` running a system shell command.
-  - [ ] Encode errors into the Conversation to allow actors to process them.
-  - [ ] `/set terminal width INT` for limiting text width for better readability.
+  - [x] `/set terminal width INT` for limiting text width for better readability.
+  - [x] `/set terminal prompt STR` for setting readline command-line prompt.
   - [ ] `/edit` for running an editor.
   - [ ] `/set model alias REF` for setting a short name for a model.
-  - [ ] Session replay.
+  - [ ] Encode actor errors into the conversation.
+  - [ ] Session save/load.
 
