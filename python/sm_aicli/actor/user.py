@@ -75,7 +75,8 @@ COMPLETION = {
       " modality": {
         " modality_string": {}
       },
-      " rawbin": VBOOL
+      " rawbin": VBOOL,
+      " prompt": {" string": {}}
     }
   },
   CMD_CP:      REF_REF,
@@ -129,7 +130,8 @@ GRAMMAR = fr"""
                                          /imgsz/ / +/ string | \
                                          /verbosity/ / +/ (NUMBER | DEF)) | \
                                (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
-                                                           /rawbin/ / +/ BOOL)) | \
+                                                           /rawbin/ / +/ BOOL | \
+                                                           /prompt/ / +/ string)) | \
              /\{CMD_CP}/ / +/ ref / +/ ref | \
              /\{CMD_APPEND}/ / +/ ref / +/ ref | \
              /\{CMD_CAT}/ / +/ ref | \
@@ -253,6 +255,7 @@ class Repl(Interpreter):
     self.ref_schema_default = "verbatim"
     self._reset()
     self.paste_mode = False
+    self.readline_prompt = args.readline_prompt
 
   def _check_next_actor(self):
     if self.actor_next is None:
@@ -391,6 +394,9 @@ class Repl(Interpreter):
           val = as_bool(pval)
           info(f"Setting terminal raw binary mode to '{val}'")
           self.rawbin = val
+        elif pname == 'prompt':
+          self.readline_prompt = pval[0]
+          info(f"Setting terminal prompt to '{pval[0]}'")
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
@@ -704,7 +710,7 @@ class UserActor(Actor):
             if self.batch_mode and not self.args.keep_running:
               break
             else:
-              self.stream = input(self.args.readline_prompt) + '\n'
+              self.stream = input(self.repl.readline_prompt) + '\n'
           tree = PARSER.parse(self.stream)
           dbg(tree, self)
           self.repl.visit(tree)
