@@ -23,10 +23,11 @@ Contents
 <!-- vim-markdown-toc GFM -->
 
 * [Install](#install)
-    * [Stable release, using Pip](#stable-release-using-pip)
-    * [Latest version, using Pip](#latest-version-using-pip)
-    * [Latest version, using Nix](#latest-version-using-nix)
-    * [Development shell](#development-shell)
+    * [Stable release](#stable-release)
+    * [Latest or development version](#latest-or-development-version)
+        * [Latest version using Pip](#latest-version-using-pip)
+        * [Latest version using Nix](#latest-version-using-nix)
+        * [Development shell](#development-shell)
 * [Quick start](#quick-start)
 * [Reference](#reference)
     * [Command-line reference](#command-line-reference)
@@ -43,7 +44,7 @@ Install
 
 The following installation options are available:
 
-### Stable release, using Pip
+### Stable release
 
 You can install the stable release of the project using Pip, a default package manager for Python.
 
@@ -51,7 +52,9 @@ You can install the stable release of the project using Pip, a default package m
 $ pip install sm_aicli
 ```
 
-### Latest version, using Pip
+### Latest or development version
+
+#### Latest version using Pip
 
 To install the latest version of `sm_aicli` directly from the GitHub repository, you can use Pip
 with the Git URL.
@@ -60,7 +63,7 @@ with the Git URL.
 $ pip install git+https://github.com/sergei-mironov/aicli.git
 ```
 
-### Latest version, using Nix
+#### Latest version using Nix
 
 To install the latest version of `aicli` using Nix, you first need to clone the repository. Nix will
 automatically manage and bring in all necessary dependencies, ensuring a seamless installation
@@ -72,7 +75,7 @@ $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 $ nix profile install ".#python-aicli"
 ```
 
-### Development shell
+#### Development shell
 
 Set up a development environment using Nix to work on the project. Clone the repository and activate
 the development shell with the following commands:
