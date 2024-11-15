@@ -1,14 +1,16 @@
-from typing import Iterable
+from typing import Iterable, Callable
+from dataclasses import dataclass
 from contextlib import contextmanager
 from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from os.path import join, isfile, realpath, expanduser, abspath, sep
 from glob import glob
-from sys import stderr, platform
+from sys import stderr, platform, maxsize
 from collections import OrderedDict
 from subprocess import check_output, DEVNULL
 from os import environ, makedirs, system
 from hashlib import sha256
 from textwrap import dedent
+from pdb import set_trace as ST
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
                     Stream)
@@ -192,3 +194,95 @@ def version():
   ver = VERSION
   rev = f"+g{REVISION[:7]}" if REVISION else ""
   return f"{ver}{rev}"
+
+# def words_with_spaces(text):
+#   """ Return words with leading spaces """
+#   word = ''
+#   for char in text:
+#     if char.isspace():
+#       if word:
+#         yield word
+#         word = ''
+#       word += char
+#     else:
+#       word += char
+#   if word and any((not c.isspace()) for c in word):
+#     yield word
+
+@dataclass
+class WLState:
+  max_width:int|None = None # maximum allowed width
+  current_length:int = 0 # length of the current line
+  mode:int = 0
+  buf:str = ''
+  keepspases:bool = False
+
+def wraplong(text:str, state:WLState, printer:Callable, flush:bool=False):
+  maxwidth = state.max_width or maxsize
+  assert maxwidth >= 1
+  spaces, chars, mode, buf = 0, 1, state.mode, state.buf
+  keepspases = state.keepspases
+
+  def _newline(ks=False):
+    nonlocal keepspases
+    printer('\n')
+    state.current_length = 0
+    keepspases = ks
+
+  def _flushbuf():
+    nonlocal buf
+    printer(buf)
+    state.current_length += len(buf)
+    buf = ''
+
+  for char in text:
+    if char == '\n':
+      if mode == chars:
+        if state.current_length + len(buf) >= maxwidth:
+          _newline()
+        _flushbuf()
+        _newline(True)
+      elif mode == spaces:
+        _newline(True)
+        buf = ''
+      # mode = chars
+    elif char == ' ':
+      if mode == chars:
+        if state.current_length + len(buf) >= maxwidth:
+          _newline()
+        _flushbuf()
+        if state.current_length >= maxwidth:
+          _newline()
+      buf += char
+      mode = spaces
+    else:
+      if mode == spaces:
+        if state.current_length == 0:
+          if not keepspases:
+            buf = ''
+        else:
+          if state.current_length + len(buf) + 1 >= maxwidth:
+            _newline()
+            buf = ''
+          else:
+            _flushbuf()
+      buf += char
+      mode = chars
+
+  if flush:
+    if mode == chars:
+      if state.current_length + len(buf) >= maxwidth:
+        _newline()
+      _flushbuf()
+      if state.current_length >= maxwidth:
+        _newline()
+    elif mode == spaces:
+      if state.current_length + len(buf) >= maxwidth:
+        _newline()
+      else:
+        _flushbuf()
+    mode, buf = chars, ''
+  state.mode, state.buf, state.keepspases = mode, buf, keepspases
+
+
+

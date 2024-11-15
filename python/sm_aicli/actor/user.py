@@ -16,7 +16,8 @@ from pdb import set_trace as ST
 from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality)
 
-from ..utils import info, err, with_sigint, dbg, cont2strm, version, sys2exitcode
+from ..utils import (info, err, with_sigint, dbg, cont2strm, version, sys2exitcode, WLState,
+                     wraplong)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -69,14 +70,15 @@ COMPLETION = {
       " imgsz":     {" string": {}},
       " temp":      {" FLOAT":  {}, " default": {}},
       " nt":        {" NUMBER": {}, " default": {}},
-      " verbosity": {" NUMBER": {}, " default": {}}
+      " verbosity": {" NUMBER": {}, " default": {}},
     },
-    " term": {
+    " terminal": {
       " modality": {
         " modality_string": {}
       },
       " rawbin": VBOOL,
-      " prompt": {" string": {}}
+      " prompt": {" string": {}},
+      " width": {" NUMBER": {}, " default": {}},
     }
   },
   CMD_CP:      REF_REF,
@@ -131,7 +133,8 @@ GRAMMAR = fr"""
                                          /verbosity/ / +/ (NUMBER | DEF)) | \
                                (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
                                                            /rawbin/ / +/ BOOL | \
-                                                           /prompt/ / +/ string)) | \
+                                                           /prompt/ / +/ string | \
+                                                           /width/ / +/ (NUMBER | DEF))) | \
              /\{CMD_CP}/ / +/ ref / +/ ref | \
              /\{CMD_APPEND}/ / +/ ref / +/ ref | \
              /\{CMD_CAT}/ / +/ ref | \
@@ -256,6 +259,7 @@ class Repl(Interpreter):
     self._reset()
     self.paste_mode = False
     self.readline_prompt = args.readline_prompt
+    self.wlstate = WLState(None)
 
   def _check_next_actor(self):
     if self.actor_next is None:
@@ -266,6 +270,9 @@ class Repl(Interpreter):
     self.buffers[IN] = ""
     self.buffers[OUT] = ""
 
+  def _print(self, s=None, flush=False, end='\n'):
+    wraplong((s or '') + end, self.wlstate, lambda s: print(s, end='', flush=True), flush=flush)
+
   def reset(self):
     old_message = self.buffers[IN]
     self._reset()
@@ -274,7 +281,7 @@ class Repl(Interpreter):
 
   def _finish_echo(self):
     if self.in_echo:
-      print()
+      self._print(flush=True)
     self.in_echo = 0
 
   def string_value(self, tree):
@@ -329,11 +336,12 @@ class Repl(Interpreter):
       finally:
         self.buffers[IN] = ''
     elif command == CMD_HELP:
-      print(self.args.help)
-      print("Command-line grammar:")
-      print(GRAMMAR)
-      print("Commands summary:\n")
-      print('\n'.join([f"  {c:12s} {h[0]:15s} {h[1]}" for c,h in CMDHELP.items()]))
+      self._print(self.args.help)
+      self._print("Command-line grammar:")
+      self._print(GRAMMAR)
+      self._print("Commands summary:\n")
+      self._print('\n'.join([f"  {c:12s} {h[0]:15s} {h[1]}" for c,h in CMDHELP.items()]),
+                  flush=True)
     elif command == CMD_EXIT:
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,
@@ -396,7 +404,10 @@ class Repl(Interpreter):
           self.rawbin = val
         elif pname == 'prompt':
           self.readline_prompt = pval[0]
-          info(f"Setting terminal prompt to '{pval[0]}'")
+          info(f"Setting terminal prompt to '{self.readline_prompt}'")
+        elif pname == 'width':
+          self.wlstate.max_width = as_int(pval, None)
+          info(f"Setting terminal width to '{self.wlstate.max_width}'")
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
@@ -452,7 +463,7 @@ class Repl(Interpreter):
       args = self.visit_children(tree)
       ref = args[2]
       val = ref_read(ref, self.buffers)
-      print(val)
+      self._print(val, flush=True)
     elif command == CMD_SHELL:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
@@ -471,7 +482,7 @@ class Repl(Interpreter):
       except Exception as err:
         raise ValueError(str(err)) from err
     elif command == CMD_VERSION:
-      print(version())
+      self._print(version(), flush=True)
     elif command == CMD_PASTE:
       args = self.visit_children(tree)
       val = as_bool(args[2])
@@ -487,10 +498,10 @@ class Repl(Interpreter):
     text = tree.children[0].value
     if self.in_echo:
       if self.in_echo == 1:
-        print(text.strip(), end='')
+        self._print(text.strip(), end='')
         self.in_echo = 2
       else:
-        print(text, end='')
+        self._print(text, end='')
     else:
       commands = []
       for cmd in list(CMDHELP.keys()):
@@ -503,7 +514,7 @@ class Repl(Interpreter):
   def escape(self, tree):
     text = tree.children[0].value[1:]
     if self.in_echo:
-      print(text, end='')
+      self._print(text)
     else:
       self.buffers[IN] += text
 
@@ -677,7 +688,7 @@ class UserActor(Actor):
               # cmd = f"{CMD_CP} \"bfile:{s.suggested_fname}\" \"buffer:out\""
               # print(cmd, flush=True)
               # self.stream = cmd + self.stream
-              print(s.suggested_fname)
+              self.repl._print(f"{s.suggested_fname}\n", flush=True)
               self.repl.buffers[OUT] = s.suggested_fname
             else:
               for token in s.gen():
@@ -687,12 +698,15 @@ class UserActor(Actor):
                   stdout.buffer.flush()
                 elif isinstance(token, str):
                   need_eol = not token.rstrip(' ').endswith("\n")
-                  print(token, end='', flush=True)
+                  # print(token, end='', flush=True)
+                  # wraplong(token, self.repl.wlstate, lambda x: print(x, end=''))
+                  self.repl._print(token, end='')
                 if self.repl.buffers[OUT] is None:
                   self.repl.buffers[OUT] = b'' if isinstance(token, bytes) else ''
                 self.repl.buffers[OUT] += token
         if need_eol:
-          print()
+          self.repl._print()
+        self.repl._print(flush=True, end='')
       self.cnv_top += 1
 
   def reset(self):
