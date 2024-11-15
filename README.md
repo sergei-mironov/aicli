@@ -179,7 +179,7 @@ options:
 ``` python
 from sm_aicli.actor.user import *
 print("| Command         | Arguments       | Description |")
-print("|-----------------|-----------------|-------------|")
+print("|:----------------|:----------------|-------------|")
 for command, (arguments, description) in CMDHELP.items():
   print(f"| {command:15s} | {arguments:15s} | {description} |")
 ```
@@ -226,29 +226,29 @@ text: TEXT
 escape: ESCAPE
 # Commands start with `/`. Use `\/` to process next `/` as a regular text.
 # The commands are:
-command: /\/version/ | \
-         /\/dbg/ | \
-         /\/reset/ | \
-         /\/echo/ | \
-         /\/ask/ | \
-         /\/help/ | \
-         /\/exit/ | \
-         /\/model/ / +/ model_ref | \
-         /\/read/ / +/ /model/ / +/ /prompt/ | \
-         /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
-                                     (/t/ | /temp/) / +/ (FLOAT | DEF) | \
-                                     (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
-                                     /imgsz/ / +/ string | \
-                                     /verbosity/ / +/ (NUMBER | DEF)) | \
-                           (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
-                                                       /rawbin/ / +/ BOOL)) | \
-         /\/cp/ / +/ ref / +/ ref | \
-         /\/append/ / +/ ref / +/ ref | \
-         /\/cat/ / +/ ref | \
-         /\/clear/ / +/ ref | \
-         /\/shell/ / +/ ref | \
-         /\/cd/ / +/ ref | \
-         /\/paste/ / +/ BOOL
+command.1: /\/version/ | \
+           /\/dbg/ | \
+           /\/reset/ | \
+           /\/echo/ | \
+           /\/ask/ | \
+           /\/help/ | \
+           /\/exit/ | \
+           /\/model/ / +/ model_ref | \
+           /\/read/ / +/ /model/ / +/ /prompt/ | \
+           /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
+                                       (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                       (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
+                                       /imgsz/ / +/ string | \
+                                       /verbosity/ / +/ (NUMBER | DEF)) | \
+                             (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
+                                                         /rawbin/ / +/ BOOL)) | \
+           /\/cp/ / +/ ref / +/ ref | \
+           /\/append/ / +/ ref / +/ ref | \
+           /\/cat/ / +/ ref | \
+           /\/clear/ / +/ ref | \
+           /\/shell/ / +/ ref | \
+           /\/cd/ / +/ ref | \
+           /\/paste/ / +/ BOOL
 
 # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
 string: "\"" string_quoted "\"" | string_unquoted
@@ -269,7 +269,7 @@ SCHEMA.4: /verbatim/|/file/|/bfile/|/buffer/
 PROVIDER.4: /openai/|/gpt4all/|/dummy/
 STRING_QUOTED.3: /[^"]+/
 STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
-TEXT.0: /([^\/#](?!\/|\\))*[^\/#]/s
+TEXT.0: /([^#](?!\/))*[^\/#]/s
 NUMBER: /[0-9]+/
 FLOAT: /[0-9]+\.[0-9]*/
 DEF: "default"
@@ -292,9 +292,8 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L109) |
-[Actor](./python/sm_aicli/types.py#L28) | [Intention](./python/sm_aicli/types.py#L60) |
-[Stream](./python/sm_aicli/types.py#L76)
+[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L109) | [Actor](./python/sm_aicli/types.py#L28) | [Intention](./python/sm_aicli/types.py#L60) | [Stream](./python/sm_aicli/types.py#L76)
+
 <!--noresult-->
 
 In this project we try to keep the code base as small as possible. All data types are defined in one
