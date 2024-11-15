@@ -189,4 +189,6 @@ def sys2exitcode(ret):
     return WEXITSTATUS(ret)
 
 def version():
-  return f"{VERSION}+g{REVISION[:7]}"
+  ver = VERSION
+  rev = f"+g{REVISION[:7]}" if REVISION else ""
+  return f"{ver}{rev}"
