@@ -241,7 +241,9 @@ command.1: /\/version/ | \
                                        /imgsz/ / +/ string | \
                                        /verbosity/ / +/ (NUMBER | DEF)) | \
                              (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
-                                                         /rawbin/ / +/ BOOL)) | \
+                                                         /rawbin/ / +/ BOOL | \
+                                                         /prompt/ / +/ string | \
+                                                         /width/ / +/ (NUMBER | DEF))) | \
            /\/cp/ / +/ ref / +/ ref | \
            /\/append/ / +/ ref / +/ ref | \
            /\/cat/ / +/ ref | \
