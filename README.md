@@ -114,8 +114,8 @@ using the `/cp` command:
 >>> /cp buffer:out file:monkey.txt
 ```
 
-For other commands, see the [grammar reference](#grammar-reference) below.  Also, the [./ai
-folder](./ai) of this repo contains examples scripts.
+For the full list of commands, check the [grammar reference](#grammar-reference) below.  Also, the
+[./ai folder](./ai) of this repo contains example scripts.
 
 Reference
 ---------
