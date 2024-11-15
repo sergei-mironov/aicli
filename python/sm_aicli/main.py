@@ -16,6 +16,8 @@ from sm_aicli import (
   DummyActor, info, err, reload_history, with_sigint
 )
 
+from .utils import version, REVISION
+
 
 ARG_PARSER = ArgumentParser(description="Command-line arguments")
 ARG_PARSER.add_argument(
@@ -153,10 +155,10 @@ def main(cmdline=None):
 
   args.help = get_help_string(ARG_PARSER)
   if args.revision or args.version:
+    if args.version:
+      print(version())
     if args.revision:
       print(REVISION)
-    if args.version:
-      print(VERSION)
     return 0
 
   cnv = Conversation.init()

@@ -17,4 +17,18 @@ expect {
   eof {}
   timeout { puts "Error: Did not receive eof"; exit 1 }
 }
+
+spawn aicli --version
+
+expect {
+  -re {\d+\.\d+\.\d+\+g} { }
+  timeout { puts "Error: Did not receive version"; exit 1 }
+}
+
+expect {
+  eof {}
+  timeout { puts "Error: Did not receive eof"; exit 1 }
+}
+
+
 exit 0

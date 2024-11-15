@@ -16,7 +16,7 @@ from pdb import set_trace
 from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality)
 
-from ..utils import info, err, with_sigint, dbg, cont2strm, VERSION, REVISION, sys2exitcode
+from ..utils import info, err, with_sigint, dbg, cont2strm, version, sys2exitcode
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -463,7 +463,7 @@ class Repl(Interpreter):
       except Exception as err:
         raise ValueError(str(err)) from err
     elif command == CMD_VERSION:
-      print(f"{VERSION}+g{REVISION[:7]}")
+      print(version())
     elif command == CMD_PASTE:
       args = self.visit_children(tree)
       val = as_bool(args[2])
