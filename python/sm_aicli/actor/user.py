@@ -11,7 +11,7 @@ from collections import defaultdict
 from os import system, chdir, environ, getcwd, listdir
 from os.path import expanduser, abspath, sep, join, isfile, isdir, split
 from io import StringIO
-from pdb import set_trace
+from pdb import set_trace as ST
 
 from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality)
@@ -309,6 +309,8 @@ class Repl(Interpreter):
       try:
         contents = [copy(self.buffers[IN])] if len(self.buffers[IN].strip()) > 0 else []
         val = self.visit_children(tree)
+        if self.actor_next is None:
+          info(f'No model is active, use /model first')
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
@@ -479,7 +481,7 @@ class Repl(Interpreter):
     text = tree.children[0].value
     if self.in_echo:
       if self.in_echo == 1:
-        print(text.lstrip(), end='')
+        print(text.strip(), end='')
         self.in_echo = 2
       else:
         print(text, end='')

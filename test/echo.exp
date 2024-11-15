@@ -15,11 +15,21 @@ expect {
 }
 
 expect {
-    "Hello, World!" {
+    -re {Hello\,\ World\!\r?\n>>>} {
+        send "/echo AAA/echo BBB\r"
+    }
+    timeout {
+        puts "Error: Did not receive expected input"
+        exit 1
+    }
+}
+
+expect {
+    -re {AAA\r?\nBBB\r?\n>>>} {
         send "/exit\r"
     }
     timeout {
-        puts "Error: Did not receive expected output"
+        puts "Error: Did not receive prompt"
         exit 1
     }
 }
