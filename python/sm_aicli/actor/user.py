@@ -713,6 +713,13 @@ class UserActor(Actor):
   def reset(self):
     self.cnv_top = 0
 
+
+  def _prompt(self):
+    return self.repl.readline_prompt
+
+  def _paste_prompt(self):
+    return 'P' + self._prompt() if self._prompt() else ''
+
   def react(self, av:ActorView, cnv:Conversation) -> Utterance:
     # FIMXE: A minor problem here in the paste_mode [1]: interpreter eats the
     # input first, and handles the paste mode after that. It should raise
@@ -725,12 +732,12 @@ class UserActor(Actor):
             if self.batch_mode and not self.args.keep_running:
               break
             else:
-              self.stream = input(self.repl.readline_prompt) + '\n'
+              self.stream = input(self._prompt()) + '\n'
           tree = PARSER.parse(self.stream)
           dbg(tree, self)
           self.repl.visit(tree)
           while self.repl.paste_mode: # [1]
-            line = input('P>')
+            line = input(self._paste_prompt())
             if line.strip() == '/paste off':
               self.repl.paste_mode = False
             else:
