@@ -185,7 +185,7 @@ class OpenAIActor(Actor):
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:
     if len(cnv.utterances) == 0:
       raise ConversationException(f'No context')
-    modality = cnv.utterances[-1].intention.modality
+    modality = self.opt.modality
     if modality == Modality.Text:
       return self._react_text(act, cnv)
     elif modality == Modality.Image:

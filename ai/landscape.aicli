@@ -1,7 +1,7 @@
 #!/usr/bin/env -S aicli --rc=none --readline-prompt=''
 /model openai:"dall-e-2"
 /set model apikey file:"_openai"
-/set term modality img
+/set model modality img
 Peaceful landscape
 /ask
 fim /append buffer:out buffer:in

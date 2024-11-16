@@ -66,6 +66,7 @@ COMPLETION = {
   CMD_READ:    {},
   CMD_SET: {
     " model": {
+      " modality":  { " modality_string": {}},
       " apikey":    REF,
       " imgsz":     {" string": {}},
       " temp":      {" FLOAT":  {}, " default": {}},
@@ -73,9 +74,6 @@ COMPLETION = {
       " verbosity": {" NUMBER": {}, " default": {}},
     },
     " terminal": {
-      " modality": {
-        " modality_string": {}
-      },
       " rawbin": VBOOL,
       " prompt": {" string": {}},
       " width": {" NUMBER": {}, " default": {}},
@@ -127,14 +125,14 @@ GRAMMAR = fr"""
              /\{CMD_MODEL}/ / +/ model_ref | \
              /\{CMD_READ}/ / +/ /model/ / +/ /prompt/ | \
              /\{CMD_SET}/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
-                                         (/t/ | /temp/) / +/ (FLOAT | DEF) | \
-                                         (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
-                                         /imgsz/ / +/ string | \
-                                         /verbosity/ / +/ (NUMBER | DEF)) | \
-                               (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
-                                                           /rawbin/ / +/ BOOL | \
-                                                           /prompt/ / +/ string | \
-                                                           /width/ / +/ (NUMBER | DEF))) | \
+                                              (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                              (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
+                                              /imgsz/ / +/ string | \
+                                              /verbosity/ / +/ (NUMBER | DEF) | \
+                                              /modality/ / +/ MODALITY) | \
+                               (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
+                                                            /prompt/ / +/ string | \
+                                                            /width/ / +/ (NUMBER | DEF))) | \
              /\{CMD_CP}/ / +/ ref / +/ ref | \
              /\{CMD_APPEND}/ / +/ ref / +/ ref | \
              /\{CMD_CAT}/ / +/ ref | \
@@ -252,7 +250,7 @@ class Repl(Interpreter):
     self.av = None
     self.actor_next = None
     self.aname = name
-    self.modality = Modality.Text
+    # self.modality = Modality.Text
     self.rawbin = False
     self.ref_schema_default = "verbatim"
     self._reset()
@@ -333,7 +331,6 @@ class Repl(Interpreter):
             intention=Intention.init(
               actor_next=self.actor_next,
               actor_updates=self.av,
-              modality=self.modality
             )
           )
         )
@@ -390,19 +387,19 @@ class Repl(Interpreter):
           val = as_int(pval)
           opts[self.actor_next].verbose = val
           info(f"Setting actor verbosity to '{val}'")
-        else:
-          raise ValueError(f"Unknown actor parameter '{pname}'")
-      elif section in ['term', 'terminal']:
-        if pname == 'modality':
+        elif pname == 'modality':
           if str(pval) == 'img':
             mod = Modality.Image
           elif str(pval) == 'text':
             mod = Modality.Text
           else:
             raise ValueError(f"Invalid modality {pval}")
-          info(f"Setting terminal expected modality to '{mod}'")
-          self.modality = mod
-        elif pname == 'rawbin':
+          opts[self.actor_next].modality = mod
+          info(f"Setting model modality to '{mod}'")
+        else:
+          raise ValueError(f"Unknown actor parameter '{pname}'")
+      elif section in ['term', 'terminal']:
+        if pname == 'rawbin':
           val = as_bool(pval)
           info(f"Setting terminal raw binary mode to '{val}'")
           self.rawbin = val
@@ -688,7 +685,7 @@ class UserActor(Actor):
               with open(s.suggested_fname, 'wb') as f:
                 for token in s.gen():
                   f.write(token)
-              info(f"Binary file has been saved to '{s.suggested_fname}'")
+              info("Binary stream has been saved to file")
               # cmd = f"{CMD_CP} \"bfile:{s.suggested_fname}\" \"buffer:out\""
               # print(cmd, flush=True)
               # self.stream = cmd + self.stream

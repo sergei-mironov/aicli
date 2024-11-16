@@ -24,6 +24,11 @@ class UserName:
   """ A tag representing a user-facing actor """
   pass
 
+class Modality(Enum):
+  """ A primitive mime-type for content """
+  Text = 0
+  Image = 1
+
 @dataclass
 class ActorOptions:
   """ Structure encoding all supported options an actor might accept. Unused options are to be
@@ -34,6 +39,7 @@ class ActorOptions:
   num_threads:int|None = None
   prompt:str|None = None
   imgsz:str|None = None
+  modality:Modality=Modality.Text # Ask for a non-text response
 
   @staticmethod
   def init():
@@ -51,11 +57,6 @@ class ActorView:
   def init():
     return ActorView({})
 
-class Modality(Enum):
-  """ A primitive mime-type for content """
-  Text = 0
-  Image = 1
-
 @dataclass
 class Intention:
   """ Intention encodes actions that actors might want to perform in addition to saying an
@@ -65,13 +66,11 @@ class Intention:
   exit_flag:bool                  # Exit the application
   reset_flag:bool                 # Reset the conversation
   dbg_flag:bool                   # Run the Python debugger
-  modality:Modality=Modality.Text # Ask for a non-text response
 
   @staticmethod
   def init(actor_next=None, actor_updates=None, exit_flag=False, reset_flag=False,
-           dbg_flag=False, modality=Modality.Text):
-    return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag,
-                         modality=modality)
+           dbg_flag=False):
+    return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
 
 class Stream:
   """ Stream represents a promise to fetch the content from a remote source of some kind. The

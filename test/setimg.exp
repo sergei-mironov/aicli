@@ -6,11 +6,11 @@ set timeout 2
 spawn aicli --model=dummy:dummy
 
 expect {
-  ">>> " { send "/set terminal modality img\r" }
+  ">>> " { send "/set model modality img\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
-  "Setting terminal expected modality to 'Modality.Image'" { send "/exit\r" }
+  "Setting model modality to 'Modality.Image'" { send "/exit\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
