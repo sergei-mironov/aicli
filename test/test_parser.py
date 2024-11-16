@@ -104,8 +104,7 @@ def test_apikey():
         apikey
 
         ref
-          string
-            string_value       keydata
+          string       keydata
   ''')
   _assert('/set model apikey file:"key file"', r'''
     start
@@ -118,8 +117,7 @@ def test_apikey():
 
         ref
           file
-          string
-            string_value       key file
+          string       key file
   ''')
   _assert('/set model apikey verbatim:keydata', r'''
     start
@@ -132,8 +130,7 @@ def test_apikey():
 
         ref
           verbatim
-          string
-            string_value       keydata
+          string       keydata
   ''')
 
 def test_model_1():
@@ -143,8 +140,7 @@ def test_model_1():
         /model
 
         model_ref
-          string
-            string_value       aaa
+          string       aaa
   ''')
 
 def test_model_2():
@@ -155,8 +151,7 @@ def test_model_2():
 
         model_ref
           openai
-          string
-            string_value       aaa bbb
+          string       aaa bbb
   ''')
   _assert('/model openai:gpt-4o xxx', r'''
     start
@@ -165,8 +160,7 @@ def test_model_2():
 
         model_ref
           openai
-          string
-            string_value       gpt-4o
+          string       gpt-4o
       text        xxx
   ''')
 
@@ -177,8 +171,7 @@ def test_ref_01():
          /cat
 
          ref
-           string
-             string_value       aaa
+           string       aaa
   ''')
 
 def test_ref_1():
@@ -188,8 +181,7 @@ def test_ref_1():
         /cat
 
         ref
-          string
-            string_value       aaa
+          string       aaa
   ''')
 
 def test_ref_2():
@@ -200,8 +192,7 @@ def test_ref_2():
 
         ref
           file
-          string
-            string_value       aaa
+          string       aaa
   ''')
 
 def test_ref_3():
@@ -212,8 +203,7 @@ def test_ref_3():
 
         ref
           verbatim
-          string
-            string_value       aaa
+          string       aaa
   ''')
 
 def test_ref_4():
@@ -224,8 +214,7 @@ def test_ref_4():
 
         ref
           buffer
-          string
-            string_value       aaa
+          string       aaa
   ''')
 
 def test_ref_5():
@@ -236,8 +225,7 @@ def test_ref_5():
 
         ref
           verbatim
-          string
-            string_value       aaa
+          string       aaa
   ''')
   _assert('/cat verbatim:aaa\n', r'''
     start
@@ -246,8 +234,7 @@ def test_ref_5():
 
         ref
           verbatim
-          string
-            string_value       aaa
+          string       aaa
       text
   ''')
 
@@ -260,8 +247,7 @@ def test_ref_6():
 
         ref
           file
-          string
-            string_value       aaa/cat
+          string       aaa/cat
       text        text
   ''')
 
@@ -273,8 +259,7 @@ def test_ref_7():
 
         ref
           file
-          string
-            string_value       file with spaces
+          string       file with spaces
   ''')
 
 def test_ref_file():
@@ -288,8 +273,7 @@ def test_ref_file():
           (
           ref
             buffer
-            string
-              string_value       a
+            string       a
           )
   ''')
 
@@ -315,4 +299,17 @@ def test_comment():
 
       command       /echo
       text        bbb
+  ''')
+
+def test_empty_string():
+  _assert('/set terminal prompt ""', r'''
+    start
+      command
+        /set
+
+        terminal
+
+        prompt
+
+        string
   ''')

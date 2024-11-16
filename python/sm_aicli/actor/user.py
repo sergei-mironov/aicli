@@ -144,10 +144,9 @@ GRAMMAR = fr"""
              /\{CMD_PASTE}/ / +/ BOOL
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
-  string: "\"" string_quoted "\"" | string_unquoted
-  string_quoted: STRING_QUOTED -> string_value
-  string_unquoted: STRING_UNQUOTED -> string_value
+  string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
 
+  # Model references are strings with the provider prefix
   model_ref: (PROVIDER ":")? string
 
   # References mention locations which could be either a file (`file:path/to/file`), a binary file
@@ -284,12 +283,21 @@ class Repl(Interpreter):
       self._print(flush=True)
     self.in_echo = 0
 
-  def string_value(self, tree):
-    return tree.children[0].value
+  def string(self, tree)->str:
+    if tree.children:
+      assert len(tree.children) == 1, tree
+      assert tree.children[0].type in ('STRING_QUOTED','STRING_UNQUOTED'), tree
+      return tree.children[0].value
+    else:
+      return ""
 
   def ref(self, tree):
     val = self.visit_children(tree)
-    return (str(val[0]), val[1][0]) if len(val) == 2 else (self.ref_schema_default, val[0][0])
+    return (str(val[0]), val[1]) if len(val) == 2 else (self.ref_schema_default, val[0])
+
+  def model_ref(self, tree):
+    val = self.visit_children(tree)
+    return (str(val[0]), val[1]) if len(val) == 2 else (val[0], "default")
 
   def ref_file(self, tree):
     args = self.visit_children(tree)
@@ -304,10 +312,6 @@ class Repl(Interpreter):
       return [False]
     else:
       raise ValueError(f"Invalid boolean value {val}")
-
-  def model_ref(self, tree):
-    val = self.visit_children(tree)
-    return (str(val[0]), val[1][0]) if len(val) == 2 else (val[0][0], "default")
 
   def command(self, tree):
     self._finish_echo()
@@ -380,8 +384,8 @@ class Repl(Interpreter):
           opts[self.actor_next].num_threads = val
           info(f"Setting model number of threads to '{val or 'default'}'")
         elif pname == 'imgsz':
-          opts[self.actor_next].imgsz = pval[0]
-          info(f"Setting model image size to '{pval[0]}'")
+          opts[self.actor_next].imgsz = pval
+          info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
         elif pname == 'verbosity':
           val = as_int(pval)
           opts[self.actor_next].verbose = val
@@ -403,7 +407,7 @@ class Repl(Interpreter):
           info(f"Setting terminal raw binary mode to '{val}'")
           self.rawbin = val
         elif pname == 'prompt':
-          self.readline_prompt = pval[0]
+          self.readline_prompt = pval
           info(f"Setting terminal prompt to '{self.readline_prompt}'")
         elif pname == 'width':
           self.wlstate.max_width = as_int(pval, None)
