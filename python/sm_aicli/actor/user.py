@@ -77,6 +77,7 @@ COMPLETION = {
       " rawbin": VBOOL,
       " prompt": {" string": {}},
       " width": {" NUMBER": {}, " default": {}},
+      " verbosity": {" NUMBER": {}, " default": {}},
     }
   },
   CMD_CP:      REF_REF,
@@ -132,7 +133,8 @@ GRAMMAR = fr"""
                                               /modality/ / +/ MODALITY) | \
                                (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
                                                             /prompt/ / +/ string | \
-                                                            /width/ / +/ (NUMBER | DEF))) | \
+                                                            /width/ / +/ (NUMBER | DEF) | \
+                                                            /verbosity/ / +/ (NUMBER | DEF))) | \
              /\{CMD_CP}/ / +/ ref / +/ ref | \
              /\{CMD_APPEND}/ / +/ ref / +/ ref | \
              /\{CMD_CAT}/ / +/ ref | \
@@ -244,7 +246,7 @@ IN='in'
 OUT='out'
 
 class Repl(Interpreter):
-  def __init__(self, owner:Actor):
+  def __init__(self, owner:"UserActor"):
     self.owner = owner
     self.buffers = defaultdict(str)
     self.av = None
@@ -406,6 +408,10 @@ class Repl(Interpreter):
         elif pname == 'width':
           self.wlstate.max_width = as_int(pval, None)
           self.owner.info(f"Setting terminal width to '{self.wlstate.max_width}'")
+        elif pname == 'verbosity':
+          val = as_int(pval)
+          self.owner.opt.verbose = val
+          self.owner.info(f"Setting terminal verbosity to '{val}'")
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
@@ -524,33 +530,6 @@ class Repl(Interpreter):
       self._finish_echo()
     return res
 
-def reload_history(args):
-  if args.readline_history:
-    try:
-      clear_history()
-      read_history_file(args.readline_history)
-      info(f"History file loaded", args)
-    except FileNotFoundError:
-      info(f"History file not loaded", args)
-  else:
-    info(f"History file is not used", args)
-
-def read_configs(args, rcnames:list[str])->list[str]:
-  acc = []
-  current_dir = abspath(getcwd())
-  path_parts = current_dir.split(sep)
-  for depth in range(2, len(path_parts) + 1):
-    directory = sep.join(path_parts[:depth])
-    for fn in rcnames:
-      candidate_file = join(directory, fn)
-      if isfile(candidate_file):
-        with open(candidate_file, 'r') as file:
-          info(f"Reading {candidate_file}", args)
-          for line in file.readlines():
-            info(line.strip(), args)
-            acc.append(line.strip())
-  return acc
-
 class UserActor(Actor):
 
   def __init__(self,
@@ -567,7 +546,7 @@ class UserActor(Actor):
     header = StringIO()
     rcnames = environ.get('AICLI_RC', args.rc)
     if rcnames is not None and len(rcnames)>0 and rcnames!='none':
-      for line in read_configs(args, rcnames.split(',')):
+      for line in self._read_configs(rcnames.split(',')):
         header.write(line+'\n')
     else:
       self.info("Skipping configuration files")
@@ -589,7 +568,7 @@ class UserActor(Actor):
     self.info(f"Type /help or a question followed by the /ask command (or by pressing "
           f"`{hint}` key).")
 
-    reload_history(args)
+    self._reload_history()
 
     self.stream = header.getvalue()
     self.repl = Repl(self)
@@ -597,7 +576,34 @@ class UserActor(Actor):
     self.reset()
 
   def info(self, message: str):
-    info(message, self.args)
+    info(message, self)
+
+  def _reload_history(self):
+    if self.args.readline_history:
+      try:
+        clear_history()
+        read_history_file(self.args.readline_history)
+        info(f"History file loaded", self)
+      except FileNotFoundError:
+        info(f"History file not loaded", self)
+    else:
+      info(f"History file is not used", self)
+
+  def _read_configs(self, rcnames:list[str])->list[str]:
+    acc = []
+    current_dir = abspath(getcwd())
+    path_parts = current_dir.split(sep)
+    for depth in range(2, len(path_parts) + 1):
+      directory = sep.join(path_parts[:depth])
+      for fn in rcnames:
+        candidate_file = join(directory, fn)
+        if isfile(candidate_file):
+          with open(candidate_file, 'r') as file:
+            info(f"Reading {candidate_file}", self)
+            for line in file.readlines():
+              info(line.strip(), self)
+              acc.append(line.strip())
+    return acc
 
   def _complete(self, text:str, state:int) -> str|None:
     current_dict = COMPLETION

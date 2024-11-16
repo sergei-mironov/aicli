@@ -16,6 +16,16 @@ expect {
 
 expect {
     "Setting actor verbosity to '10'" {
+        send "/set terminal verbosity 10\r"
+    }
+    timeout {
+        puts "Error: Did not receive expected output"
+        exit 1
+    }
+}
+
+expect {
+    "Setting terminal verbosity to '10'" {
         send "/exit\r"
     }
     timeout {

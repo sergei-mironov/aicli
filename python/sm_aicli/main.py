@@ -13,7 +13,7 @@ from lark import Lark
 from sm_aicli import (
   Conversation, ActorState, ActorName, Utterance, UserName, Modality,
   UserActor, ActorOptions, onematch, expanddir, OpenAIActor, GPT4AllActor,
-  DummyActor, info, err, reload_history, with_sigint
+  DummyActor, info, err, with_sigint
 )
 
 from .utils import version, REVISION
@@ -165,7 +165,8 @@ def main(cmdline=None):
   st = ActorState.init()
   current_actor = UserName()
   current_modality = Modality.Text
-  st.actors[current_actor] = UserActor(UserName(), ActorOptions.init(), args)
+  user = UserActor(UserName(), ActorOptions.init(), args)
+  st.actors[current_actor] = user
 
   model_dir = onematch(expanddir(args.model_dir))
   image_dir = onematch(expanddir(args.image_dir))
@@ -179,9 +180,9 @@ def main(cmdline=None):
       cnv.utterances.append(utterance)
       intention = utterance.intention
       if intention.dbg_flag:
-        info("Type `cont` to continue when done")
+        info("Type `cont` to continue when done", user)
         Pdb(nosigint=True).set_trace(_getframe())
-        reload_history(args)
+        user._reload_history()
       if intention.actor_updates is not None:
         for name, opt in intention.actor_updates.options.items():
           actor = st.actors.get(name)
@@ -208,11 +209,11 @@ def main(cmdline=None):
       if intention.exit_flag:
         break
     except KeyboardInterrupt:
-      info("^C", prefix=False)
+      info("^C", user, prefix=False)
       current_actor = UserName()
       current_modality = Modality.Text
     except NotImplementedError as e:
-      err("<Not implemented>")
+      err("<Not implemented>", user)
       current_actor = UserName()
       current_modality = Modality.Text
     except ValueError as e:
