@@ -254,10 +254,9 @@ command.1: /\/version/ | \
            /\/paste/ / +/ BOOL
 
 # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
-string: "\"" string_quoted "\"" | string_unquoted
-string_quoted: STRING_QUOTED -> string_value
-string_unquoted: STRING_UNQUOTED -> string_value
+string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
 
+# Model references are strings with the provider prefix
 model_ref: (PROVIDER ":")? string
 
 # References mention locations which could be either a file (`file:path/to/file`), a binary file
