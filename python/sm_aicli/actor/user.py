@@ -244,18 +244,16 @@ IN='in'
 OUT='out'
 
 class Repl(Interpreter):
-  def __init__(self, name, args):
+  def __init__(self, owner:Actor):
+    self.owner = owner
     self.buffers = defaultdict(str)
-    self.args = args
     self.av = None
     self.actor_next = None
-    self.aname = name
-    # self.modality = Modality.Text
     self.rawbin = False
     self.ref_schema_default = "verbatim"
     self._reset()
     self.paste_mode = False
-    self.readline_prompt = args.readline_prompt
+    self.readline_prompt = owner.args.readline_prompt
     self.wlstate = WLState(None)
 
   def _check_next_actor(self):
@@ -274,7 +272,7 @@ class Repl(Interpreter):
     old_message = self.buffers[IN]
     self._reset()
     if len(old_message) > 0:
-      info("Message buffer is now empty")
+      self.owner.info("Message buffer is now empty")
 
   def _finish_echo(self):
     if self.in_echo:
@@ -322,11 +320,11 @@ class Repl(Interpreter):
         contents = [copy(self.buffers[IN])] if len(self.buffers[IN].strip()) > 0 else []
         val = self.visit_children(tree)
         if self.actor_next is None:
-          info(f'No model is active, use /model first')
+          self.owner.info(f'No model is active, use /model first')
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
-            name=self.aname,
+            name=self.owner.name,
             contents=contents,
             intention=Intention.init(
               actor_next=self.actor_next,
@@ -337,17 +335,16 @@ class Repl(Interpreter):
       finally:
         self.buffers[IN] = ''
     elif command == CMD_HELP:
-      self._print(self.args.help)
+      self._print(self.owner.args.help)
       self._print("Command-line grammar:")
       self._print(GRAMMAR)
       self._print("Commands summary:\n")
-      self._print('\n'.join([f"  {c:12s} {h[0]:15s} {h[1]}" for c,h in CMDHELP.items()]),
-                  flush=True)
+      self._print('\n'.join([f"  {c:12s} {h[0]:15s} {h[1]}" for c,h in CMDHELP.items()]), flush=True)
     elif command == CMD_EXIT:
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,
         utterance=Utterance.init(
-          name=self.aname,
+          name=self.owner.name,
           intention=Intention.init(exit_flag=True, actor_updates=self.av)
         )
       )
@@ -356,7 +353,7 @@ class Repl(Interpreter):
       if len(res) > 2:
         name = ModelName(*res[2])
         opt = opts.get(name, ActorOptions.init())
-        info(f"Setting target actor to '{name.repr()}'")
+        self.owner.info(f"Setting target actor to '{name.repr()}'")
         opts[name] = opt
         self.actor_next = name
       else:
@@ -371,22 +368,22 @@ class Repl(Interpreter):
           if not isinstance(pval, tuple) or len(pval) != 2:
             raise ValueError("Model API key should be formatted as `schema:value`")
           opts[self.actor_next].apikey = ref_read(pval, self.buffers)
-          info(f"Setting model API key to the contents of '{pval[0]}:{pval[1]}'")
+          self.owner.info(f"Setting model API key to the contents of '{pval[0]}:{pval[1]}'")
         elif pname in ['t', 'temp']:
           val = as_float(pval)
           opts[self.actor_next].temperature = val
-          info(f"Setting model temperature to '{val or 'default'}'")
+          self.owner.info(f"Setting model temperature to '{val or 'default'}'")
         elif pname in ['nt', 'nthreads']:
           val = as_int(pval)
           opts[self.actor_next].num_threads = val
-          info(f"Setting model number of threads to '{val or 'default'}'")
+          self.owner.info(f"Setting model number of threads to '{val or 'default'}'")
         elif pname == 'imgsz':
           opts[self.actor_next].imgsz = pval
-          info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
+          self.owner.info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
         elif pname == 'verbosity':
           val = as_int(pval)
           opts[self.actor_next].verbose = val
-          info(f"Setting actor verbosity to '{val}'")
+          self.owner.info(f"Setting actor verbosity to '{val}'")
         elif pname == 'modality':
           if str(pval) == 'img':
             mod = Modality.Image
@@ -395,20 +392,20 @@ class Repl(Interpreter):
           else:
             raise ValueError(f"Invalid modality {pval}")
           opts[self.actor_next].modality = mod
-          info(f"Setting model modality to '{mod}'")
+          self.owner.info(f"Setting model modality to '{mod}'")
         else:
           raise ValueError(f"Unknown actor parameter '{pname}'")
       elif section in ['term', 'terminal']:
         if pname == 'rawbin':
           val = as_bool(pval)
-          info(f"Setting terminal raw binary mode to '{val}'")
+          self.owner.info(f"Setting terminal raw binary mode to '{val}'")
           self.rawbin = val
         elif pname == 'prompt':
           self.readline_prompt = pval
-          info(f"Setting terminal prompt to '{self.readline_prompt}'")
+          self.owner.info(f"Setting terminal prompt to '{self.readline_prompt}'")
         elif pname == 'width':
           self.wlstate.max_width = as_int(pval, None)
-          info(f"Setting terminal width to '{self.wlstate.max_width}'")
+          self.owner.info(f"Setting terminal width to '{self.wlstate.max_width}'")
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
@@ -420,7 +417,7 @@ class Repl(Interpreter):
       self._check_next_actor()
       if pname == 'prompt':
         opts[self.actor_next].prompt = pval
-        info(f"Setting actor prompt to '{pval[:10]}...'")
+        self.owner.info(f"Setting actor prompt to '{pval[:10]}...'")
       else:
         raise ValueError(f"Unknown read parameter '{pname}'")
       self.buffers[IN] = ''
@@ -430,24 +427,24 @@ class Repl(Interpreter):
       (schema, name) = args[2]
       if schema != 'buffer':
         raise ValueError(f'Required reference to buffer, not {schema}')
-      info(f"Clearing buffer \"{name.lower()}\"")
+      self.owner.info(f"Clearing buffer \"{name.lower()}\"")
       ref_write((schema, name), '', self.buffers, append=False)
     elif command == CMD_RESET:
-      info("Resetting conversation history and clearing message buffer")
+      self.owner.info("Resetting conversation history and clearing message buffer")
       self.reset()
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,
         utterance=Utterance.init(
-          name=self.aname,
+          name=self.owner.name,
           intention=Intention.init(reset_flag=True)
         )
       )
     elif command == CMD_DBG:
-      info("Calling Python debugger")
+      self.owner.info("Calling Python debugger")
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,
         utterance=Utterance.init(
-          name=self.aname,
+          name=self.owner.name,
           intention=Intention.init(dbg_flag=True)
         )
       )
@@ -458,7 +455,7 @@ class Repl(Interpreter):
       sref, dref = args[2], args[4]
       val = ref_read(sref, self.buffers)
       ref_write(dref, val, self.buffers, append=append)
-      info(f"{'Appended' if append else 'Copied'} from {sref} to {dref}")
+      self.owner.info(f"{'Appended' if append else 'Copied'} from {sref} to {dref}")
     elif command == CMD_CAT:
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
@@ -471,7 +468,7 @@ class Repl(Interpreter):
       ref = args[2]
       cmd = ref_read(ref, self.buffers).strip()
       retcode = sys2exitcode(system(cmd))
-      info(f"Shell command '{cmd}' exited with code {retcode}")
+      self.owner.info(f"Shell command '{cmd}' exited with code {retcode}")
     elif command == CMD_CD:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
@@ -479,7 +476,7 @@ class Repl(Interpreter):
       path = ref_read(ref, self.buffers)
       try:
         chdir(path)
-        info(f"Changed current directory to '{path}'")
+        self.owner.info(f"Changed current directory to '{path}'")
       except Exception as err:
         raise ValueError(str(err)) from err
     elif command == CMD_VERSION:
@@ -488,9 +485,9 @@ class Repl(Interpreter):
       args = self.visit_children(tree)
       val = as_bool(args[2])
       if val:
-        info("Entering paste mode. Type '/paste off' to finish.")
+        self.owner.info("Entering paste mode. Type '/paste off' to finish.")
       else:
-        info("Exiting paste mode.")
+        self.owner.info("Exiting paste mode.")
       self.paste_mode = val
     else:
       raise ValueError(f"Unknown command: {command}")
@@ -509,7 +506,7 @@ class Repl(Interpreter):
         if cmd in text:
           commands.append(cmd)
       if commands:
-        info(f"Warning: {', '.join(['`'+c+'`' for c in commands])} were parsed as a text")
+        self.owner.info(f"Warning: {', '.join(['`'+c+'`' for c in commands])} were parsed as a text")
       self.buffers[IN] += text
 
   def escape(self, tree):
@@ -527,17 +524,16 @@ class Repl(Interpreter):
       self._finish_echo()
     return res
 
-
 def reload_history(args):
   if args.readline_history:
     try:
       clear_history()
       read_history_file(args.readline_history)
-      info(f"History file loaded")
+      info(f"History file loaded", args)
     except FileNotFoundError:
-      info(f"History file not loaded")
+      info(f"History file not loaded", args)
   else:
-    info(f"History file is not used")
+    info(f"History file is not used", args)
 
 def read_configs(args, rcnames:list[str])->list[str]:
   acc = []
@@ -549,9 +545,9 @@ def read_configs(args, rcnames:list[str])->list[str]:
       candidate_file = join(directory, fn)
       if isfile(candidate_file):
         with open(candidate_file, 'r') as file:
-          info(f"Reading {candidate_file}")
+          info(f"Reading {candidate_file}", args)
           for line in file.readlines():
-            info(line.strip())
+            info(line.strip(), args)
             acc.append(line.strip())
   return acc
 
@@ -564,6 +560,7 @@ class UserActor(Actor):
                prefix_stream:str|None = None):
     super().__init__(name, opt)
 
+    self.args = args
     if args.readline_history:
       args.readline_history = abspath(expanduser(args.readline_history))
 
@@ -573,7 +570,7 @@ class UserActor(Actor):
       for line in read_configs(args, rcnames.split(',')):
         header.write(line+'\n')
     else:
-      info("Skipping configuration files")
+      self.info("Skipping configuration files")
     if args.model is not None:
       header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
     if args.model_apikey is not None:
@@ -581,7 +578,7 @@ class UserActor(Actor):
 
     for file in args.filenames:
       with open(file) as f:
-        info(f"Reading {file}")
+        self.info(f"Reading {file}")
         header.write(f.read())
 
     set_completer_delims('')
@@ -589,20 +586,20 @@ class UserActor(Actor):
     parse_and_bind('tab: complete')
     parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
     hint = args.readline_key_send.replace('\\', '')
-    info(f"Type /help or a question followed by the /ask command (or by pressing "
+    self.info(f"Type /help or a question followed by the /ask command (or by pressing "
           f"`{hint}` key).")
 
     reload_history(args)
 
     self.stream = header.getvalue()
-    self.args = args
-    self.repl = Repl(name, args)
+    self.repl = Repl(self)
     self.batch_mode = len(args.filenames) > 0
     self.reset()
 
+  def info(self, message: str):
+    info(message, self.args)
+
   def _complete(self, text:str, state:int) -> str|None:
-    """ `text` is the text to complete, `state` is an increasing number.
-    Function returns the completion text or None if no completions exist. """
     current_dict = COMPLETION
     candidates = []
     prefix = ''
@@ -664,7 +661,6 @@ class UserActor(Actor):
     except IndexError:
       return None
 
-
   def _sync(self, av:ActorView, cnv:Conversation):
     assert self.cnv_top <= len(cnv.utterances)
     if self.repl.av is None:
@@ -685,10 +681,7 @@ class UserActor(Actor):
               with open(s.suggested_fname, 'wb') as f:
                 for token in s.gen():
                   f.write(token)
-              info("Binary stream has been saved to file")
-              # cmd = f"{CMD_CP} \"bfile:{s.suggested_fname}\" \"buffer:out\""
-              # print(cmd, flush=True)
-              # self.stream = cmd + self.stream
+              self.info("Binary stream has been saved to file")
               self.repl._print(f"{s.suggested_fname}\n", flush=True)
               self.repl.buffers[OUT] = s.suggested_fname
             else:
