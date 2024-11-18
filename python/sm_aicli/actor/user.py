@@ -172,8 +172,6 @@ GRAMMAR = fr"""
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
-no_model_is_active = "No model is active, use /model first"
-
 def as_float(val:Token, default:float|None=None)->float|None:
   assert val.type == 'FLOAT' or str(val) in {"def","default"}, val
   return float(val) if str(val) not in {"def","default"} else default
@@ -260,7 +258,7 @@ class Repl(Interpreter):
 
   def _check_next_actor(self):
     if self.actor_next is None:
-      raise RuntimeWarning(no_model_is_active)
+      raise RuntimeWarning("No model is active, use /model first")
 
   def _reset(self):
     self.in_echo = 0
@@ -321,8 +319,7 @@ class Repl(Interpreter):
       try:
         contents = [copy(self.buffers[IN])] if len(self.buffers[IN].strip()) > 0 else []
         val = self.visit_children(tree)
-        if self.actor_next is None:
-          self.owner.info(f'No model is active, use /model first')
+        self._check_next_actor()
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
