@@ -48,13 +48,17 @@ def err(s:str, actor:Actor)->None:
   if actor and actor.opt.verbose > 0:
     print(f"ERROR: {s}", file=stderr)
 
-def info(s:str, actor:Actor, prefix=True)->None:
+def warn(s:str, actor:Actor)->None:
   if actor and actor.opt.verbose > 1:
+    print(f"WARNING: {s}", file=stderr)
+
+def info(s:str, actor:Actor, prefix=True)->None:
+  if actor and actor.opt.verbose > 2:
     prefix = "INFO: " if prefix else ""
     print(f"{prefix}{s}", file=stderr)
 
 def dbg(s:str, actor:Actor)->None:
-  if actor and actor.opt.verbose > 2:
+  if actor and actor.opt.verbose > 3:
     print(f"DEBUG: {s}", file=stderr)
 
 

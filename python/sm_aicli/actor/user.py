@@ -17,7 +17,7 @@ from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality)
 
 from ..utils import (info, err, with_sigint, dbg, cont2strm, version, sys2exitcode, WLState,
-                     wraplong)
+                     wraplong, warn)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -260,7 +260,7 @@ class Repl(Interpreter):
 
   def _check_next_actor(self):
     if self.actor_next is None:
-      raise RuntimeError(no_model_is_active)
+      raise RuntimeWarning(no_model_is_active)
 
   def _reset(self):
     self.in_echo = 0
@@ -743,6 +743,8 @@ class UserActor(Actor):
               self.repl.buffers[IN] += line + '\n'
           if self.args.readline_history:
             write_history_file(self.args.readline_history)
+        except (RuntimeWarning,) as e:
+          warn(str(e), actor=self)
         except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
           err(str(e), actor=self)
         self.stream = ''
