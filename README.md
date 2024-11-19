@@ -30,8 +30,8 @@ Contents
         * [Development shell](#development-shell)
 * [Quick start](#quick-start)
 * [Reference](#reference)
-    * [Command-line reference](#command-line-reference)
-    * [Commands overview](#commands-overview)
+    * [Command-line](#command-line)
+    * [Interpreter commands](#interpreter-commands)
     * [Grammar reference](#grammar-reference)
 * [Architecture](#architecture)
 * [Vim integration](#vim-integration)
@@ -88,9 +88,9 @@ $ nix develop
 Quick start
 -----------
 
-Below is a simple OpenAI terminal session. The commands start with `/`, while lines following `#`
-are ignored. Other text is collected into a buffer and is sent to the model by the `/ask` command.
-Please replace `YOUR_API_KEY` with your actual API key.
+Below is a simple OpenAI terminal session. Commands start with `/`, and comments following `#` are
+ignored. Any other text is collected into a buffer and sent to the configured AI model using the
+`/ask` command. For the OpenAI model, `YOUR_API_KEY` needs to be replaced with your user API key.
 
 ``` sh
 $ aicli
@@ -105,22 +105,35 @@ Monkeys are fascinating primates that belong to two main groups: New World monke
 Old World monkeys. Here's a brief overview of ...
 ```
 
-The last model answer is recorded into the `out` buffer. Let's print it again and save it to a file
-using the `/cp` command:
+The interpreter manages both text and binary data. The primary commands for data manipulation are
+`/cp`, which copies data from one location to another; `/append`, which appends data from one
+location to another; `/cat` which prints the location to the standard output; and `/clear`, which
+empties the specified data location.
 
-``` sh
->>> /cat buffer:out
-..
+To specify a location, the interpreter accepts file names (either text or binary), memory buffers,
+and read-only unnamed string constants.
+
+To reference a file, use the `file:"/path/to/file.txt"` or `bfile:"/path/to/file.png"` schemes. To
+reference a memory buffer, use `buffer:name`. String constants are defined using the
+`verbatim:"string"` scheme. If strings or file names do not contain spaces, quotes can be omitted.
+
+All user input is directed to a special input buffer named `in`. The last model response is stored
+in a buffer named `out`. Additional buffers are created on demand when referenced.
+
+Below, we use the `/cp` command to copy the model response to a file:
+
+```sh
 >>> /cp buffer:out file:monkey.txt
 ```
 
-For the full list of commands, check the [grammar reference](#grammar-reference) below.  Also, the
-[./ai folder](./ai) of this repo contains example scripts.
+For the full list of commands, refer to the [grammar reference](#grammar-reference) below.
+Additionally, the [./ai folder](./ai) in this repository contains example scripts.
+
 
 Reference
 ---------
 
-### Command-line reference
+### Command-line
 
 <!--
 ``` python
@@ -174,7 +187,7 @@ options:
                         arguments
 ```
 
-### Commands overview
+### Interpreter commands
 
 <!--
 ``` python
@@ -208,6 +221,12 @@ for command, (arguments, description) in CMDHELP.items():
 | /version        |                 | Print version |
 <!--noresult-->
 
+where:
+
+- `PROVIDER` is the name of AI model provider: `openai`, `gpt4all`, ...
+- `REF` has the `(buffer|file|bfile|verbatim):"VALUE"` format. If the value has no spaces, quotes
+  can be omitted.
+- `WHAT` and `WHERE` are special locations. Please check the below grammar reference for details.
 
 ### Grammar reference
 
@@ -237,14 +256,15 @@ command.1: /\/version/ | \
            /\/model/ / +/ model_ref | \
            /\/read/ / +/ /model/ / +/ /prompt/ | \
            /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
-                                       (/t/ | /temp/) / +/ (FLOAT | DEF) | \
-                                       (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
-                                       /imgsz/ / +/ string | \
-                                       /verbosity/ / +/ (NUMBER | DEF)) | \
-                             (/term/ | /terminal/) / +/ (/modality/ / +/ MODALITY | \
-                                                         /rawbin/ / +/ BOOL | \
-                                                         /prompt/ / +/ string | \
-                                                         /width/ / +/ (NUMBER | DEF))) | \
+                                            (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                            (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
+                                            /imgsz/ / +/ string | \
+                                            /verbosity/ / +/ (NUMBER | DEF) | \
+                                            /modality/ / +/ MODALITY) | \
+                             (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
+                                                          /prompt/ / +/ string | \
+                                                          /width/ / +/ (NUMBER | DEF) | \
+                                                          /verbosity/ / +/ (NUMBER | DEF))) | \
            /\/cp/ / +/ ref / +/ ref | \
            /\/append/ / +/ ref / +/ ref | \
            /\/cat/ / +/ ref | \
@@ -294,7 +314,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L109) | [Actor](./python/sm_aicli/types.py#L28) | [Intention](./python/sm_aicli/types.py#L60) | [Stream](./python/sm_aicli/types.py#L76)
+[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L108) | [Actor](./python/sm_aicli/types.py#L33) | [Intention](./python/sm_aicli/types.py#L61) | [Stream](./python/sm_aicli/types.py#L75)
 
 <!--noresult-->
 
