@@ -146,7 +146,7 @@ usage: aicli [-h] [--model-dir MODEL_DIR] [--image-dir IMAGE_DIR]
              [--model-apikey STR] [--model-temperature MODEL_TEMPERATURE]
              [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
              [--readline-prompt READLINE_PROMPT] [--readline-history FILE]
-             [--verbose NUM] [--revision] [--version] [--rc RC] [-K]
+             [--verbose NUM] [--revision] [--version] [--rc RC] [-K] [--cd CD]
              [filenames ...]
 
 Command-line arguments
@@ -185,6 +185,7 @@ options:
                         'none' to disable)
   -K, --keep-running    Open interactive shell after processing all positional
                         arguments
+  --cd CD, -C CD        Change to this directory before execution
 ```
 
 ### Interpreter commands

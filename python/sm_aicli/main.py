@@ -113,7 +113,7 @@ ARG_PARSER.add_argument(
   help="Open interactive shell after processing all positional arguments",
 )
 ARG_PARSER.add_argument(
-  '--cd', '-C',
+  '-C', '--cd',
   type=str,
   help="Change to this directory before execution",
   default=None,
