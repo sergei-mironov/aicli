@@ -1,6 +1,7 @@
 import re
 from io import StringIO
 from os.path import expanduser
+from os import chdir
 from contextlib import contextmanager
 from signal import signal, SIGINT
 from sys import _getframe
@@ -17,7 +18,6 @@ from sm_aicli import (
 )
 
 from .utils import version, REVISION
-
 
 ARG_PARSER = ArgumentParser(description="Command-line arguments")
 ARG_PARSER.add_argument(
@@ -113,6 +113,12 @@ ARG_PARSER.add_argument(
   help="Open interactive shell after processing all positional arguments",
 )
 ARG_PARSER.add_argument(
+  '--cd', '-C',
+  type=str,
+  help="Change to this directory before execution",
+  default=None,
+)
+ARG_PARSER.add_argument(
   'filenames',
   type=str,
   nargs='*',
@@ -152,6 +158,9 @@ def get_help_string(arg_parser):
 
 def main(cmdline=None):
   args = ARG_PARSER.parse_args(cmdline)
+
+  if args.cd:
+    chdir(args.cd)
 
   args.help = get_help_string(ARG_PARSER)
   if args.revision or args.version:
