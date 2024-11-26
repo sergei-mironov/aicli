@@ -1,0 +1,20 @@
+#!/usr/bin/env expect-f.sh
+
+# Set timeout for the expect script
+set timeout 2
+
+spawn aicli
+
+expect {
+  ">>> " { send "FOO/ask\r" }
+  timeout { puts "Error: Did not receive prompt"; exit 1 }
+}
+expect {
+  "WARNING: No model is active, use /model first" { send "/exit\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  eof {}
+  timeout { puts "Error: Did not receive eof"; exit 1 }
+}
+exit 0
