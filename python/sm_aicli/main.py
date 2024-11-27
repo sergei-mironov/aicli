@@ -226,7 +226,7 @@ def main(cmdline=None):
       current_actor = UserName()
       current_modality = Modality.Text
     except ValueError as e:
-      err(e)
+      err(e, user)
       current_actor = UserName()
       current_modality = Modality.Text
 
