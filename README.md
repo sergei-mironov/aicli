@@ -1,3 +1,6 @@
+AICli
+-----
+
 A (yet another) GNU Readline-based application for interacting with chat-oriented AI models.
 
 Features
