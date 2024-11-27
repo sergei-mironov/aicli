@@ -3,8 +3,8 @@ AI CLI
 
 A (yet another) GNU Readline-based application for interacting with chat-oriented AI models.
 
-Features
---------
+🔥 Features
+-----------
 
 This application is designed with a focus on minimizing code size. As a Unix-style program, it can
 be used both as an interactive terminal with command completion or as a shebang script runner.
@@ -20,30 +20,31 @@ For advanced scripting, we suggest using text session management tools such as
 [Expect](https://core.tcl-lang.org/expect/index) or
 [Litrepl](https://github.com/sergei-mironov/litrepl) (by the same author).
 
-Contents
---------
+
+📚 Contents
+-----------
 
 <!-- vim-markdown-toc GFM -->
 
-* [Install](#install)
+* [⚙️ Install](#-install)
     * [Stable release](#stable-release)
     * [Latest or development version](#latest-or-development-version)
         * [Latest version using Pip](#latest-version-using-pip)
         * [Latest version using Nix](#latest-version-using-nix)
         * [Development shell](#development-shell)
-* [Quick start](#quick-start)
-* [Reference](#reference)
+* [🚀 Quick start](#-quick-start)
+* [🔍 Reference](#-reference)
     * [Command-line](#command-line)
     * [Interpreter commands](#interpreter-commands)
     * [Grammar reference](#grammar-reference)
-* [Architecture](#architecture)
-* [Vim integration](#vim-integration)
-* [Roadmap](#roadmap)
+* [🏗️ Architecture](#-architecture)
+* [📝 Vim integration](#-vim-integration)
+* [🌍 Roadmap](#-roadmap)
 
 <!-- vim-markdown-toc -->
 
-Install
--------
+⚙️ Install
+---------
 
 The following installation options are available:
 
@@ -88,8 +89,8 @@ $ git clone --depth=1 https://github.com/sergei-mironov/aicli && cd aicli
 $ nix develop
 ```
 
-Quick start
------------
+🚀 Quick start
+--------------
 
 Below is a simple OpenAI terminal session. Commands start with `/`, and comments following `#` are
 ignored. Any other text is collected into a buffer and sent to the configured AI model using the
@@ -133,8 +134,8 @@ For the full list of commands, refer to the [grammar reference](#grammar-referen
 Additionally, the [./ai folder](./ai) in this repository contains example scripts.
 
 
-Reference
----------
+🔍 Reference
+------------
 
 ### Command-line
 
@@ -308,8 +309,8 @@ By default, the application tries to read configuration files starting from the 
 to the current directory. The contents of `_aicli`, `.aicli`, `_sm_aicli` and `.sm_aicli` files is
 interpreted as commands.
 
-Architecture
-------------
+🏗️ Architecture
+----------------
 
 <!--``` python
 %%bash
@@ -376,15 +377,15 @@ EOF
 <!--noresult-->
 </p>
 
-Vim integration
----------------
+📝 Vim integration
+------------------
 
 Aicli is supported by the [Litrepl](https://github.com/sergei-mironov/litrepl) text processor.
 
 ![Peek 2024-07-19 00-11](https://github.com/user-attachments/assets/7e5e59ea-bb96-4ebe-988f-726e83929dab)
 
-Roadmap
--------
+🌍 Roadmap
+----------
 
 * Core functionality:
   * [x] OpenAI graphic API models
