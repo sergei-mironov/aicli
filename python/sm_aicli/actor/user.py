@@ -93,6 +93,7 @@ PROVIDERS = [str(p).strip().replace(':','') for p in MODEL.keys()]
 
 CMDHELP = {
   CMD_APPEND:  ("REF REF",       "Append a file, a buffer or a constant to a file or to a buffer."),
+  CMD_ASK:     ("",              "Ask the currently-active actor to repond."),
   CMD_CAT:     ("REF",           "Print a file or buffer to STDOUT."),
   CMD_CD:      ("REF",           "Change the current directory to the specified path"),
   CMD_CLEAR:   ("",              "Clear the buffer named `ref_string`."),
@@ -283,6 +284,8 @@ class Repl(Interpreter):
     if tree.children:
       assert len(tree.children) == 1, tree
       assert tree.children[0].type in ('STRING_QUOTED','STRING_UNQUOTED'), tree
+      if tree.children[0].type == 'STRING_UNQUOTED':
+        self._check_no_commands(tree.children[0].value, hint='string constant')
       return tree.children[0].value
     else:
       return ""
@@ -495,6 +498,14 @@ class Repl(Interpreter):
     else:
       raise ValueError(f"Unknown command: {command}")
 
+  def _check_no_commands(self, text, hint):
+    commands = []
+    for cmd in list(CMDHELP.keys()):
+      if cmd in text:
+        commands.append(cmd)
+    if commands:
+      self.owner.warn(f"{', '.join(['`'+c+'`' for c in commands])} were parsed as a {hint}")
+
   def text(self, tree):
     text = tree.children[0].value
     if self.in_echo:
@@ -504,12 +515,7 @@ class Repl(Interpreter):
       else:
         self._print(text, end='')
     else:
-      commands = []
-      for cmd in list(CMDHELP.keys()):
-        if cmd in text:
-          commands.append(cmd)
-      if commands:
-        self.owner.info(f"Warning: {', '.join(['`'+c+'`' for c in commands])} were parsed as a text")
+      self._check_no_commands(text, hint='text')
       self.buffers[IN] += text
 
   def escape(self, tree):
@@ -574,6 +580,9 @@ class UserActor(Actor):
 
   def info(self, message: str):
     info(message, self)
+
+  def warn(self, message: str):
+    warn(message, self)
 
   def _reload_history(self):
     if self.args.readline_history:
