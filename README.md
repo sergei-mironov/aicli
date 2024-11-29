@@ -144,13 +144,22 @@ To reference a file, use the `file:"/path/to/file.txt"` or `bfile:"/path/to/file
 reference a memory buffer, use `buffer:name`. String constants are defined using the
 `verbatim:"string"` scheme. If strings or file names do not contain spaces, quotes can be omitted.
 
+The input language is very flexible, so you can usually copy and paste text directly into a terminal
+without much issues. To prevent the text from being misinterpreted as commands or comments, use the
+`/paste on` and `/paste off` commands. Activating `/paste on` turns off the command parser entirely
+until it sees the `/paste off` sequence.
+
 All user input is directed to a special input buffer named `in`. The last model response is stored
 in a buffer named `out`. Additional buffers are created on demand when referenced.
 
-Below, we use the `/cp` command to copy the model response to a file:
+Below, we illustrate some common use-cases:
 
-```sh
->>> /cp buffer:out file:monkey.txt
+```
+>>> /clear buffer:in                    # Clear the "in" memory buffer
+>>> /clear in                           # Shortcut for `/clear buffer:in`
+>>> /cat in                             # Print the contents of the "in" buffer.
+>>> /append file:source.py buffer:in    # Adds the contents of a file to the "in" buffer
+>>> /cp buffer:out file:monkey.txt      # Saves the contents of the "out" buffer to a file
 ```
 
 For the full list of commands, refer to the [grammar reference](#grammar-reference) below.
