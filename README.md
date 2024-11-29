@@ -150,7 +150,7 @@ usage: aicli [-h] [--model-dir MODEL_DIR] [--image-dir IMAGE_DIR]
              [--model-apikey STR] [--model-temperature MODEL_TEMPERATURE]
              [--device DEVICE] [--readline-key-send READLINE_KEY_SEND]
              [--readline-prompt READLINE_PROMPT] [--readline-history FILE]
-             [--verbose NUM] [--revision] [--version] [--rc RC] [-K] [--cd CD]
+             [--verbose NUM] [--revision] [--version] [--rc RC] [-K] [-C CD]
              [filenames ...]
 
 Command-line arguments
@@ -189,7 +189,7 @@ options:
                         'none' to disable)
   -K, --keep-running    Open interactive shell after processing all positional
                         arguments
-  --cd CD, -C CD        Change to this directory before execution
+  -C CD, --cd CD        Change to this directory before execution
 ```
 
 ### Interpreter commands
@@ -209,6 +209,7 @@ for command, (arguments, description) in CMDHELP.items():
 | Command         | Arguments       | Description |
 |:----------------|:----------------|-------------|
 | /append         | REF REF         | Append a file, a buffer or a constant to a file or to a buffer. |
+| /ask            |                 | Ask the currently-active actor to repond. |
 | /cat            | REF             | Print a file or buffer to STDOUT. |
 | /cd             | REF             | Change the current directory to the specified path |
 | /clear          |                 | Clear the buffer named `ref_string`. |
@@ -224,6 +225,7 @@ for command, (arguments, description) in CMDHELP.items():
 | /set            | WHAT            | Set terminal or model option, check the Grammar for a full list of options. |
 | /shell          | REF             | Run a system shell command. |
 | /version        |                 | Print version |
+| /pwd            |                 | Print the current working directory. |
 <!--noresult-->
 
 where:
@@ -247,62 +249,63 @@ print(dedent(GRAMMAR).strip())
 
 ``` result
 start: (command | escape | text)? (command | escape | text)*
-text: TEXT
-escape: ESCAPE
-# Commands start with `/`. Use `\/` to process next `/` as a regular text.
-# The commands are:
+  text: TEXT
+  escape: ESCAPE
+  # Commands start with `/`. Use `\/` to process next `/` as a regular text.
+  # The commands are:
 command.1: /\/version/ | \
-           /\/dbg/ | \
-           /\/reset/ | \
-           /\/echo/ | \
-           /\/ask/ | \
-           /\/help/ | \
-           /\/exit/ | \
-           /\/model/ / +/ model_ref | \
-           /\/read/ / +/ /model/ / +/ /prompt/ | \
-           /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
-                                            (/t/ | /temp/) / +/ (FLOAT | DEF) | \
-                                            (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
-                                            /imgsz/ / +/ string | \
-                                            /verbosity/ / +/ (NUMBER | DEF) | \
-                                            /modality/ / +/ MODALITY) | \
-                             (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
-                                                          /prompt/ / +/ string | \
-                                                          /width/ / +/ (NUMBER | DEF) | \
-                                                          /verbosity/ / +/ (NUMBER | DEF))) | \
-           /\/cp/ / +/ ref / +/ ref | \
-           /\/append/ / +/ ref / +/ ref | \
-           /\/cat/ / +/ ref | \
-           /\/clear/ / +/ ref | \
-           /\/shell/ / +/ ref | \
-           /\/cd/ / +/ ref | \
-           /\/paste/ / +/ BOOL
+             /\/dbg/ | \
+             /\/reset/ | \
+             /\/echo/ | \
+             /\/ask/ | \
+             /\/help/ | \
+             /\/exit/ | \
+             /\/model/ / +/ model_ref | \
+             /\/read/ / +/ /model/ / +/ /prompt/ | \
+             /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
+                                              (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                              (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
+                                              /imgsz/ / +/ string | \
+                                              /verbosity/ / +/ (NUMBER | DEF) | \
+                                              /modality/ / +/ MODALITY) | \
+                               (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
+                                                            /prompt/ / +/ string | \
+                                                            /width/ / +/ (NUMBER | DEF) | \
+                                                            /verbosity/ / +/ (NUMBER | DEF))) | \
+             /\/cp/ / +/ ref / +/ ref | \
+             /\/append/ / +/ ref / +/ ref | \
+             /\/cat/ / +/ ref | \
+             /\/clear/ / +/ ref | \
+             /\/shell/ / +/ ref | \
+             /\/cd/ / +/ ref | \
+             /\/paste/ / +/ BOOL | \
+             /\/pwd/
 
-# Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
-string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
+  # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
+  string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
 
-# Model references are strings with the provider prefix
-model_ref: (PROVIDER ":")? string
+  # Model references are strings with the provider prefix
+  model_ref: (PROVIDER ":")? string
 
-# References mention locations which could be either a file (`file:path/to/file`), a binary file
-# (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
-# (`verbatim:ABC`).
-ref: (SCHEMA ":")? string -> ref | \
-     /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
+  # References mention locations which could be either a file (`file:path/to/file`), a binary file
+  # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
+  # (`verbatim:ABC`).
+  ref: (SCHEMA ":")? string -> ref | \
+       /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
 
-# Base token types
-ESCAPE.5: /\\./
-SCHEMA.4: /verbatim/|/file/|/bfile/|/buffer/
-PROVIDER.4: /openai/|/gpt4all/|/dummy/
-STRING_QUOTED.3: /[^"]+/
-STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
-TEXT.0: /([^#](?!\/))*[^\/#]/s
-NUMBER: /[0-9]+/
-FLOAT: /[0-9]+\.[0-9]*/
-DEF: "default"
-BOOL: /true/|/false/|/yes/|/no/|/on/|/off/|/1/|/0/
-MODALITY: /img/ | /text/
-%ignore /#[^\n]*/
+  # Base token types
+  ESCAPE.5: /\\./
+  SCHEMA.4: /verbatim/|/file/|/bfile/|/buffer/
+  PROVIDER.4: /openai/|/gpt4all/|/dummy/
+  STRING_QUOTED.3: /[^"]+/
+  STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
+  TEXT.0: /([^#](?!\/))*[^\/#]/s
+  NUMBER: /[0-9]+/
+  FLOAT: /[0-9]+\.[0-9]*/
+  DEF: "default"
+  BOOL: /true/|/false/|/yes/|/no/|/on/|/off/|/1/|/0/
+  MODALITY: /img/ | /text/
+  %ignore /#[^\n]*/
 ```
 
 By default, the application tries to read configuration files starting from the `/` directory down
