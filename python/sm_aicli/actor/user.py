@@ -36,6 +36,7 @@ CMD_SHELL = "/shell"
 CMD_VERSION = "/version"
 CMD_CD = "/cd"
 CMD_PASTE = "/paste"
+CMD_PWD = "/pwd"  # Added the command for printing the current directory
 
 def _mkref(tail):
   return {
@@ -85,7 +86,8 @@ COMPLETION = {
   CMD_CAT:     REF,
   CMD_CLEAR:   REF,
   CMD_SHELL:   REF,
-  CMD_CD:      REF
+  CMD_CD:      REF,
+  CMD_PWD:     {}
 }
 
 SCHEMAS = [str(k).strip().replace(':','') for k in REF.keys()]
@@ -109,6 +111,7 @@ CMDHELP = {
   CMD_SET:     ("WHAT",          "Set terminal or model option, check the Grammar for a full list of options."),
   CMD_SHELL:   ("REF",           "Run a system shell command."),
   CMD_VERSION: ("",              "Print version"),
+  CMD_PWD:     ("",              "Print the current working directory."),
 }
 
 GRAMMAR = fr"""
@@ -117,7 +120,7 @@ GRAMMAR = fr"""
   escape: ESCAPE
   # Commands start with `/`. Use `\/` to process next `/` as a regular text.
   # The commands are:
-  command.1: /\{CMD_VERSION}/ | \
+command.1: /\{CMD_VERSION}/ | \
              /\{CMD_DBG}/ | \
              /\{CMD_RESET}/ | \
              /\{CMD_ECHO}/ | \
@@ -142,7 +145,8 @@ GRAMMAR = fr"""
              /\{CMD_CLEAR}/ / +/ ref | \
              /\{CMD_SHELL}/ / +/ ref | \
              /\{CMD_CD}/ / +/ ref | \
-             /\{CMD_PASTE}/ / +/ BOOL
+             /\{CMD_PASTE}/ / +/ BOOL | \
+             /\{CMD_PWD}/
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
   string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
@@ -485,6 +489,8 @@ class Repl(Interpreter):
         self.owner.info(f"Changed current directory to '{path}'")
       except Exception as err:
         raise ValueError(str(err)) from err
+    elif command == CMD_PWD:
+      self._print(getcwd(), flush=True)
     elif command == CMD_VERSION:
       self._print(version(), flush=True)
     elif command == CMD_PASTE:
