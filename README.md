@@ -280,64 +280,67 @@ print(dedent(GRAMMAR).strip())
 -->
 
 ``` result
-start: (command | escape | text)? (command | escape | text)*
-  text: TEXT
-  escape: ESCAPE
-  # Commands start with `/`. Use `\/` to process next `/` as a regular text.
-  # The commands are:
+start: (escape | command | comment | text)? (escape | command | comment | text)*
+# Escape disable any special meaning of one next symbol.
+escape: ESCAPE
+# Comments start from `#` and last until the end of the line.
+comment: COMMENT
+# Commands are `/` followed by one of the pre-defined words:
 command.1: /\/version/ | \
-             /\/dbg/ | \
-             /\/reset/ | \
-             /\/echo/ | \
-             /\/ask/ | \
-             /\/help/ | \
-             /\/exit/ | \
-             /\/model/ / +/ model_ref | \
-             /\/read/ / +/ /model/ / +/ /prompt/ | \
-             /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
-                                              (/t/ | /temp/) / +/ (FLOAT | DEF) | \
-                                              (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
-                                              /imgsz/ / +/ string | \
-                                              /verbosity/ / +/ (NUMBER | DEF) | \
-                                              /modality/ / +/ MODALITY) | \
-                               (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
-                                                            /prompt/ / +/ string | \
-                                                            /width/ / +/ (NUMBER | DEF) | \
-                                                            /verbosity/ / +/ (NUMBER | DEF))) | \
-             /\/cp/ / +/ ref / +/ ref | \
-             /\/append/ / +/ ref / +/ ref | \
-             /\/cat/ / +/ ref | \
-             /\/clear/ / +/ ref | \
-             /\/shell/ / +/ ref | \
-             /\/cd/ / +/ ref | \
-             /\/paste/ / +/ BOOL | \
-             /\/pwd/
+           /\/dbg/ | \
+           /\/reset/ | \
+           /\/echo/ | \
+           /\/ask/ | \
+           /\/help/ | \
+           /\/exit/ | \
+           /\/model/ / +/ model_ref | \
+           /\/read/ / +/ /model/ / +/ /prompt/ | \
+           /\/set/ / +/ (/model/ / +/ (/apikey/ / +/ ref | \
+                                            (/t/ | /temp/) / +/ (FLOAT | DEF) | \
+                                            (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
+                                            /imgsz/ / +/ string | \
+                                            /verbosity/ / +/ (NUMBER | DEF) | \
+                                            /modality/ / +/ MODALITY) | \
+                             (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
+                                                          /prompt/ / +/ string | \
+                                                          /width/ / +/ (NUMBER | DEF) | \
+                                                          /verbosity/ / +/ (NUMBER | DEF))) | \
+           /\/cp/ / +/ ref / +/ ref | \
+           /\/append/ / +/ ref / +/ ref | \
+           /\/cat/ / +/ ref | \
+           /\/clear/ / +/ ref | \
+           /\/shell/ / +/ ref | \
+           /\/cd/ / +/ ref | \
+           /\/paste/ / +/ BOOL | \
+           /\/pwd/
+# Everything else is a regular text.
+text: TEXT
 
-  # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
-  string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
+# Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
+string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
 
-  # Model references are strings with the provider prefix
-  model_ref: (PROVIDER ":")? string
+# Model references are strings with the provider prefix
+model_ref: (PROVIDER ":")? string
 
-  # References mention locations which could be either a file (`file:path/to/file`), a binary file
-  # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
-  # (`verbatim:ABC`).
-  ref: (SCHEMA ":")? string -> ref | \
-       /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
+# References mention locations which could be either a file (`file:path/to/file`), a binary file
+# (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
+# (`verbatim:ABC`).
+ref: (SCHEMA ":")? string -> ref | \
+     /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
 
-  # Base token types
-  ESCAPE.5: /\\./
-  SCHEMA.4: /verbatim/|/file/|/bfile/|/buffer/
-  PROVIDER.4: /openai/|/gpt4all/|/dummy/
-  STRING_QUOTED.3: /[^"]+/
-  STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
-  TEXT.0: /([^#](?!\/))*[^\/#]/s
-  NUMBER: /[0-9]+/
-  FLOAT: /[0-9]+\.[0-9]*/
-  DEF: "default"
-  BOOL: /true/|/false/|/yes/|/no/|/on/|/off/|/1/|/0/
-  MODALITY: /img/ | /text/
-  %ignore /#[^\n]*/
+# Base token types
+ESCAPE.5: /\\./
+SCHEMA.4: /verbatim/|/file/|/bfile/|/buffer/
+PROVIDER.4: /openai/|/gpt4all/|/dummy/
+STRING_QUOTED.3: /[^"]+/
+STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
+TEXT.0: /([^#](?![\/]))*[^\/#]/
+NUMBER: /[0-9]+/
+FLOAT: /[0-9]+\.[0-9]*/
+DEF: "default"
+BOOL: /true/|/false/|/yes/|/no/|/on/|/off/|/1/|/0/
+MODALITY: /img/ | /text/
+COMMENT: "#" /[^\n]*/
 ```
 
 🏗️ Architecture
