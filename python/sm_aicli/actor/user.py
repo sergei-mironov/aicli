@@ -115,12 +115,13 @@ CMDHELP = {
 }
 
 GRAMMAR = fr"""
-  start: (command | escape | text)? (command | escape | text)*
-  text: TEXT
+  start: (escape | command | comment | text)? (escape | command | comment | text)*
+  # Escape disable any special meaning of one next symbol.
   escape: ESCAPE
-  # Commands start with `/`. Use `\/` to process next `/` as a regular text.
-  # The commands are:
-command.1: /\{CMD_VERSION}/ | \
+  # Comments start from `#` and last until the end of the line.
+  comment: COMMENT
+  # Commands are `/` followed by one of the pre-defined words:
+  command.1: /\{CMD_VERSION}/ | \
              /\{CMD_DBG}/ | \
              /\{CMD_RESET}/ | \
              /\{CMD_ECHO}/ | \
@@ -147,6 +148,8 @@ command.1: /\{CMD_VERSION}/ | \
              /\{CMD_CD}/ / +/ ref | \
              /\{CMD_PASTE}/ / +/ BOOL | \
              /\{CMD_PWD}/
+  # Everything else is a regular text.
+  text: TEXT
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
   string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
@@ -166,13 +169,13 @@ command.1: /\{CMD_VERSION}/ | \
   PROVIDER.4: {'|'.join([f"/{p}/" for p in PROVIDERS])}
   STRING_QUOTED.3: /[^"]+/
   STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
-  TEXT.0: /([^#](?!\/))*[^\/#]/s
+  TEXT.0: /([^#](?![\/]))*[^\/#]/
   NUMBER: /[0-9]+/
   FLOAT: /[0-9]+\.[0-9]*/
   DEF: "default"
   BOOL: {'|'.join(['/'+str(k).strip()+'/' for k in VBOOL.keys()])}
   MODALITY: /img/ | /text/
-  %ignore /#[^\n]*/
+  COMMENT: "#" /[^\n]*/
 """
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
@@ -530,6 +533,9 @@ class Repl(Interpreter):
       self._print(text)
     else:
       self.buffers[IN] += text
+
+  def comment(self, tree):
+    pass
 
   def visit(self, tree):
     self.in_echo = 0

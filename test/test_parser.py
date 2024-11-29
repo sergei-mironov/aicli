@@ -295,10 +295,17 @@ def test_slash():
 def test_comment():
   _assert('# /echo aaa\n/echo bbb', r'''
     start
+      comment       # /echo aaa
       text       
 
       command       /echo
       text        bbb
+  ''')
+
+def test_escaped_comment():
+  _assert('\\#', r'''
+    start
+      escape       \#
   ''')
 
 def test_empty_string():
