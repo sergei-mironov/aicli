@@ -33,6 +33,8 @@ For advanced scripting, we suggest using text session management tools such as
         * [Latest version using Nix](#latest-version-using-nix)
         * [Development shell](#development-shell)
 * [🚀 Quick start](#-quick-start)
+    * [Basics](#basics)
+    * [Data manipulation](#data-manipulation)
 * [🔍 Reference](#-reference)
     * [Command-line](#command-line)
     * [Interpreter commands](#interpreter-commands)
@@ -92,6 +94,8 @@ $ nix develop
 🚀 Quick start
 --------------
 
+### Basics
+
 Below is a simple OpenAI terminal session. Commands start with `/`, and comments following `#` are
 ignored. Any other text is collected into a buffer and sent to the configured AI model using the
 `/ask` command. For the OpenAI model, `YOUR_API_KEY` needs to be replaced with your user API key.
@@ -108,6 +112,25 @@ $ aicli
 Monkeys are fascinating primates that belong to two main groups: New World monkeys and
 Old World monkeys. Here's a brief overview of ...
 ```
+
+To save time on model setup, it's a good idea to store standard initialization details in
+configuration files. Aicli will automatically read any files named `_aicli`, `.aicli`, `_sm_aicli`,
+or `_sm_aicli` from the home directory all the way down to the current working directory. For
+example, the `~/_aicli` file might contain something like this:
+
+```
+/model openai:dall-e-2
+/set model apikey file:"~/.openai-apikey.txt"
+/set model modality img
+/model openai:gpt-4o
+/set model apikey file:"~/.openai-apikey.txt"
+You are a helpful assistant. You use 2-space indent in all Python code you produce.
+Also, you hate inserting spaces between Python arguments and type annotations.
+/read model prompt
+```
+Here, the `~/.openai-apikey.txt` file contains the personal API key from OpenAI.
+
+### Data manipulation
 
 The interpreter manages both text and binary data. The primary commands for data manipulation are
 `/cp`, which copies data from one location to another; `/append`, which appends data from one
