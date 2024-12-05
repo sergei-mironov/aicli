@@ -73,6 +73,7 @@ COMPLETION = {
       " temp":      {" FLOAT":  {}, " default": {}},
       " nt":        {" NUMBER": {}, " default": {}},
       " verbosity": {" NUMBER": {}, " default": {}},
+      " imgnum":    {" NUMBER": {}},
     },
     " terminal": {
       " rawbin": VBOOL,
@@ -135,11 +136,12 @@ GRAMMAR = fr"""
                                               (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                               /imgsz/ / +/ string | \
                                               /verbosity/ / +/ (NUMBER | DEF) | \
-                                              /modality/ / +/ (MODALITY | DEF)) | \
+                                              /modality/ / +/ (MODALITY | DEF) | \
+                                              /imgnum/ / +/ (NUMBER | DEF)) | \
                                (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
-                                                            /prompt/ / +/ string | \
-                                                            /width/ / +/ (NUMBER | DEF) | \
-                                                            /verbosity/ / +/ (NUMBER | DEF))) | \
+                                                           /prompt/ / +/ string | \
+                                                           /width/ / +/ (NUMBER | DEF) | \
+                                                           /verbosity/ / +/ (NUMBER | DEF))) | \
              /\{CMD_CP}/ / +/ ref / +/ ref | \
              /\{CMD_APPEND}/ / +/ ref / +/ ref | \
              /\{CMD_CAT}/ / +/ ref | \
@@ -161,7 +163,7 @@ GRAMMAR = fr"""
   # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
   # (`verbatim:ABC`).
   ref: (SCHEMA ":")? string -> ref | \
-       /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
+       (/file/ | /bfile/) (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
 
   # Base token types
   ESCAPE.5: /\\./
@@ -211,38 +213,41 @@ def as_modality(pval:Token, default:Modality|None=None)->Modality|None:
     else:
       raise ValueError(f"Invalid modality {pval}")
 
-def ref_write(ref, val:str|bytes, buffers, append:bool=False):
+def ref_write(ref, val:list[str|bytes], buffers, append:bool=False):
   schema, name = ref
   a = "a" if append else ""
-  if schema in 'file':
+  if schema == 'file':
     try:
       with open(name, f"w{a}") as f:
-        f.write(val.encode('utf-8') if isinstance(val, bytes) else val)
+        for cf in val:
+          f.write(cf.encode('utf-8') if isinstance(v, bytes) else cf)
     except Exception as err:
       raise ValueError(str(err)) from err
-  elif schema in 'bfile':
+  elif schema == 'bfile':
     try:
       with open(name, f"bw{a}") as f:
-        f.write(val.decode() if isinstance(val, str) else val)
+        for cf in val:
+          f.write(cf if isinstance(cf,bytes) else cf.decode())
     except Exception as err:
       raise ValueError(str(err)) from err
   elif schema == 'buffer':
     if append:
-      buffers[name.lower()] += val
+      buffers[name.lower()].extend(val)  # Changed from += to extend
     else:
       buffers[name.lower()] = val
   else:
     raise ValueError(f"Unsupported target schema '{schema}'")
 
-def ref_read(ref, buffers)->str|None:
+def ref_read(ref, buffers)->list[str|bytes]:
   schema, name = ref
   if schema=="verbatim":
-    return name
+    return [name]
   elif schema in ["file", "bfile"]:
     try:
       mode = "rb" if schema == "bfile" else "r"
       with open(expanduser(name), mode) as f:
-        return f.read().strip()
+        data = f.read().strip()
+        return [data]
     except Exception as err:
       raise ValueError(str(err)) from err
   elif schema == 'buffer':
@@ -253,9 +258,12 @@ def ref_read(ref, buffers)->str|None:
 def ref_quote(ref, prefixes):
   for p in [(p+':') for p in prefixes]:
     if ref.startswith(p) and (' ' in ref[len(p):]):
-      return f"{schema}\"{ref[len(p):]}\""
+      return f"{p}\"{ref[len(p):]}\""
   return ref
 
+def buffer2str(buffer:list[str|bytes]) -> str:
+  """Convert a list of strings or bytes into a single string."""
+  return ''.join(buffer)
 
 @dataclass
 class InterpreterPause(Exception):
@@ -268,7 +276,7 @@ OUT='out'
 class Repl(Interpreter):
   def __init__(self, owner:"UserActor"):
     self.owner = owner
-    self.buffers = defaultdict(str)
+    self.buffers:dict[str,list[str|bytes]] = defaultdict(list)  # Changed type to list[str]
     self.av = None
     self.actor_next = None
     self.rawbin = False
@@ -284,14 +292,14 @@ class Repl(Interpreter):
 
   def _reset(self):
     self.in_echo = 0
-    self.buffers[IN] = ""
-    self.buffers[OUT] = ""
+    self.buffers[IN] = []
+    self.buffers[OUT] = []
 
   def _print(self, s=None, flush=False, end='\n'):
     wraplong((s or '') + end, self.wlstate, lambda s: print(s, end='', flush=True), flush=flush)
 
   def reset(self):
-    old_message = self.buffers[IN]
+    old_message = buffer2str(self.buffers[IN])
     self._reset()
     if len(old_message) > 0:
       self.owner.info("Message buffer is now empty")
@@ -321,8 +329,8 @@ class Repl(Interpreter):
 
   def ref_file(self, tree):
     args = self.visit_children(tree)
-    val = ref_read(args[2], self.buffers)
-    return ("file", val.strip())
+    val = buffer2str(ref_read(args[2], self.buffers))
+    return (str(args[0]), val.strip())
 
   def bool(self, tree):
     val = self.visit_children(tree)[0]
@@ -341,14 +349,13 @@ class Repl(Interpreter):
       self.in_echo = 1
     elif command == CMD_ASK:
       try:
-        contents = [copy(self.buffers[IN])] if len(self.buffers[IN].strip()) > 0 else []
         val = self.visit_children(tree)
         self._check_next_actor()
         raise InterpreterPause(
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
             name=self.owner.name,
-            contents=contents,
+            contents=self.buffers[IN],
             intention=Intention.init(
               actor_next=self.actor_next,
               actor_updates=self.av,
@@ -356,7 +363,7 @@ class Repl(Interpreter):
           )
         )
       finally:
-        self.buffers[IN] = ''
+        self.buffers[IN] = []
     elif command == CMD_HELP:
       self._print(self.owner.args.help)
       self._print("Command-line grammar:")
@@ -390,7 +397,7 @@ class Repl(Interpreter):
         if pname == 'apikey':
           if not isinstance(pval, tuple) or len(pval) != 2:
             raise ValueError("Model API key should be formatted as `schema:value`")
-          opts[self.actor_next].apikey = ref_read(pval, self.buffers)
+          opts[self.actor_next].apikey = buffer2str(ref_read(pval, self.buffers))
           self.owner.info(f"Setting model API key to the contents of '{pval[0]}:{pval[1]}'")
         elif pname in ['t', 'temp']:
           val = as_float(pval)
@@ -403,6 +410,9 @@ class Repl(Interpreter):
         elif pname == 'imgsz':
           opts[self.actor_next].imgsz = pval
           self.owner.info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
+        elif pname == 'imgnum':
+          opts[self.actor_next].imgnum = as_int(pval)
+          self.owner.info(f"Setting model image number to '{opts[self.actor_next].imgnum}'")
         elif pname == 'verbosity':
           val = as_int(pval)
           opts[self.actor_next].verbose = val
@@ -434,7 +444,7 @@ class Repl(Interpreter):
         raise ValueError(f"Unknown set section '{section}'")
     elif command == CMD_READ:
       args = self.visit_children(tree)
-      section, pname, pval = args[2], args[4], self.buffers[IN].strip()
+      section, pname, pval = args[2], args[4], buffer2str(self.buffers[IN]).strip()
       assert section == 'model'
       self._check_next_actor()
       if pname == 'prompt':
@@ -442,7 +452,7 @@ class Repl(Interpreter):
         self.owner.info(f"Setting actor prompt to '{pval[:10]}...'")
       else:
         raise ValueError(f"Unknown read parameter '{pname}'")
-      self.buffers[IN] = ''
+      self.buffers[IN] = []
     elif command == CMD_CLEAR:
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
@@ -450,7 +460,7 @@ class Repl(Interpreter):
       if schema != 'buffer':
         raise ValueError(f'Required reference to buffer, not {schema}')
       self.owner.info(f"Clearing buffer \"{name.lower()}\"")
-      ref_write((schema, name), '', self.buffers, append=False)
+      ref_write((schema, name), [], self.buffers, append=False)
     elif command == CMD_RESET:
       self.owner.info("Resetting conversation history and clearing message buffer")
       self.reset()
@@ -482,20 +492,20 @@ class Repl(Interpreter):
       self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       ref = args[2]
-      val = ref_read(ref, self.buffers)
+      val = buffer2str(ref_read(ref, self.buffers))
       self._print(val, flush=True)
     elif command == CMD_SHELL:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
       ref = args[2]
-      cmd = ref_read(ref, self.buffers).strip()
+      cmd = buffer2str(ref_read(ref, self.buffers)).replace('\n',' ').strip()
       retcode = sys2exitcode(system(cmd))
       self.owner.info(f"Shell command '{cmd}' exited with code {retcode}")
     elif command == CMD_CD:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
       ref = args[2]
-      path = ref_read(ref, self.buffers)
+      path = buffer2str(ref_read(ref, self.buffers))
       try:
         chdir(path)
         self.owner.info(f"Changed current directory to '{path}'")
@@ -534,14 +544,14 @@ class Repl(Interpreter):
         self._print(text, end='')
     else:
       self._check_no_commands(text, hint='text')
-      self.buffers[IN] += text
+      self.buffers[IN].append(text)
 
   def escape(self, tree):
     text = tree.children[0].value[1:]
     if self.in_echo:
       self._print(text)
     else:
-      self.buffers[IN] += text
+      self.buffers[IN].append(text)
 
   def comment(self, tree):
     pass
@@ -702,12 +712,12 @@ class UserActor(Actor):
       u:Utterance = cnv.utterances[i]
       if u.actor_name != self.name:
         need_eol = False
+        buffer_out = []
         for cont in u.contents:
           s = cont2strm(cont)
           def _handler(*args, **kwargs):
             s.interrupt()
           with with_sigint(_handler):
-            self.repl.buffers[OUT] = None
             if s.binary and not self.repl.rawbin:
               assert s.suggested_fname is not None, \
                 f"Suggested file name for binary stream must be set"
@@ -715,8 +725,9 @@ class UserActor(Actor):
                 for token in s.gen():
                   f.write(token)
               self.info("Binary stream has been saved to file")
-              self.repl._print(f"{s.suggested_fname}\n", flush=True)
-              self.repl.buffers[OUT] = s.suggested_fname
+              out_content = s.suggested_fname
+              buffer_out.append(out_content + ' ')
+              self.repl._print(f"{out_content}\n", flush=True)
             else:
               for token in s.gen():
                 if isinstance(token, bytes):
@@ -728,9 +739,8 @@ class UserActor(Actor):
                   # print(token, end='', flush=True)
                   # wraplong(token, self.repl.wlstate, lambda x: print(x, end=''))
                   self.repl._print(token, end='')
-                if self.repl.buffers[OUT] is None:
-                  self.repl.buffers[OUT] = b'' if isinstance(token, bytes) else ''
-                self.repl.buffers[OUT] += token
+                buffer_out.append(token)
+        self.repl.buffers[OUT] = buffer_out
         if need_eol:
           self.repl._print()
         self.repl._print(flush=True, end='')
@@ -738,7 +748,6 @@ class UserActor(Actor):
 
   def reset(self):
     self.cnv_top = 0
-
 
   def _prompt(self):
     return self.repl.readline_prompt
@@ -767,7 +776,7 @@ class UserActor(Actor):
             if line.strip() == '/paste off':
               self.repl.paste_mode = False
             else:
-              self.repl.buffers[IN] += line + '\n'
+              self.repl.buffers[IN].append(line + '\n')
           if self.args.readline_history:
             write_history_file(self.args.readline_history)
         except (RuntimeWarning,) as e:
@@ -790,3 +799,4 @@ class UserActor(Actor):
 
   def get_options(self)->ActorOptions:
     return ActorOptions.init()
+

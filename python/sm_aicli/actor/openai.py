@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from openai import OpenAI, OpenAIError
 from openai.types.image import Image as OpenAIImage
 from json import loads as json_loads, dumps as json_dumps
-from io import StringIO
+from io import StringIO, BytesIO
 from dataclasses import dataclass
 from os import makedirs, path
 from os.path import join, basename, exists
@@ -15,8 +15,9 @@ from urllib.parse import urlparse, parse_qs
 from pdb import set_trace as ST
 from collections import OrderedDict
 
-from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, Intention,
-                     ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream)
+from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions,
+                     Conversation, Intention, ModelName, UserName, Utterance,
+                     Modality, ConversationException, SAU, Stream, Contents)
 from ..utils import (dbg, find_last_message, err, uts_2sau, uts_lastfull,
                      uts_lastref, cont2str)
 
@@ -138,44 +139,78 @@ class OpenAIActor(Actor):
     except OpenAIError as err:
       raise ConversationException(str(err)) from err
 
-  def _cnv2prompt(self, cnv:Conversation) -> str:
+  def _cnv2cont(self, cnv:Conversation) -> Contents:
     uid = uts_lastref(cnv.utterances, self.name)
     if uid is not None and cnv.utterances[uid].is_empty():
       refname = cnv.utterances[uid].actor_name
       uid = uts_lastfull(cnv.utterances[:uid], refname)
     if uid is None:
-      raise ConversationException("no prompt")
-    prompt = cont2str(cnv.utterances[uid].contents)
-    assert prompt is not None, f"Prompt {uid} has no contents. Is it a thunk?"
-    return prompt
+      raise ConversationException("No meaningful utterance were found")
+    return cnv.utterances[uid].contents
 
-  def _react_image(self, act:ActorView, cnv:Conversation) -> Utterance:
-    prompt = self._cnv2prompt(cnv)
-    if self.opt.verbose > 0:
-      dbg(f"prompt: {prompt}", actor=self)
-    try:
-      response = self.client.images.generate(
-        prompt=prompt,
-        model=self.name.model,
-        n=1,
-        size=self.opt.imgsz or "256x256",
-        response_format="url"
-      )
-      if len(response.data) != 1:
-        raise ConversationException(f"Wrong response data length ({len(response.data)})")
-      datum = response.data[0]
+  def _read_image_response(self, response) -> list[BinStream]:
+    acc = []
+    for datum in response.data:
       if not isinstance(datum, OpenAIImage):
         raise ConversationException(f"Wrong datum type ({type(datum)})")
       url = datum.url
       if url is None:
         raise ConversationException(f"Datum url is None")
       dbg(url, actor=self)
-      response = requests_get(url, stream=True)
-      response.raise_for_status()  # Check for HTTP errors
+      url_response = requests_get(url, stream=True)
+      url_response.raise_for_status()  # Check for HTTP errors
+      acc.append(BinStream(url_response, suggested_fname=url2fname(url)))
+    return acc
+
+  def _react_image_create(self, act:ActorView, cont:Contents) -> Utterance:
+    prompt = cont2str(cont)
+    if self.opt.verbose > 0:
+      dbg(f"create image prompt: {prompt}", actor=self)
+    try:
+      response = self.client.images.generate(
+        prompt=prompt,
+        model=self.name.model,
+        n=self.opt.imgnum or 1,
+        size=self.opt.imgsz or "256x256",
+        response_format="url"
+      )
+      streams = self._read_image_response(response)
       return Utterance.init(
         name=self.name,
         intention=Intention.init(actor_next=UserName()),
-        contents=[BinStream(response, suggested_fname=url2fname(url))]
+        contents=streams
+      )
+    except OpenAIError as err:
+      raise ConversationException(str(err)) from err
+    except RequestException as err:
+      raise ConversationException(str(err)) from err
+
+  def _react_image_modify(self, act:ActorView, cont:Contents) -> Utterance:
+    bbuf,sbuf = BytesIO(),StringIO()
+    for cf in cont:
+      if isinstance(cf,bytes):
+        bbuf.write(cf)
+      elif isinstance(cf,str):
+        sbuf.write(cf)
+      else:
+        assert False, f"Unsupported content fragemnt type {type(cf)}"
+
+    if self.opt.verbose > 0:
+      dbg(f"edit image prompt: {sbuf.getvalue()}", actor=self)
+    try:
+      response = self.client.images.edit(
+        image=BytesIO(bbuf.getvalue()),
+        prompt=sbuf.getvalue(),
+        model=self.name.model,
+        n=self.opt.imgnum or 1,
+        size=self.opt.imgsz or "256x256",
+        response_format="url"
+      )
+      streams = self._read_image_response(response)
+      return Utterance.init(
+        name=self.name,
+        intention=Intention.init(actor_next=UserName()),
+        contents=streams
       )
     except OpenAIError as err:
       raise ConversationException(str(err)) from err
@@ -194,7 +229,11 @@ class OpenAIActor(Actor):
     if modality == Modality.Text:
       return self._react_text(act, cnv)
     elif modality == Modality.Image:
-      return self._react_image(act, cnv)
+      cont = self._cnv2cont(cnv)
+      if any([isinstance(cf, bytes) for cf in cont]):
+        return self._react_image_modify(act, cont)
+      else:
+        return self._react_image_create(act, cont)
     else:
       raise ConversationException(f'Unsupported modality {modality}')
 

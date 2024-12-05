@@ -39,6 +39,7 @@ class ActorOptions:
   num_threads:int|None = None
   prompt:str|None = None
   imgsz:str|None = None
+  imgnum:int|None = None
   modality:Modality|None=None
 
   @staticmethod
