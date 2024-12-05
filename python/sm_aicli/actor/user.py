@@ -135,7 +135,7 @@ GRAMMAR = fr"""
                                               (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                               /imgsz/ / +/ string | \
                                               /verbosity/ / +/ (NUMBER | DEF) | \
-                                              /modality/ / +/ MODALITY) | \
+                                              /modality/ / +/ (MODALITY | DEF)) | \
                                (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
                                                             /prompt/ / +/ string | \
                                                             /width/ / +/ (NUMBER | DEF) | \
@@ -180,13 +180,16 @@ GRAMMAR = fr"""
 
 PARSER = Lark(GRAMMAR, start='start', propagate_positions=True)
 
+def is_default(val:Token)->bool:
+  return str(val) in {"def","default"}
+
 def as_float(val:Token, default:float|None=None)->float|None:
-  assert val.type == 'FLOAT' or str(val) in {"def","default"}, val
-  return float(val) if str(val) not in {"def","default"} else default
+  assert val.type == 'FLOAT' or is_default(val), val
+  return float(val) if not is_default(val) else default
 
 def as_int(val:Token, default:int|None=None)->int|None:
-  assert val.type == 'NUMBER' or str(val) in {"def","default"}, val
-  return int(val) if str(val) not in {"def","default"} else default
+  assert val.type == 'NUMBER' or is_default(val), val
+  return int(val) if not is_default(val) else default
 
 def as_bool(val:Token):
   assert val.type == 'BOOL', val
@@ -196,6 +199,17 @@ def as_bool(val:Token):
     return False
   else:
     raise ValueError(f"Invalid boolean value {val}")
+
+def as_modality(pval:Token, default:Modality|None=None)->Modality|None:
+  if is_default(pval):
+    return default
+  else:
+    if str(pval) == 'img':
+      return Modality.Image
+    elif str(pval) == 'text':
+      return Modality.Text
+    else:
+      raise ValueError(f"Invalid modality {pval}")
 
 def ref_write(ref, val:str|bytes, buffers, append:bool=False):
   schema, name = ref
@@ -394,12 +408,7 @@ class Repl(Interpreter):
           opts[self.actor_next].verbose = val
           self.owner.info(f"Setting actor verbosity to '{val}'")
         elif pname == 'modality':
-          if str(pval) == 'img':
-            mod = Modality.Image
-          elif str(pval) == 'text':
-            mod = Modality.Text
-          else:
-            raise ValueError(f"Invalid modality {pval}")
+          mod = as_modality(pval)
           opts[self.actor_next].modality = mod
           self.owner.info(f"Setting model modality to '{mod}'")
         else:

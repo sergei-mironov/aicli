@@ -186,6 +186,11 @@ class OpenAIActor(Actor):
     if len(cnv.utterances) == 0:
       raise ConversationException(f'No context')
     modality = self.opt.modality
+    if modality is None:
+      if 'dall' in self.name.model:
+        modality = Modality.Image
+      else:
+        modality = Modality.Text
     if modality == Modality.Text:
       return self._react_text(act, cnv)
     elif modality == Modality.Image:

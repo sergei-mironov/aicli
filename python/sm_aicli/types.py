@@ -39,7 +39,7 @@ class ActorOptions:
   num_threads:int|None = None
   prompt:str|None = None
   imgsz:str|None = None
-  modality:Modality=Modality.Text # Ask for a non-text response
+  modality:Modality|None=None
 
   @staticmethod
   def init():
