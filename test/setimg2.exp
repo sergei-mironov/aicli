@@ -1,0 +1,20 @@
+#!/usr/bin/env expect-f.sh
+
+# Set timeout for the expect script
+set timeout 2
+
+spawn aicli --model=dummy:dummy
+
+expect {
+  ">>> " { send "/set model modality default\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  "Setting model modality to 'None" { send "/exit\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  eof {}
+  timeout { puts "Error: Did not receive eof"; exit 1 }
+}
+exit 0
