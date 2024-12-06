@@ -12,7 +12,7 @@ be used both as an interactive terminal with command completion or as a shebang 
 Supported model providers:
 
 * [OpenAI](https://www.openai.com) via REST API. We tested the text `gpt-4o` model and the graphic
-  `dall-e-2` and `dall-e-3` models.
+  `dall-e-2` and `dall-e-3` models for both image creation and editing.
 * [GPT4All](https://www.nomic.ai/gpt4all) via Python bindings
 
 The scripting language allows basic processing involving buffer variables and file manipulaitons.
@@ -121,7 +121,6 @@ example, the `~/_aicli` file might contain something like this:
 ```
 /model openai:dall-e-2
 /set model apikey file:"~/.openai-apikey.txt"
-/set model modality img
 /model openai:gpt-4o
 /set model apikey file:"~/.openai-apikey.txt"
 You are a helpful assistant. You use 2-space indent in all Python code you produce.
@@ -159,12 +158,41 @@ Below, we illustrate some common use-cases:
 >>> /clear in                           # Shortcut for `/clear buffer:in`
 >>> /cat in                             # Print the contents of the "in" buffer.
 >>> /append file:source.py buffer:in    # Adds the contents of a file to the "in" buffer
->>> /cp buffer:out file:monkey.txt      # Saves the contents of the "out" buffer to a file
+>>> /cp buffer:out file:monkey.txt      # Saves the contents of the "out" buffer to a text file
+>>> /cp buffer:out bfile:fish.png       # Saves the contents of the "out" buffer to a binary file
 ```
 
 For the full list of commands, refer to the [grammar reference](#grammar-reference) below.
 Additionally, the [./ai folder](./ai) in this repository contains example scripts.
 
+### Graphic manipulation
+
+Aicli offers support for OpenAI's API to create and edit images. When using a graphic model, or if
+the model's modality option is set to `img` (as configured by the `/set model modality` command),
+the model "driver" switches to image mode. In this mode, it can either create a new image or modify
+an existing one. Please note that input images currently require at least one transparent area. You
+can add this with a graphic tool like Gimp, or by using our `./sh/transpreg.sh` script to place a
+rectangular transparent area on the picture.
+
+```
+>>> /model openai:"dall-e-2"
+>>> /set model apikey file:"~/.openai-apikey.txt"
+>>> /set model imgnum 5
+>>> transpreg.sh landscape.png task.png
+>>> /shell buffer:in
+>>> The UFO shines on COW with the beam of blue light going from the bottom of the UFO down to the
+    ground. The COW is flying in the air between the UFO and the ground
+>>> /append bfile:task.png buffer:in
+>>> /ask
+d344eaaf9b.png
+0c6e7e745a.png
+eb6ca85810.png
+9490ce8448.png
+ee42768230.png
+>>> fim /append out in /shell buffer:in
+```
+
+![](img/252ca7edd8.png)
 
 🔍 Reference
 ------------
@@ -300,11 +328,12 @@ command.1: /\/version/ | \
                                             (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                             /imgsz/ / +/ string | \
                                             /verbosity/ / +/ (NUMBER | DEF) | \
-                                            /modality/ / +/ MODALITY) | \
+                                            /modality/ / +/ (MODALITY | DEF) | \
+                                            /imgnum/ / +/ (NUMBER | DEF)) | \
                              (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
-                                                          /prompt/ / +/ string | \
-                                                          /width/ / +/ (NUMBER | DEF) | \
-                                                          /verbosity/ / +/ (NUMBER | DEF))) | \
+                                                         /prompt/ / +/ string | \
+                                                         /width/ / +/ (NUMBER | DEF) | \
+                                                         /verbosity/ / +/ (NUMBER | DEF))) | \
            /\/cp/ / +/ ref / +/ ref | \
            /\/append/ / +/ ref / +/ ref | \
            /\/cat/ / +/ ref | \
@@ -326,7 +355,7 @@ model_ref: (PROVIDER ":")? string
 # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
 # (`verbatim:ABC`).
 ref: (SCHEMA ":")? string -> ref | \
-     /file/ (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
+     (/file/ | /bfile/) (/\(/ | /\(/ / +/) ref (/\)/ | / +/ /\)/) -> ref_file
 
 # Base token types
 ESCAPE.5: /\\./
@@ -353,7 +382,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L108) | [Actor](./python/sm_aicli/types.py#L33) | [Intention](./python/sm_aicli/types.py#L61) | [Stream](./python/sm_aicli/types.py#L75)
+[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L109) | [Actor](./python/sm_aicli/types.py#L33) | [Intention](./python/sm_aicli/types.py#L62) | [Stream](./python/sm_aicli/types.py#L76)
 
 <!--noresult-->
 
