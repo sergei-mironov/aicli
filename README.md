@@ -35,6 +35,7 @@ For advanced scripting, we suggest using text session management tools such as
 * [🚀 Quick start](#-quick-start)
     * [Basics](#basics)
     * [Data manipulation](#data-manipulation)
+    * [Graphic manipulation](#graphic-manipulation)
 * [🔍 Reference](#-reference)
     * [Command-line](#command-line)
     * [Interpreter commands](#interpreter-commands)
