@@ -73,7 +73,7 @@ COMPLETION = {
       " temp":      {" FLOAT":  {}, " default": {}},
       " nt":        {" NUMBER": {}, " default": {}},
       " verbosity": {" NUMBER": {}, " default": {}},
-      " imgnum":    {" NUMBER": {}},
+      " imgnum":    {" NUMBER": {}, " default": {}},
     },
     " terminal": {
       " rawbin": VBOOL,
