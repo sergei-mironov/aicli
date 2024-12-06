@@ -181,8 +181,8 @@ rectangular transparent area on the picture.
 >>> /set model imgnum 5
 >>> transpreg.sh landscape.png task.png
 >>> /shell buffer:in
->>> The UFO shines on COW with the beam of blue light going from the bottom of the UFO down to the
-    ground. The COW is flying in the air between the UFO and the ground
+>>> The UFO emits a beam of blue light that stretches from its base to the ground, illuminating a
+    COW that is suspended in mid-air between the UFO and the ground.
 >>> /append bfile:task.png buffer:in
 >>> /ask
 d344eaaf9b.png
