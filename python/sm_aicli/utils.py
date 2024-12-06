@@ -1,16 +1,18 @@
-from typing import Iterable, Callable
-from dataclasses import dataclass
-from contextlib import contextmanager
-from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
-from os.path import join, isfile, realpath, expanduser, abspath, sep
-from glob import glob
-from sys import stderr, platform, maxsize
+from PIL import Image, ImageDraw
 from collections import OrderedDict
-from subprocess import check_output, DEVNULL
-from os import environ, makedirs, system
+from contextlib import contextmanager
+from dataclasses import dataclass
+from glob import glob
 from hashlib import sha256
-from textwrap import dedent
+from io import BytesIO
+from os import environ, makedirs, system
+from os.path import join, isfile, realpath, expanduser, abspath, sep
 from pdb import set_trace as ST
+from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
+from subprocess import check_output, DEVNULL
+from sys import stderr, platform, maxsize
+from textwrap import dedent
+from typing import Iterable, Callable
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
                     Stream)
@@ -291,4 +293,38 @@ def wraplong(text:str, state:WLState, printer:Callable, flush:bool=False):
   state.mode, state.buf, state.keepspases = mode, buf, keepspases
 
 
+def add_transparent_rectangle(input_image:bytes|BytesIO, ratio:float=0.15):
+  # Open the input image from bytes
+  input_image_bytesio = BytesIO(input_image) if isinstance(input_image, bytes) else input_image
+  with Image.open(input_image_bytesio) as img:
+    # Ensure the image has an alpha channel
+    if img.mode != 'RGBA':
+      img = img.convert('RGBA')
+
+    # Get image dimensions
+    width, height = img.size
+
+    # Calculate the coordinates for the transparent rectangle based on the ratio
+    x1 = int(width * ratio)
+    y1 = int(height * ratio)
+    x2 = int(width * (1.0 - ratio))
+    y2 = int(height * (1.0 - ratio))
+
+    # Create a mask with full opacity in the rectangle area
+    mask = Image.new('L', img.size, 255)
+    draw = ImageDraw.Draw(mask)
+    draw.rectangle([x1, y1, x2, y2], fill=0)
+
+    # Directly modify the alpha channel of the image
+    img.putalpha(mask)
+
+    # # Save the modified image to a temporary file
+    # img.save('_out.png', format='PNG')
+    # assert False
+
+    # Save the modified image to a bytes buffer
+    output_buffer = BytesIO()
+    img.save(output_buffer, format='PNG')
+    output_bytes = output_buffer.getvalue()
+    return output_bytes
 

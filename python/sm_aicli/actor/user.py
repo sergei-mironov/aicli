@@ -501,6 +501,8 @@ class Repl(Interpreter):
       cmd = buffer2str(ref_read(ref, self.buffers)).replace('\n',' ').strip()
       retcode = sys2exitcode(system(cmd))
       self.owner.info(f"Shell command '{cmd}' exited with code {retcode}")
+      if ref == ('buffer','in'):
+        ref_write(ref, [], self.buffers, append=False)
     elif command == CMD_CD:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
@@ -727,7 +729,7 @@ class UserActor(Actor):
               self.info("Binary stream has been saved to file")
               out_content = s.suggested_fname
               buffer_out.append(out_content + ' ')
-              self.repl._print(f"{out_content}\n", flush=True)
+              self.repl._print(f"{out_content}", flush=True)
             else:
               for token in s.gen():
                 if isinstance(token, bytes):

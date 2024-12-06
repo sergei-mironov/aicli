@@ -53,7 +53,7 @@ setup(
   packages=find_packages(where='python'),
   long_description=long_description,
   long_description_content_type="text/markdown",
-  install_requires=[gpt4all, 'openai', 'gnureadline', 'lark'],
+  install_requires=[gpt4all, 'openai', 'gnureadline', 'lark', 'pillow'],
   scripts=[join('.','python','aicli')],
   python_requires='>=3.6',
   author="Sergei Mironov",

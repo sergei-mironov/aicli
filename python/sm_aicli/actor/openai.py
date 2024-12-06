@@ -19,7 +19,7 @@ from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions,
                      Conversation, Intention, ModelName, UserName, Utterance,
                      Modality, ConversationException, SAU, Stream, Contents)
 from ..utils import (dbg, find_last_message, err, uts_2sau, uts_lastfull,
-                     uts_lastref, cont2str)
+                     uts_lastref, cont2str, add_transparent_rectangle)
 
 
 def url2ext(url)->str|None:
@@ -199,7 +199,7 @@ class OpenAIActor(Actor):
       dbg(f"edit image prompt: {sbuf.getvalue()}", actor=self)
     try:
       response = self.client.images.edit(
-        image=BytesIO(bbuf.getvalue()),
+        image=bbuf,
         prompt=sbuf.getvalue(),
         model=self.name.model,
         n=self.opt.imgnum or 1,

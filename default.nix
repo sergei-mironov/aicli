@@ -125,6 +125,7 @@ let
         (gpt4all-bindings pp)
         openai
         hypothesis
+        pillow
       ]
     );
 
