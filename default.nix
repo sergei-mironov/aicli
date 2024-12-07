@@ -90,7 +90,7 @@ let
       format = "setuptools";
       src = ./.;
       nativeBuildInputs = with pp; [ pkgs.git ];
-      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark openai];
+      propagatedBuildInputs = with pp; [(gpt4all-bindings pp) gnureadline lark openai pillow];
       AICLI_REVISION = revision;
       AICLI_ROOT = src;
       AICLI_GPT4ALL = "gpt4all-bindings";
