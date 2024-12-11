@@ -1,0 +1,42 @@
+#!/usr/bin/env expect-f.sh
+
+set timeout 2
+
+spawn aicli
+
+foreach alias {FOO BAR} {
+  expect {
+    ">>> " {
+      send "/model dummy:\"dummy\"($alias)\r"
+      send "/ask\r"
+    }
+    timeout {
+      puts "Error: Did not receive prompt for $alias"
+      exit 1
+    }
+  }
+
+  expect {
+    "$alias" {
+      continue
+    }
+    timeout {
+      puts "Error: Did not receive expected output for $alias"
+      exit 1
+    }
+  }
+}
+
+expect {
+  ">>> " {
+    send "/exit\r"
+  }
+  timeout {
+    puts "Error: Did not receive prompt before exit"
+    exit 1
+  }
+}
+
+expect eof
+exit 0
+
