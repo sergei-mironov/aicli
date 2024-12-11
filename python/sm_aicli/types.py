@@ -15,9 +15,12 @@ class ModelName:
   model name or path to a file. """
   provider:str
   model:str|PathStr
+  alias:str|None=None
 
   def repr(self)->str:
-    return f"{self.provider}:{self.model}"
+    model = f":{self.model}" if self.model is not None else "default"
+    alias = f"({self.alias})" if self.alias is not None else ""
+    return f"{self.provider}{model}{alias}"
 
 @dataclass(frozen=True)
 class UserName:

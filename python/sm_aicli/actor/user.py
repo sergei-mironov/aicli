@@ -157,7 +157,7 @@ GRAMMAR = fr"""
   string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
 
   # Model references are strings with the provider prefix
-  model_ref: (PROVIDER ":")? string
+  model_ref: (PROVIDER ":")? string ("(" ID ")")?
 
   # References mention locations which could be either a file (`file:path/to/file`), a binary file
   # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
@@ -172,6 +172,7 @@ GRAMMAR = fr"""
   STRING_QUOTED.3: /[^"]+/
   STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
   TEXT.0: /([^#](?![\/]))*[^\/#]/
+  ID: /[a-zA-Z_][a-zA-Z0-9_]*/
   NUMBER: /[0-9]+/
   FLOAT: /[0-9]+\.[0-9]*/
   DEF: "default"
@@ -325,7 +326,14 @@ class Repl(Interpreter):
 
   def model_ref(self, tree):
     val = self.visit_children(tree)
-    return (str(val[0]), val[1]) if len(val) == 2 else (val[0], "default")
+    if len(val) == 1:
+      return ModelName(str(val[0]), "default", None)
+    elif len(val) == 2:
+      return ModelName(str(val[0]), str(val[1]), None)
+    elif len(val) == 3:
+      return ModelName(str(val[0]), str(val[1]), str(val[2]))
+    else:
+      raise ValueError(f"Invalid model reference: '{val}'")
 
   def ref_file(self, tree):
     args = self.visit_children(tree)
@@ -381,13 +389,14 @@ class Repl(Interpreter):
     elif command == CMD_MODEL:
       res = self.visit_children(tree)
       if len(res) > 2:
-        name = ModelName(*res[2])
+        assert isinstance(res[2], ModelName), f"{res[2]} is not a ModelName"
+        name = res[2]
         opt = opts.get(name, ActorOptions.init())
         self.owner.info(f"Setting target actor to '{name.repr()}'")
         opts[name] = opt
         self.actor_next = name
       else:
-        raise ValueError("Invalid model format")
+        raise ValueError("Invalid model name format")
     elif command == CMD_SET:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
