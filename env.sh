@@ -17,3 +17,6 @@ update_pathvar "PATH" "$PROJECT_SOURCE/python"
 
 alias ipython=ipython.sh
 
+export LITREPL_WORKDIR="$PROJECT_SOURCE"
+export LITREPL_PYTHON_AUXDIR="$PROJECT_SOURCE/_litrepl/python"
+export LITREPL_AI_AUXDIR="$PROJECT_SOURCE/_litrepl/ai"
