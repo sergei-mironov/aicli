@@ -203,11 +203,12 @@ ee42768230.png
 
 ### Python extensions
 
-Aicli can be customized by creating your own actor classes in Python. To accomplish this, you should
-write a custom main script and include new or modified actors through the `providers` dictionary.
+Aicli can be customized by creating actor classes in Python. To accomplish this, you can write a
+custom main script and include new or modified actors through the `providers` dictionary.
 
-Consider the challenge of converting copied PDF content back into its original LaTeX source form. By
-using a sample dataset, [pastebugs.tex](./doc/pastebugs.tex), we can create the following script.
+Consider the challenge of converting copied PDF math formulas back into its original LaTeX source
+form. With the help of a tiny dataset, [pastebugs.tex](./doc/pastebugs.tex), we train GPT to guess
+the original tex markup.
 
 <!--lignore-->
 ``` python
