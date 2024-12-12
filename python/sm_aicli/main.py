@@ -76,13 +76,12 @@ ARG_PARSER.add_argument(
   help="Input prompt (default: >>>)",
   default=">>> "
 )
-HISTORY_DEF="_sm_aicli_history"
 ARG_PARSER.add_argument(
   '--readline-history',
   type=str,
   metavar='FILE',
-  help=f"History file name (default is '{HISTORY_DEF}'; set empty to disable)",
-  default=HISTORY_DEF
+  help=f"History file name, disabled by default.",
+  default=None
 )
 ARG_PARSER.add_argument(
   '--verbose',

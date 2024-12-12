@@ -601,7 +601,9 @@ class UserActor(Actor):
     super().__init__(name, opt)
 
     self.args = args
-    if args.readline_history:
+    if args.readline_history is None:
+      args.readline_history = environ.get("AICLI_HISTORY")
+    if args.readline_history is not None:
       args.readline_history = abspath(expanduser(args.readline_history))
 
     header = StringIO()
@@ -647,7 +649,7 @@ class UserActor(Actor):
     warn(message, self)
 
   def _reload_history(self):
-    if self.args.readline_history:
+    if self.args.readline_history is not None:
       try:
         clear_history()
         read_history_file(self.args.readline_history)
@@ -815,7 +817,7 @@ class UserActor(Actor):
               self.repl.paste_mode = False
             else:
               self.repl.buffers[IN].append(line + '\n')
-          if self.args.readline_history:
+          if self.args.readline_history is not None:
             write_history_file(self.args.readline_history)
         except (RuntimeWarning,) as e:
           warn(str(e), actor=self)
