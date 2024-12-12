@@ -75,6 +75,7 @@ COMPLETION = {
       " verbosity": {" NUMBER": {}, " default": {}},
       " imgnum":    {" NUMBER": {}, " default": {}},
       " imgdir":    {" string": {}, " default": {}},
+      " modeldir":  {" string": {}, " default": {}},
     },
     " terminal": {
       " rawbin": VBOOL,
@@ -137,6 +138,7 @@ GRAMMAR = fr"""
                                               (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                               /imgsz/ / +/ string | \
                                               /imgdir/ / +/ (string | DEF) | \
+                                              /modeldir/ / +/ (string | DEF) | \
                                               /verbosity/ / +/ (NUMBER | DEF) | \
                                               /modality/ / +/ (MODALITY | DEF) | \
                                               /imgnum/ / +/ (NUMBER | DEF)) | \
@@ -427,8 +429,12 @@ class Repl(Interpreter):
           self.owner.info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
         elif pname == 'imgdir':
           val = as_str(pval)
-          opts[self.actor_next].imgdir = onematch(expanddir(val)) if val else None
-          self.owner.info(f"Setting model image dir to '{opts[self.actor_next].imgdir}'")
+          opts[self.actor_next].image_dir = onematch(expanddir(val)) if val else None
+          self.owner.info(f"Setting model image dir to '{opts[self.actor_next].image_dir}'")
+        elif pname == 'modeldir':
+          val = as_str(pval)
+          opts[self.actor_next].model_dir = onematch(expanddir(val)) if val else None
+          self.owner.info(f"Setting model dir to '{opts[self.actor_next].model_dir}'")
         elif pname == 'imgnum':
           opts[self.actor_next].imgnum = as_int(pval)
           self.owner.info(f"Setting model image number to '{opts[self.actor_next].imgnum}'")
@@ -610,7 +616,9 @@ class UserActor(Actor):
     if args.model_apikey is not None:
       header.write(f"/set model apikey {ref_quote(args.model_apikey, SCHEMAS)}\n")
     if args.image_dir is not None:
-      header.write(f"/set model imgdir \"{args.image_dir}\"")
+      header.write(f"/set model imgdir \"{args.image_dir}\"\n")
+    if args.model_dir is not None:
+      header.write(f"/set model modeldir \"{args.model_dir}\"\n")
 
     for file in args.filenames:
       with open(file) as f:

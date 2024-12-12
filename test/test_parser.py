@@ -292,7 +292,7 @@ def test_slash():
       text       /text
   ''')
 
-def test_comment():
+def test_comment1():
   _assert('# /echo aaa\n/echo bbb', r'''
     start
       comment       # /echo aaa
@@ -300,6 +300,24 @@ def test_comment():
 
       command       /echo
       text        bbb
+  ''')
+
+def test_comment2():
+  _assert('/ask\n#! /echo aaa\n/model dummy:dummy\n', r'''
+    start
+      command       /ask
+      text       
+
+      comment       #! /echo aaa
+      text       
+
+      command
+        /model
+
+        model_ref
+          dummy
+          string       dummy
+      text
   ''')
 
 def test_escaped_comment():

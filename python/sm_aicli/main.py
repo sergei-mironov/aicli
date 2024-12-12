@@ -23,14 +23,12 @@ ARG_PARSER = ArgumentParser(description="Command-line arguments")
 ARG_PARSER.add_argument(
   "--model-dir",
   type=str,
-  help="Model directory to prepend to model file names",
-  default='.'
+  help="Model directory to prepend to model file names"
 )
 ARG_PARSER.add_argument(
   "--image-dir",
   type=str,
-  help="Directory in which to store images",
-  default='.'
+  help="Directory in which to store images"
 )
 ARG_PARSER.add_argument(
   "--model", "-m",
@@ -177,8 +175,6 @@ def main(cmdline=None):
   user = UserActor(UserName(), ActorOptions.init(), args)
   st.actors[current_actor] = user
 
-  model_dir = onematch(expanddir(args.model_dir))
-
   while True:
     try:
       utterance = st.actors[current_actor].react(st.get_view(), cnv)
@@ -200,7 +196,7 @@ def main(cmdline=None):
             if name.provider == "openai":
               st.actors[name] = OpenAIActor(name, opt)
             elif name.provider == "gpt4all":
-              st.actors[name] = GPT4AllActor(name, opt, model_dir=model_dir)
+              st.actors[name] = GPT4AllActor(name, opt)
             elif name.provider == "dummy":
               st.actors[name] = DummyActor(name, opt)
             else:

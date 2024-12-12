@@ -28,11 +28,12 @@ class GPT4AllStream(Stream):
 class GPT4AllActor(Actor):
   temperature_def = 0.9
 
-  def __init__(self, name:ActorName, opt:ActorOptions, model_dir:str|None):
+  def __init__(self, name:ActorName, opt:ActorOptions):
     assert isinstance(name, ModelName)
     assert name.provider == "gpt4all"
     self.name = deepcopy(name)
-    path_or_name = firstfile(expandpath(model_dir or getcwd(), name.model)) or name.model
+    model_dir = opt.model_dir or getcwd()
+    path_or_name = firstfile(expandpath(model_dir, name.model)) or name.model
     self.gpt4all = GPT4All(path_or_name)
     self.session = self.gpt4all.chat_session()
     self.session.__enter__()
