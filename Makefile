@@ -24,8 +24,8 @@ version:
 
 .stamp_readme: $(PY)
 	cp README.md _README.md.in
-	cat _README.md.in | LITREPL_AI_AUXDIR='' LITREPL_PYTHON_AUXDIR='' \
-		litrepl --foreground --exception-exit=100 eval-sections >README.md
+	cat _README.md.in | LITREPL_AI_AUXDIR='' LITREPL_PYTHON_AUXDIR='' litrepl \
+		--foreground --exception-exit=100 eval-sections >README.md
 	touch $@
 
 .PHONY: test # Run tests
