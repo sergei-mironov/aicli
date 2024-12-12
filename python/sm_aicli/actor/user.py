@@ -535,7 +535,7 @@ class Repl(Interpreter):
       path = buffer2str(ref_read(ref, self.buffers))
       try:
         chdir(path)
-        self.owner.info(f"Changed current directory to '{path}'")
+        self.owner.info(f"Changing current directory to '{path}'")
       except Exception as err:
         raise ValueError(str(err)) from err
     elif command == CMD_PWD:
@@ -661,6 +661,7 @@ class UserActor(Actor):
     acc = []
     current_dir = abspath(getcwd())
     path_parts = current_dir.split(sep)
+    last_dir = None
     for depth in range(2, len(path_parts) + 1):
       directory = sep.join(path_parts[:depth])
       for fn in rcnames:
@@ -668,11 +669,15 @@ class UserActor(Actor):
         if isfile(candidate_file):
           with open(candidate_file, 'r') as file:
             info(f"Reading {candidate_file}", self)
-            acc.append(f"{CMD_CD} \"{dirname(candidate_file)}\"")
+            new_dir = dirname(candidate_file)
+            if last_dir != new_dir:
+              acc.append(f"{CMD_CD} \"{new_dir}\"")
+              last_dir = new_dir
             for line in file.readlines():
-              # info(line.strip(), self)
               acc.append(line.strip())
-            acc.append(f"{CMD_CD} \"{getcwd()}\"")
+            if last_dir != getcwd():
+              acc.append(f"{CMD_CD} \"{getcwd()}\"")
+              last_dir = getcwd()
     return acc
 
   def _complete(self, text:str, state:int) -> str|None:
