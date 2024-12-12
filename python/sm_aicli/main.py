@@ -154,8 +154,15 @@ def get_help_string(arg_parser):
   arg_parser.print_help(help_output)
   return help_output.getvalue()
 
-def main(cmdline=None):
+AICLI_PROVIDERS = {
+  "openai": OpenAIActor,
+  "gpt4all": GPT4AllActor,
+  "dummy": DummyActor,
+}
+
+def main(cmdline=None, providers=None):
   args = ARG_PARSER.parse_args(cmdline)
+  providers = AICLI_PROVIDERS if providers is None else providers
 
   if args.cd:
     chdir(args.cd)
@@ -193,14 +200,10 @@ def main(cmdline=None):
           if actor is not None:
             actor.set_options(opt)
           else:
-            if name.provider == "openai":
-              st.actors[name] = OpenAIActor(name, opt)
-            elif name.provider == "gpt4all":
-              st.actors[name] = GPT4AllActor(name, opt)
-            elif name.provider == "dummy":
-              st.actors[name] = DummyActor(name, opt)
-            else:
+            provider = providers.get(name.provider)
+            if provider is None:
               raise RuntimeError(f"Unsupported provider {name.provider}")
+            st.actors[name] = provider(name, opt)
       if intention.actor_next is not None:
         assert intention.actor_next in st.actors, (
           f"{intention.actor_next} is not among {st.actors.keys()}"
