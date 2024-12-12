@@ -44,6 +44,7 @@ class ActorOptions:
   imgsz:str|None = None
   imgnum:int|None = None
   modality:Modality|None=None
+  image_dir:str|None=None
 
   @staticmethod
   def init():
