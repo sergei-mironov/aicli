@@ -212,6 +212,7 @@ the original tex markup.
 
 <!--lignore-->
 ``` python
+#!/usr/bin/env python
 from sm_aicli.types import Conversation, Utterance, Intention, UserName
 from sm_aicli.main import main, AICLI_PROVIDERS, OpenAIActor
 from textwrap import dedent
@@ -251,6 +252,8 @@ With this script named `aicli-pastefixer.py`, we can run it and talk to our mode
 ``` sh
 $ chmod +x ./aicli-pastefixer.py
 $ ./aicli-pastefixer.py
+>>> /model openai:gpt-4o(PASTER)
+>>> /set model apikey file:"_openai-apikey.txt"
 >>> Let A “ t1, 2, 3, 4, 5u and B “ ta, b, cu. Draw them and choose an
 >>> arbitrary function f : A Ñ B and draw it.
 >>> /ask
