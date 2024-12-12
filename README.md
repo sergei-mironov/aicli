@@ -391,6 +391,8 @@ command.1: /\/version/ | \
                                             (/t/ | /temp/) / +/ (FLOAT | DEF) | \
                                             (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                             /imgsz/ / +/ string | \
+                                            /imgdir/ / +/ (string | DEF) | \
+                                            /modeldir/ / +/ (string | DEF) | \
                                             /verbosity/ / +/ (NUMBER | DEF) | \
                                             /modality/ / +/ (MODALITY | DEF) | \
                                             /imgnum/ / +/ (NUMBER | DEF)) | \
@@ -413,7 +415,7 @@ text: TEXT
 string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
 
 # Model references are strings with the provider prefix
-model_ref: (PROVIDER ":")? string
+model_ref: (PROVIDER ":")? string ("(" ID ")")?
 
 # References mention locations which could be either a file (`file:path/to/file`), a binary file
 # (`bfile:path/to/file`), a named memory buffer (`buffer:name`) or a read-only string constant
@@ -428,6 +430,7 @@ PROVIDER.4: /openai/|/gpt4all/|/dummy/
 STRING_QUOTED.3: /[^"]+/
 STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
 TEXT.0: /([^#](?![\/]))*[^\/#]/
+ID: /[a-zA-Z_][a-zA-Z0-9_]*/
 NUMBER: /[0-9]+/
 FLOAT: /[0-9]+\.[0-9]*/
 DEF: "default"
@@ -446,7 +449,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L109) | [Actor](./python/sm_aicli/types.py#L33) | [Intention](./python/sm_aicli/types.py#L62) | [Stream](./python/sm_aicli/types.py#L76)
+[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L114) | [Actor](./python/sm_aicli/types.py#L36) | [Intention](./python/sm_aicli/types.py#L67) | [Stream](./python/sm_aicli/types.py#L81)
 
 <!--noresult-->
 
