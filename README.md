@@ -36,6 +36,7 @@ For advanced scripting, we suggest using text session management tools such as
     * [Basics](#basics)
     * [Data manipulation](#data-manipulation)
     * [Graphic manipulation](#graphic-manipulation)
+    * [Python extensions](#python-extensions)
 * [🔍 Reference](#-reference)
     * [Command-line](#command-line)
     * [Interpreter commands](#interpreter-commands)
@@ -116,8 +117,13 @@ Old World monkeys. Here's a brief overview of ...
 
 To save time on model setup, it's a good idea to store standard initialization details in
 configuration files. Aicli will automatically read any files named `_aicli`, `.aicli`, `_sm_aicli`,
-or `_sm_aicli` from the home directory all the way down to the current working directory. For
-example, the `~/_aicli` file might contain something like this:
+or `_sm_aicli` from the home directory all the way down to the current working directory. Before
+reading each configuration file, the working directory is changed to the directory containing the
+file.
+
+For instance, the `~/_aicli` file might include the configuration displayed below. The
+`~/.openai-apikey.txt` file mentioned is expected to contain the personal API key provided by
+OpenAI.
 
 ```
 /model openai:dall-e-2
@@ -128,7 +134,6 @@ You are a helpful assistant. You use 2-space indent in all Python code you produ
 Also, you hate inserting spaces between Python arguments and type annotations.
 /read model prompt
 ```
-Here, the `~/.openai-apikey.txt` file contains the personal API key from OpenAI.
 
 ### Data manipulation
 
@@ -194,6 +199,64 @@ ee42768230.png
 ```
 
 ![](img/252ca7edd8.png)
+
+
+### Python extensions
+
+Aicli can be customized by creating your own actor classes in Python. To accomplish this, you should
+write a custom main script and include new or modified actors through the `providers` dictionary.
+
+Consider the challenge of converting copied PDF content back into its original LaTeX source form. By
+using a sample dataset, [pastebugs.tex](./doc/pastebugs.tex), we can create the following script.
+
+<!--lignore-->
+``` python
+from sm_aicli.types import Conversation, Utterance, Intention, UserName
+from sm_aicli.main import main, AICLI_PROVIDERS, OpenAIActor
+from textwrap import dedent
+from copy import deepcopy
+
+class OpenAIActorPaster(OpenAIActor):
+  def react(self, actors, cnv:Conversation) -> Utterance:
+    # Set a custom system prompt describing the problem
+    self.opt.prompt = dedent('''
+      Your task is restore ill-formed math text back to its LaTeX source. You will get the
+      ill-formed text as input, you must provide the text with restored math formulas as output. Do
+      not really answer the questions, if any. Just output the text with restored LaTeX tags.''')
+    # Load the dataset
+    dataset = []
+    with open("pastebugs.tex") as f:
+      for line in f.readlines():
+        src,dst = line.split('=====>')
+        dataset.extend([
+          Utterance.init(UserName(), Intention.init(self.name), [src.strip()]),
+          Utterance.init(self.name, Intention.init(UserName()), [dst.strip()]),
+        ])
+    # Copy the conversation and prepend our dataset
+    cnv = deepcopy(cnv)
+    cnv.utterances[0:0] = dataset
+    # Call the parent reaction on a modified conversation
+    return super().react(actors, cnv)
+
+# Replace the original openai actor with the custom one
+AICLI_PROVIDERS["openai"] = OpenAIActorPaster
+if __name__ == "__main__":
+  main(providers=AICLI_PROVIDERS)
+```
+<!--lnoignore-->
+
+With this script named `aicli-pastefixer.py`, we can run it and talk to our model.
+
+``` sh
+$ chmod +x ./aicli-pastefixer.py
+$ ./aicli-pastefixer.py
+>>> Let A “ t1, 2, 3, 4, 5u and B “ ta, b, cu. Draw them and choose an
+>>> arbitrary function f : A Ñ B and draw it.
+>>> /ask
+Let $A = \{1, 2, 3, 4, 5\}$ and $B = \{a, b, c\}$. Draw them and choose an
+arbitrary function $f : A \to B$ and draw it.
+>>>
+```
 
 🔍 Reference
 ------------
