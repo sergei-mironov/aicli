@@ -9,7 +9,7 @@ from copy import copy
 from sys import stdout
 from collections import defaultdict
 from os import system, chdir, environ, getcwd, listdir
-from os.path import expanduser, abspath, sep, join, isfile, isdir, split
+from os.path import expanduser, abspath, sep, join, isfile, isdir, split, dirname
 from io import StringIO
 from pdb import set_trace as ST
 
@@ -623,7 +623,9 @@ class UserActor(Actor):
     for file in args.filenames:
       with open(file) as f:
         self.info(f"Reading {file}")
+        header.write(f"/cd \"{dirname(file)}\"\n")
         header.write(f.read())
+        header.write(f"/cd \"{getcwd()}\"\n")
 
     set_completer_delims('')
     set_completer(self._complete)

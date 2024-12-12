@@ -3,7 +3,6 @@ from contextlib import contextmanager
 from gpt4all import GPT4All
 from copy import deepcopy
 from os.path import isfile
-from os import getcwd
 from dataclasses import dataclass
 from collections import OrderedDict
 
@@ -32,7 +31,7 @@ class GPT4AllActor(Actor):
     assert isinstance(name, ModelName)
     assert name.provider == "gpt4all"
     self.name = deepcopy(name)
-    model_dir = opt.model_dir or getcwd()
+    model_dir = opt.model_dir or "."
     path_or_name = firstfile(expandpath(model_dir, name.model)) or name.model
     self.gpt4all = GPT4All(path_or_name)
     self.session = self.gpt4all.chat_session()
