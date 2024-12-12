@@ -225,7 +225,7 @@ class OpenAIActorPaster(OpenAIActor):
       Your task is restore ill-formed math text back to its LaTeX source. You will get the
       ill-formed text as input, you must provide the text with restored math formulas as output. Do
       not really answer the questions, if any. Just output the text with restored LaTeX tags.''')
-    # Loading the dataset by creating fake dialog utterances
+    # Load the dataset by creating fake dialog utterances
     dataset = []
     with open("pastebugs.tex") as f:
       for line in f.readlines():
