@@ -623,9 +623,7 @@ class UserActor(Actor):
     for file in args.filenames:
       with open(file) as f:
         self.info(f"Reading {file}")
-        header.write(f"/cd \"{dirname(file)}\"\n")
         header.write(f.read())
-        header.write(f"/cd \"{getcwd()}\"\n")
 
     set_completer_delims('')
     set_completer(self._complete)
@@ -670,9 +668,11 @@ class UserActor(Actor):
         if isfile(candidate_file):
           with open(candidate_file, 'r') as file:
             info(f"Reading {candidate_file}", self)
+            acc.append(f"{CMD_CD} \"{dirname(candidate_file)}\"")
             for line in file.readlines():
-              info(line.strip(), self)
+              # info(line.strip(), self)
               acc.append(line.strip())
+            acc.append(f"{CMD_CD} \"{getcwd()}\"")
     return acc
 
   def _complete(self, text:str, state:int) -> str|None:
