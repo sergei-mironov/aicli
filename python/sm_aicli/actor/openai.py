@@ -31,11 +31,12 @@ def url2ext(url)->str|None:
   else:
     return None
 
-def url2fname(url)->str|None:
+def url2fname(url, image_dir:str|None)->str|None:
   ext = url2ext(url)
   base_name = sha256(url.encode()).hexdigest()[:10]
   fname = f"{base_name}{ext}" if ext is not None else base_name
-  return fname
+  fdir = image_dir or "."
+  return join(fdir,fname)
 
 
 class TextStream(Stream):
@@ -98,11 +99,10 @@ class OpenAIUtterance(Utterance):
 
 
 class OpenAIActor(Actor):
-  def __init__(self, name:ActorName, opt:ActorOptions, image_dir:str):
+  def __init__(self, name:ActorName, opt:ActorOptions):
     assert isinstance(name, ModelName), name
     assert name.provider == "openai", name.provider
     super().__init__(name, opt)
-    self.image_dir = image_dir
     try:
       self.client = OpenAI(api_key=opt.apikey)
     except OpenAIError as err:
@@ -159,7 +159,7 @@ class OpenAIActor(Actor):
       dbg(url, actor=self)
       url_response = requests_get(url, stream=True)
       url_response.raise_for_status()  # Check for HTTP errors
-      acc.append(BinStream(url_response, suggested_fname=url2fname(url)))
+      acc.append(BinStream(url_response, suggested_fname=url2fname(url, self.opt.image_dir)))
     return acc
 
   def _react_image_create(self, act:ActorView, cont:Contents) -> Utterance:

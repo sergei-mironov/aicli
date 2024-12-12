@@ -17,7 +17,7 @@ from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality)
 
 from ..utils import (info, err, with_sigint, dbg, cont2strm, version, sys2exitcode, WLState,
-                     wraplong, warn)
+                     wraplong, warn, onematch, expanddir)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -74,6 +74,7 @@ COMPLETION = {
       " nt":        {" NUMBER": {}, " default": {}},
       " verbosity": {" NUMBER": {}, " default": {}},
       " imgnum":    {" NUMBER": {}, " default": {}},
+      " imgdir":    {" string": {}, " default": {}},
     },
     " terminal": {
       " rawbin": VBOOL,
@@ -135,6 +136,7 @@ GRAMMAR = fr"""
                                               (/t/ | /temp/) / +/ (FLOAT | DEF) | \
                                               (/nt/ | /nthreads/) / +/ (NUMBER | DEF) | \
                                               /imgsz/ / +/ string | \
+                                              /imgdir/ / +/ (string | DEF) | \
                                               /verbosity/ / +/ (NUMBER | DEF) | \
                                               /modality/ / +/ (MODALITY | DEF) | \
                                               /imgnum/ / +/ (NUMBER | DEF)) | \
@@ -193,6 +195,10 @@ def as_float(val:Token, default:float|None=None)->float|None:
 def as_int(val:Token, default:int|None=None)->int|None:
   assert val.type == 'NUMBER' or is_default(val), val
   return int(val) if not is_default(val) else default
+
+def as_str(val:Token, default:int|None=None)->int|None:
+  assert isinstance(val,str) or is_default(val), val
+  return str(val) if not is_default(val) else default
 
 def as_bool(val:Token):
   assert val.type == 'BOOL', val
@@ -256,7 +262,7 @@ def ref_read(ref, buffers)->list[str|bytes]:
   else:
     raise ValueError(f"Unsupported reference schema '{schema}'")
 
-def ref_quote(ref, prefixes):
+def ref_quote(ref:str, prefixes:list[str])->str:
   for p in [(p+':') for p in prefixes]:
     if ref.startswith(p) and (' ' in ref[len(p):]):
       return f"{p}\"{ref[len(p):]}\""
@@ -419,6 +425,10 @@ class Repl(Interpreter):
         elif pname == 'imgsz':
           opts[self.actor_next].imgsz = pval
           self.owner.info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
+        elif pname == 'imgdir':
+          val = as_str(pval)
+          opts[self.actor_next].imgdir = onematch(expanddir(val)) if val else None
+          self.owner.info(f"Setting model image dir to '{opts[self.actor_next].imgdir}'")
         elif pname == 'imgnum':
           opts[self.actor_next].imgnum = as_int(pval)
           self.owner.info(f"Setting model image number to '{opts[self.actor_next].imgnum}'")
@@ -599,6 +609,8 @@ class UserActor(Actor):
       header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
     if args.model_apikey is not None:
       header.write(f"/set model apikey {ref_quote(args.model_apikey, SCHEMAS)}\n")
+    if args.image_dir is not None:
+      header.write(f"/set model imgdir \"{args.image_dir}\"")
 
     for file in args.filenames:
       with open(file) as f:

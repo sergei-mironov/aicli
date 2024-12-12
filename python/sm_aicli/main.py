@@ -178,7 +178,6 @@ def main(cmdline=None):
   st.actors[current_actor] = user
 
   model_dir = onematch(expanddir(args.model_dir))
-  image_dir = onematch(expanddir(args.image_dir))
 
   while True:
     try:
@@ -199,7 +198,7 @@ def main(cmdline=None):
             actor.set_options(opt)
           else:
             if name.provider == "openai":
-              st.actors[name] = OpenAIActor(name, opt, image_dir=image_dir)
+              st.actors[name] = OpenAIActor(name, opt)
             elif name.provider == "gpt4all":
               st.actors[name] = GPT4AllActor(name, opt, model_dir=model_dir)
             elif name.provider == "dummy":
