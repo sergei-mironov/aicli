@@ -1,6 +1,6 @@
 #!/usr/bin/env -S aicli --rc=none --keep-running
 /model openai:"gpt-4o"
-/set model apikey file:"_openai"
+/set model apikey file:"_openai-apikey.txt"
 Hi model. Could you reword the following text to match dall-e-2 input length
 requirements. Please fit the response in 800 characters. Omit all code and
 example sections please. Please output just the new content, with no comments.
