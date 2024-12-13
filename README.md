@@ -308,8 +308,7 @@ options:
   --readline-prompt READLINE_PROMPT, -p READLINE_PROMPT
                         Input prompt (default: >>>)
   --readline-history FILE
-                        History file name (default is '_sm_aicli_history'; set
-                        empty to disable)
+                        History file name, disabled by default.
   --verbose NUM         Set the verbosity level 0-no,1-full
   --revision            Print the revision
   --version             Print the version
@@ -453,7 +452,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L114) | [Actor](./python/sm_aicli/types.py#L36) | [Intention](./python/sm_aicli/types.py#L67) | [Stream](./python/sm_aicli/types.py#L81)
+[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L127) | [Actor](./python/sm_aicli/types.py#L36) | [Intention](./python/sm_aicli/types.py#L67) | [Stream](./python/sm_aicli/types.py#L81)
 
 <!--noresult-->
 
