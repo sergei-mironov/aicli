@@ -1,6 +1,7 @@
 #!/bin/sh
 
 export AICLI_RC=none
+unset AICLI_HISTORY
 
 set -e -x
 echo "Running pytest"
