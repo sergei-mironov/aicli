@@ -1,6 +1,6 @@
 from typing import Iterable, Callable
 from dataclasses import dataclass
-from copy import deepcopy
+from copy import copy, deepcopy
 from enum import Enum
 
 class ConversationException(ValueError):
@@ -93,7 +93,7 @@ class Stream:
   def __deepcopy__(self, memo):
     assert self.generator is None, "Cannot call deepcopy on an unread stream"
     # Create a new instance of the current class
-    copied_obj = type(self)(self.generator)
+    copied_obj = copy(self)
     # Copy all instance attributes to the new instance
     for k, v in self.__dict__.items():
       copied_obj.__dict__[k] = deepcopy(v, memo)

@@ -13,4 +13,3 @@ def test_stream_deepcopy():
   lines=[s for s in s.gen()]
   assert lines==["FOO","BAR"]
   s2 = deepcopy(deepcopy(s))
-
