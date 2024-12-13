@@ -91,8 +91,15 @@ class Stream:
     self.suggested_fname = suggested_fname # Suggested filename with extension
 
   def __deepcopy__(self, memo):
-    assert self.generator is None, "Can not call deepcopy on the unreaden stream"
-    return deepcopy(self, memo)
+    assert self.generator is None, "Cannot call deepcopy on an unread stream"
+    # Create a new instance of the current class
+    copied_obj = type(self)(self.generator)
+    # Copy all instance attributes to the new instance
+    for k, v in self.__dict__.items():
+      copied_obj.__dict__[k] = deepcopy(v, memo)
+    # Store the copied object in the memo dictionary to handle recursive references
+    memo[id(self)] = copied_obj
+    return copied_obj
 
   def gen(self):
     """ Iterate over tokens. Should be called once in the object's lifetime. """
