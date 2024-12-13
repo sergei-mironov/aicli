@@ -60,44 +60,6 @@ class BinStream(Stream):
     except RequestException as err:
       yield f"<ERROR: {str(err)}>".decode()
 
-@dataclass
-class OpenAIUtterance(Utterance):
-  chunks:Any|None=None
-  stop:bool=False
-  def interrupt(self):
-    self.stop = True
-  def init_text(name, intention, chunks):
-    def _gen(self):
-      self.stop = False
-      self.contents = ['']
-      try:
-        for chunk in chunks:
-          if self.stop:
-            break
-          if text:=chunk.choices[0].delta.content:
-            self.contents[-1] += text
-            yield text
-      except OpenAIError as err:
-        yield f"<ERROR: {str(err)}>"
-    # gen =  _gen if chunks is not None else None
-    return OpenAIUtterance(name, intention, None, _gen)
-
-
-  def init_request(name, intention, response):
-    def _gen(self):
-      self.stop = False
-      self.contents = [b'']
-      try:
-        for chunk in response.iter_content(4*1024):
-          if self.stop:
-            break
-          self.contents[-1] += chunk
-          yield chunk
-      except RequestException as err:
-        yield f"<ERROR: {str(err)}>".decode()
-    return OpenAIUtterance(name, intention, None, _gen)
-
-
 class OpenAIActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions):
     assert isinstance(name, ModelName), name
