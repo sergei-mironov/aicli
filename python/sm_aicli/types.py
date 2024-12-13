@@ -82,6 +82,7 @@ class Stream:
   """ Stream represents a promise to fetch the content from a remote source of some kind. The
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
   `recording` array. All tokens must be of a same type (str or bytes). """
+
   def __init__(self, generator, binary:bool=False, suggested_fname:str|None=None):
     self.generator = generator    # Descendant-specific token generator
     self.stop = False             # Interrupt flag
@@ -89,17 +90,22 @@ class Stream:
     self.binary = binary          # Type of content (False => str; True => bytes)
     self.suggested_fname = suggested_fname # Suggested filename with extension
 
+  def __deepcopy__(self, memo):
+    assert self.generator is None, "Can not call deepcopy on the unreaden stream"
+    return deepcopy(self, memo)
+
   def gen(self):
     """ Iterate over tokens. Should be called once in the object's lifetime. """
     self.stop = False
-    for ch in self.generator:
-      if self.stop:
-        break
-      yield ch
-      if self.recording is None:
-        self.recording = ch
-      else:
+    self.recording = ""
+    try:
+      for ch in self.generator:
+        if self.stop:
+          break
+        yield ch
         self.recording += ch
+    finally:
+      self.generator = None
 
   def interrupt(self):
     """ Declare that no more tokens are going to be fetched from this stream. """
