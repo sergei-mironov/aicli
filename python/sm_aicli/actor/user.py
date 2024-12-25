@@ -12,6 +12,7 @@ from os import system, chdir, environ, getcwd, listdir
 from os.path import expanduser, abspath, sep, join, isfile, isdir, split, dirname
 from io import StringIO
 from pdb import set_trace as ST
+from subprocess import run, PIPE
 
 from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality)
@@ -33,6 +34,7 @@ CMD_READ = "/read"
 CMD_RESET = "/reset"
 CMD_SET = "/set"
 CMD_SHELL = "/shell"
+CMD_PIPE = "/pipe"
 CMD_VERSION = "/version"
 CMD_CD = "/cd"
 CMD_PASTE = "/paste"
@@ -47,6 +49,7 @@ def _mkref(tail):
 
 REF = _mkref({})
 REF_REF = _mkref(REF)
+REF_REF_REF = _mkref(REF_REF)
 
 MODEL = { " openai:":{"gpt-4o":{}, "dall-e-2":{}, "dall-e-3":{}},
           " gpt4all:":{"FILE":{}},
@@ -89,6 +92,7 @@ COMPLETION = {
   CMD_CAT:     REF,
   CMD_CLEAR:   REF,
   CMD_SHELL:   REF,
+  CMD_PIPE:    REF_REF_REF,
   CMD_CD:      REF,
   CMD_PWD:     {}
 }
@@ -113,6 +117,7 @@ CMDHELP = {
   CMD_RESET:   ("",              "Reset the conversation and all the models"),
   CMD_SET:     ("WHAT",          "Set terminal or model option, check the Grammar for a full list of options."),
   CMD_SHELL:   ("REF",           "Run a system shell command."),
+  CMD_PIPE:    ("REF REF REF",   "Run a system shell command, piping its input and output"),
   CMD_VERSION: ("",              "Print version"),
   CMD_PWD:     ("",              "Print the current working directory."),
 }
@@ -151,6 +156,7 @@ GRAMMAR = fr"""
              /\{CMD_CAT}/ / +/ ref | \
              /\{CMD_CLEAR}/ / +/ ref | \
              /\{CMD_SHELL}/ / +/ ref | \
+             /\{CMD_PIPE}/ / +/ ref / +/ ref / +/ ref | \
              /\{CMD_CD}/ / +/ ref | \
              /\{CMD_PASTE}/ / +/ BOOL | \
              /\{CMD_PWD}/
@@ -271,8 +277,14 @@ def ref_quote(ref:str, prefixes:list[str])->str:
   return ref
 
 def buffer2str(buffer:list[str|bytes]) -> str:
-  """Convert a list of strings or bytes into a single string."""
-  return ''.join(buffer)
+  """Convert a list of strings or bytes into a single string. Convert bytes to strings using
+  utf-8."""
+  return ''.join(item if isinstance(item, str) else item.decode('utf-8') for item in buffer)
+
+def buffer2bytes(buffer:list[str|bytes]) -> bytes:
+  """Convert a list of strings or bytes into a single bytes object. Convert strings to bytes using
+  utf-8."""
+  return b''.join(item if isinstance(item, bytes) else item.encode('utf-8') for item in buffer)
 
 @dataclass
 class InterpreterPause(Exception):
@@ -520,14 +532,30 @@ class Repl(Interpreter):
       val = buffer2str(ref_read(ref, self.buffers))
       self._print(val, flush=True)
     elif command == CMD_SHELL:
-      self.ref_schema_default = "verbatim"
+      self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       ref = args[2]
       cmd = buffer2str(ref_read(ref, self.buffers)).replace('\n',' ').strip()
       retcode = sys2exitcode(system(cmd))
       self.owner.info(f"Shell command '{cmd}' exited with code {retcode}")
       if ref == ('buffer','in'):
-        ref_write(ref, [], self.buffers, append=False)
+        ref_write(('buffer','in'), [], self.buffers, append=False)
+    elif command == CMD_PIPE:
+      self.ref_schema_default = "buffer"
+      args = self.visit_children(tree)
+      ref_cmd, ref_inp, ref_out = args[2], args[4], args[6]
+      cmd = buffer2str(ref_read(ref_cmd, self.buffers))
+      inp = buffer2bytes(ref_read(ref_inp, self.buffers))
+      runres = run(cmd, input=inp, text=False, shell=True, stdout=PIPE, stderr=PIPE)
+      retcode = runres.returncode
+      try:
+        out = runres.stdout.decode('utf-8')
+      except UnicodeDecodeError:
+        out = runres.stdout
+      ref_write(ref_out, out, self.buffers, append=False)
+      self.owner.info(f"Pipe command '{cmd}' exited with code {retcode}")
+      if inp == ('buffer','in') or cmd == ('buffer','in'):
+        ref_write(('buffer','in'), [], self.buffers, append=False)
     elif command == CMD_CD:
       self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
