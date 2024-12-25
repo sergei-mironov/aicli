@@ -110,12 +110,14 @@ class Stream:
   def gen(self):
     """ Iterate over tokens. Should be called once in the object's lifetime. """
     self.stop = False
-    self.recording = ""
+    self.recording = None
     try:
       for ch in self.generator:
         if self.stop:
           break
         yield ch
+        if self.recording is None:
+          self.recording = "" if isinstance(ch,str) else b""
         self.recording += ch
     finally:
       self.generator = None

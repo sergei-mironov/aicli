@@ -553,7 +553,7 @@ class Repl(Interpreter):
         out = runres.stdout.decode('utf-8')
       except UnicodeDecodeError:
         out = runres.stdout
-      ref_write(ref_out, out, self.buffers, append=False)
+      ref_write(ref_out, [out], self.buffers, append=False)
       self.owner.info(f"Pipe command '{cmd}' exited with code {retcode}")
       if inp == ('buffer','in') or cmd == ('buffer','in'):
         ref_write(('buffer','in'), [], self.buffers, append=False)

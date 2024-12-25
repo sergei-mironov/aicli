@@ -3,5 +3,5 @@
 /set model apikey file:"_openai-apikey.txt"
 Peaceful landscape
 /ask
-fim /append buffer:out buffer:in
-/shell buffer:in
+fim /append out in
+/shell in
