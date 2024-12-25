@@ -813,7 +813,7 @@ class UserActor(Actor):
           self.repl.visit(tree)
           while self.repl.paste_mode: # [1]
             line = input(self._paste_prompt())
-            if line.strip() == '/paste off':
+            if line.strip() == f'{CMD_PASTE} off':
               self.repl.paste_mode = False
             else:
               self.repl.buffers[IN].append(line + '\n')
