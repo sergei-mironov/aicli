@@ -15,7 +15,7 @@ from pdb import set_trace as ST
 from subprocess import run, PIPE
 
 from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
-                     Conversation, ActorView, ModelName, Modality)
+                     Conversation, ActorView, ModelName, Modality, QuotedString, UnquotedString)
 
 from ..utils import (info, err, with_sigint, dbg, cont2strm, version, sys2exitcode, WLState,
                      wraplong, warn, onematch, expanddir)
@@ -301,7 +301,6 @@ class Repl(Interpreter):
     self.av = None
     self.actor_next = None
     self.rawbin = False
-    self.ref_schema_default = "verbatim"
     self._reset()
     self.paste_mode = False
     self.readline_prompt = owner.args.readline_prompt
@@ -336,13 +335,21 @@ class Repl(Interpreter):
       assert tree.children[0].type in ('STRING_QUOTED','STRING_UNQUOTED'), tree
       if tree.children[0].type == 'STRING_UNQUOTED':
         self._check_no_commands(tree.children[0].value, hint='string constant')
-      return tree.children[0].value
+        return UnquotedString(tree.children[0].value)
+      else:
+        return QuotedString(tree.children[0].value)
     else:
-      return ""
+      return QuotedString("")
 
   def ref(self, tree):
     val = self.visit_children(tree)
-    return (str(val[0]), val[1]) if len(val) == 2 else (self.ref_schema_default, val[0])
+    if len(val) == 2:
+      return (str(val[0]), val[1])
+    else:
+      if isinstance(val[0], QuotedString):
+        return ("verbatim", val[0])
+      else:
+        return ("buffer", val[0])
 
   def model_ref(self, tree):
     val = self.visit_children(tree)
@@ -418,7 +425,6 @@ class Repl(Interpreter):
       else:
         raise ValueError("Invalid model name format")
     elif command == CMD_SET:
-      self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
       section, pname, pval = args[2], args[4], args[6]
       if section == 'model':
@@ -491,7 +497,6 @@ class Repl(Interpreter):
         raise ValueError(f"Unknown read parameter '{pname}'")
       self.buffers[IN] = []
     elif command == CMD_CLEAR:
-      self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       (schema, name) = args[2]
       if schema != 'buffer':
@@ -519,20 +524,17 @@ class Repl(Interpreter):
       )
     elif command in [CMD_CP, CMD_APPEND]:
       append = (command == CMD_APPEND)
-      self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       sref, dref = args[2], args[4]
       val = ref_read(sref, self.buffers)
       ref_write(dref, val, self.buffers, append=append)
       self.owner.info(f"{'Appended' if append else 'Copied'} from {sref} to {dref}")
     elif command == CMD_CAT:
-      self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       ref = args[2]
       val = buffer2str(ref_read(ref, self.buffers))
       self._print(val, flush=True)
     elif command == CMD_SHELL:
-      self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       ref = args[2]
       cmd = buffer2str(ref_read(ref, self.buffers)).replace('\n',' ').strip()
@@ -541,7 +543,6 @@ class Repl(Interpreter):
       if ref == ('buffer','in'):
         ref_write(('buffer','in'), [], self.buffers, append=False)
     elif command == CMD_PIPE:
-      self.ref_schema_default = "buffer"
       args = self.visit_children(tree)
       ref_cmd, ref_inp, ref_out = args[2], args[4], args[6]
       cmd = buffer2str(ref_read(ref_cmd, self.buffers))
@@ -557,7 +558,6 @@ class Repl(Interpreter):
       if inp == ('buffer','in') or cmd == ('buffer','in'):
         ref_write(('buffer','in'), [], self.buffers, append=False)
     elif command == CMD_CD:
-      self.ref_schema_default = "verbatim"
       args = self.visit_children(tree)
       ref = args[2]
       path = buffer2str(ref_read(ref, self.buffers))

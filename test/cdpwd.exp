@@ -5,11 +5,11 @@ set timeout 2
 spawn aicli --model=dummy:dummy
 
 expect {
-  ">>> " { send "/cd /\r" }
+  ">>> " { send "/cd \"/\"\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
-  "Changing current directory to '/'" { send "/shell pwd\r" }
+  "Changing current directory to '/'" { send "/shell \"pwd\"\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {

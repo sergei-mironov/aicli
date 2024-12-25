@@ -6,6 +6,12 @@ from enum import Enum
 class ConversationException(ValueError):
   pass
 
+class QuotedString(str):
+  pass
+
+class UnquotedString(str):
+  pass
+
 # PathStr is a string holding a path to a file
 PathStr = str
 
