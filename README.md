@@ -351,6 +351,7 @@ for command, (arguments, description) in CMDHELP.items():
 | /reset          |                 | Reset the conversation and all the models |
 | /set            | WHAT            | Set terminal or model option, check the Grammar for a full list of options. |
 | /shell          | REF             | Run a system shell command. |
+| /pipe           | REF REF REF     | Run a system shell command, piping its input and output |
 | /version        |                 | Print version |
 | /pwd            |                 | Print the current working directory. |
 <!--noresult-->
@@ -408,6 +409,7 @@ command.1: /\/version/ | \
            /\/cat/ / +/ ref | \
            /\/clear/ / +/ ref | \
            /\/shell/ / +/ ref | \
+           /\/pipe/ / +/ ref / +/ ref / +/ ref | \
            /\/cd/ / +/ ref | \
            /\/paste/ / +/ BOOL | \
            /\/pwd/
@@ -452,7 +454,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L127) | [Actor](./python/sm_aicli/types.py#L36) | [Intention](./python/sm_aicli/types.py#L67) | [Stream](./python/sm_aicli/types.py#L81)
+[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L135) | [Actor](./python/sm_aicli/types.py#L42) | [Intention](./python/sm_aicli/types.py#L73) | [Stream](./python/sm_aicli/types.py#L87)
 
 <!--noresult-->
 
