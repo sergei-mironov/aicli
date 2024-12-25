@@ -1,0 +1,28 @@
+#!/usr/bin/env expect-f.sh
+
+# Set timeout for the expect script
+set timeout 2
+
+spawn aicli --model=dummy:dummy
+
+expect {
+  ">>> " {
+    send "/cp verbatim:\"cat\" buffer:cmd\r"
+    send "one two three\r"
+    send "/pipe cmd in out\r"
+  }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  "Pipe command 'cat' exited with code 0" { send "/cat out\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  "one two three" { send "/exit\r" }
+  timeout { puts "Error: Did not receive cmd message"; exit 1 }
+}
+expect {
+  eof {}
+  timeout { puts "Error: Did not receive eof"; exit 1 }
+}
+exit 0
