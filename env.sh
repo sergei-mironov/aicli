@@ -11,6 +11,7 @@ update_pathvar() {
 export PROJECT_SOURCE=`pwd`
 export VIM_PLUGINS="$PROJECT_SOURCE/vim"
 export AICLI_ROOT=$PROJECT_SOURCE
+export AICLI_HISTORY=$PROJECT_SOURCE/_aicli_history
 update_pathvar "PYTHONPATH" "$PROJECT_SOURCE/python"
 update_pathvar "PATH" "$PROJECT_SOURCE/sh"
 update_pathvar "PATH" "$PROJECT_SOURCE/python"
