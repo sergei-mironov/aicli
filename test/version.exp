@@ -6,11 +6,11 @@ set timeout 2
 spawn aicli --model=dummy:dummy
 
 expect {
-  ">>> " { send "/version\r" }
+  ">>> " { send "/echo Version is /version\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {
-  -re {\d+\.\d+\.\d+\+g} { send "/exit\r" }
+  -re {Version is \d+\.\d+\.\d+\+g} { send "/exit\r" }
   timeout { puts "Error: Did not receive input"; exit 1 }
 }
 expect {

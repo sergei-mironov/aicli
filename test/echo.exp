@@ -25,7 +25,7 @@ expect {
 }
 
 expect {
-    -re {AAA\r?\nBBB\r?\n>>>} {
+    -re {AAABBB\r?\n>>>} {
         send "/exit\r"
     }
     timeout {

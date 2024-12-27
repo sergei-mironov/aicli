@@ -326,7 +326,7 @@ class Repl(Interpreter):
 
   def _finish_echo(self):
     if self.in_echo:
-      self._print(flush=True)
+      self._print(flush=True, end='')
     self.in_echo = 0
 
   def string(self, tree)->str:
@@ -593,7 +593,7 @@ class Repl(Interpreter):
     text = tree.children[0].value
     if self.in_echo:
       if self.in_echo == 1:
-        self._print(text.strip(), end='')
+        self._print(text.lstrip(), end='')
         self.in_echo = 2
       else:
         self._print(text, end='')
