@@ -9,6 +9,7 @@ update_pathvar() {
 }
 
 export PROJECT_SOURCE=`pwd`
+export PROJECT_ROOT=`pwd`
 export VIM_PLUGINS="$PROJECT_SOURCE/vim"
 export AICLI_ROOT=$PROJECT_SOURCE
 export AICLI_HISTORY=$PROJECT_SOURCE/_aicli_history
