@@ -2,6 +2,7 @@ from typing import Iterable, Callable
 from dataclasses import dataclass
 from copy import copy, deepcopy
 from enum import Enum
+from contextlib import contextmanager
 
 class ConversationException(ValueError):
   pass
@@ -84,6 +85,15 @@ class Intention:
            dbg_flag=False):
     return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
 
+@contextmanager
+def _handle_exceptions():
+  try:
+    yield
+  except (SystemError,KeyboardInterrupt):
+    raise
+  except Exception as err:
+    print(f"<ERROR: {str(err)}>")
+
 class Stream:
   """ Stream represents a promise to fetch the content from a remote source of some kind. The
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
@@ -112,13 +122,14 @@ class Stream:
     self.stop = False
     self.recording = None
     try:
-      for ch in self.generator:
-        if self.stop:
-          break
-        yield ch
-        if self.recording is None:
-          self.recording = "" if isinstance(ch,str) else b""
-        self.recording += ch
+      with _handle_exceptions():
+        for ch in self.generator:
+          if self.stop:
+            break
+          yield ch
+          if self.recording is None:
+            self.recording = "" if isinstance(ch,str) else b""
+          self.recording += ch
     finally:
       self.generator = None
 

@@ -1,5 +1,4 @@
 from typing import Any
-from contextlib import contextmanager
 from openai import OpenAI, OpenAIError
 from openai.types.image import Image as OpenAIImage
 from json import loads as json_loads, dumps as json_dumps
@@ -38,7 +37,6 @@ def url2fname(url, image_dir:str|None)->str|None:
   fdir = image_dir or "."
   return join(fdir,fname)
 
-
 class TextStream(Stream):
   def __init__(self, chunks):
     def _map(c):
@@ -46,19 +44,13 @@ class TextStream(Stream):
       return res or ''
     super().__init__(map(_map, chunks))
   def gen(self):
-    try:
-      yield from super().gen()
-    except OpenAIError as err:
-      yield f"<ERROR: {str(err)}>"
+    yield from super().gen()
 
 class BinStream(Stream):
   def __init__(self, chunks, **kwargs):
     super().__init__(chunks.iter_content(4*1024), binary=True, **kwargs)
   def gen(self):
-    try:
-      yield from super().gen()
-    except RequestException as err:
-      yield f"<ERROR: {str(err)}>".decode()
+    yield from super().gen()
 
 class OpenAIActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions):
