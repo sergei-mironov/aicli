@@ -74,6 +74,8 @@ class GPT4AllActor(Actor):
     self.gpt4all._history = sau
     def _model_callback(*args, **kwargs):
       return not self.break_request
+    if self.opt.seed is not None:
+      warn(f"gpt4all actor does not support seed", actor=self)
     self.chunks = self.gpt4all.generate(
       prompt,
       max_tokens=200,

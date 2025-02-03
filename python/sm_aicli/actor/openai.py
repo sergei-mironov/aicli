@@ -17,7 +17,7 @@ from collections import OrderedDict
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions,
                      Conversation, Intention, ModelName, UserName, Utterance,
                      Modality, ConversationException, SAU, Stream, Contents)
-from ..utils import (dbg, find_last_message, err, uts_2sau, uts_lastfull,
+from ..utils import (warn, dbg, find_last_message, err, uts_2sau, uts_lastfull,
                      uts_lastref, cont2str, add_transparent_rectangle)
 
 
@@ -88,6 +88,7 @@ class OpenAIActor(Actor):
         messages=sau,
         stream=True,
         temperature=self.opt.temperature,
+        seed=self.opt.seed,
       )
       return Utterance.init(self.name, Intention.init(actor_next=UserName()), [TextStream(chunks)])
     except OpenAIError as err:
@@ -120,13 +121,15 @@ class OpenAIActor(Actor):
     prompt = cont2str(cont)
     if self.opt.verbose > 0:
       dbg(f"create image prompt: {prompt}", actor=self)
+    if self.opt.seed is not None:
+      warn(f"Image generation does not support seed", actor=self)
     try:
       response = self.client.images.generate(
         prompt=prompt,
         model=self.name.model,
         n=self.opt.imgnum or 1,
         size=self.opt.imgsz or "256x256",
-        response_format="url"
+        response_format="url",
       )
       streams = self._read_image_response(response)
       return Utterance.init(
@@ -151,6 +154,8 @@ class OpenAIActor(Actor):
 
     if self.opt.verbose > 0:
       dbg(f"edit image prompt: {sbuf.getvalue()}", actor=self)
+    if self.opt.seed is not None:
+      warn(f"Image editing does not support seed", actor=self)
     try:
       response = self.client.images.edit(
         image=bbuf,

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from copy import copy, deepcopy
 from enum import Enum
 from contextlib import contextmanager
+from traceback import print_exc
 
 class ConversationException(ValueError):
   pass
@@ -53,6 +54,7 @@ class ActorOptions:
   modality:Modality|None=None
   image_dir:str|None=None
   model_dir:str|None=None
+  seed:int|None=None
 
   @staticmethod
   def init():
@@ -93,6 +95,7 @@ def _handle_exceptions():
     raise
   except Exception as err:
     print(f"<ERROR: {str(err)}>")
+    print_exc()
 
 class Stream:
   """ Stream represents a promise to fetch the content from a remote source of some kind. The

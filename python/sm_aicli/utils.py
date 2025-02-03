@@ -13,6 +13,7 @@ from subprocess import check_output, DEVNULL
 from sys import stderr, platform, maxsize
 from textwrap import dedent
 from typing import Iterable, Callable
+from traceback import print_exc
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
                     Stream)
@@ -49,6 +50,7 @@ except Exception:
 def err(s:str, actor:Actor)->None:
   if actor and actor.opt.verbose > 0:
     print(f"ERROR: {s}", file=stderr)
+    print_exc()
 
 def warn(s:str, actor:Actor)->None:
   if actor and actor.opt.verbose > 1:
