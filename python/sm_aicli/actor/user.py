@@ -235,14 +235,14 @@ def ref_write(ref, val:list[str|bytes], buffers, append:bool=False):
     try:
       with open(name, f"w{a}") as f:
         for cf in val:
-          f.write(cf.encode('utf-8') if isinstance(v, bytes) else cf)
+          f.write(cf.encode('utf-8') if isinstance(cf, bytes) else cf)
     except Exception as err:
       raise ValueError(str(err)) from err
   elif schema == 'bfile':
     try:
       with open(name, f"bw{a}") as f:
         for cf in val:
-          f.write(cf if isinstance(cf,bytes) else cf.decode())
+          f.write(cf if isinstance(cf, bytes) else cf.decode())
     except Exception as err:
       raise ValueError(str(err)) from err
   elif schema == 'buffer':
