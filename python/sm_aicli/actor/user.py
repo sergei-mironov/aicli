@@ -76,6 +76,7 @@ COMPLETION = {
       " temp":      {" FLOAT":  {}, " default": {}},
       " nt":        {" NUMBER": {}, " default": {}},
       " verbosity": {" NUMBER": {}, " default": {}},
+      " seed":      {" NUMBER": {}, " default": {}},
       " imgnum":    {" NUMBER": {}, " default": {}},
       " imgdir":    {" string": {}, " default": {}},
       " modeldir":  {" string": {}, " default": {}},
@@ -145,6 +146,7 @@ GRAMMAR = fr"""
                                               /imgdir/ / +/ (string | DEF) | \
                                               /modeldir/ / +/ (string | DEF) | \
                                               /verbosity/ / +/ (NUMBER | DEF) | \
+                                              /seed/ / +/ (NUMBER | DEF) | \
                                               /modality/ / +/ (MODALITY | DEF) | \
                                               /imgnum/ / +/ (NUMBER | DEF)) | \
                                (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
@@ -460,6 +462,10 @@ class Repl(Interpreter):
           val = as_int(pval)
           opts[self.actor_next].verbose = val
           self.owner.info(f"Setting actor verbosity to '{val}'")
+        elif pname == 'seed':
+          val = as_int(pval)
+          opts[self.actor_next].seed = val
+          self.owner.info(f"Setting actor seed to '{val}'")
         elif pname == 'modality':
           mod = as_modality(pval)
           opts[self.actor_next].modality = mod
