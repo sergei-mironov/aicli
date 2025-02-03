@@ -10,7 +10,7 @@ The original text:
 /cp out file:_out
 /model openai:"dall-e-3"
 /set model imgsz "1024x1024"
-/set model apikey file:"_openai"
+/set model apikey file:"_openai-apikey.txt"
 /set term modality img
 A space-travel looking picture describing the following:
 /append out in
