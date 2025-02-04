@@ -857,12 +857,13 @@ class UserActor(Actor):
           warn(str(e), actor=self)
         except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
           err(str(e), actor=self)
+        except EOFError:
+          print()
+          break
         self.stream = ''
     except InterpreterPause as p:
       self.stream = self.stream[p.unparsed:]
       return p.utterance
-    except EOFError:
-      print()
     return Utterance.init(
       name=self.name,
       intention=Intention.init(exit_flag=True)
