@@ -68,6 +68,7 @@ class OpenAIActor(Actor):
     self.cache = OrderedDict()
 
   def _cnv2sau(self, cnv:Conversation) -> SAU:
+    """ Convert conversation to the SAU format. """
     sau = uts_2sau(
       cnv.utterances,
       names={UserName():'user'},
@@ -95,10 +96,11 @@ class OpenAIActor(Actor):
       raise ConversationException(str(err)) from err
 
   def _cnv2cont(self, cnv:Conversation) -> Contents:
-    uid = uts_lastref(cnv.utterances, self.name)
+    # [1] - id of the request; [2] - non-empty utterance by the same issuer.
+    uid = uts_lastref(cnv.utterances, self.name) # [1]
     if uid is not None and cnv.utterances[uid].is_empty():
       refname = cnv.utterances[uid].actor_name
-      uid = uts_lastfull(cnv.utterances[:uid], refname)
+      uid = uts_lastfull(cnv.utterances[:uid], refname) # [2]
     if uid is None:
       raise ConversationException("No meaningful utterance were found")
     return cnv.utterances[uid].contents

@@ -105,6 +105,7 @@ def find_last_message(messages:list[dict[str,str]], role:str) -> tuple[str|None,
 
 
 def uts_lastref(uts:Utterances, referree:ActorName) -> UID|None:
+  """ Return id of the last utterance directed to the `referree` actor. """
   ul = len(uts)
   if ul == 0:
     return None
@@ -117,6 +118,7 @@ def uts_lastref(uts:Utterances, referree:ActorName) -> UID|None:
   return uid
 
 def uts_lastfull(uts:Utterances, owner:ActorName) -> UID|None:
+  """ Return id of the last non-empty utterance issued by `owner`. """
   uid = None
   for i in reversed(range(0, len(uts))):
     ut = uts[i]
@@ -126,8 +128,10 @@ def uts_lastfull(uts:Utterances, owner:ActorName) -> UID|None:
   return uid
 
 def uts_lastfullref(uts:Utterances, referree:ActorName) -> UID|None:
+  # [1]: If utterance is empty, look for the last non-empty utterance from the
+  # same issuer.
   uid = uts_lastref(uts, referree)
-  if uid is not None and uts[uid].is_empty():
+  if uid is not None and uts[uid].is_empty(): # [1]
     uid = uts_lastfull(uts, uts[uid].actor_name)
   return uid
 
@@ -138,6 +142,7 @@ def uts_2sau(
   system_prompt:str|None = None,
   cache:dict[hash,SAU]|None = None
 ) -> SAU:
+  # In [1] we assume that Utterances do not contain streams.
   def _cachekey(i):
     return tuple([i, system_prompt, *tuple(names.items())])
   racc:SAU = []
@@ -150,7 +155,7 @@ def uts_2sau(
     ut:Utterance = uts[i]
     name = names.get(ut.actor_name, default_name)
     # assert name in ['user','assistant'], f"Unknown SAU name {name}"
-    racc.append({'role':name, 'content':cont2str(ut.contents)})
+    racc.append({'role':name, 'content':cont2str(ut.contents)}) # [1]
   racc.append({'role':'system', 'content':system_prompt or ''})
   acc = list(reversed(racc))
   if cache is not None:
