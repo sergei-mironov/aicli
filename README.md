@@ -398,6 +398,7 @@ command.1: /\/version/ | \
                                             /imgdir/ / +/ (string | DEF) | \
                                             /modeldir/ / +/ (string | DEF) | \
                                             /verbosity/ / +/ (NUMBER | DEF) | \
+                                            /seed/ / +/ (NUMBER | DEF) | \
                                             /modality/ / +/ (MODALITY | DEF) | \
                                             /imgnum/ / +/ (NUMBER | DEF)) | \
                              (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
@@ -454,7 +455,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L6) | [Utterance](./python/sm_aicli/types.py#L135) | [Actor](./python/sm_aicli/types.py#L42) | [Intention](./python/sm_aicli/types.py#L73) | [Stream](./python/sm_aicli/types.py#L87)
+[Conversation](./python/sm_aicli/types.py#L8) | [Utterance](./python/sm_aicli/types.py#L149) | [Actor](./python/sm_aicli/types.py#L44) | [Intention](./python/sm_aicli/types.py#L76) | [Stream](./python/sm_aicli/types.py#L100)
 
 <!--noresult-->
 
