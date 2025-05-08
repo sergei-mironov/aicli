@@ -174,11 +174,11 @@ def cont2strm(c:str|bytes|Stream, allow_bytes=True) -> Stream:
     s = Stream([c])
   elif isinstance(c, bytes):
     if allow_bytes:
-      s = Stream([c])
+      s = Stream([c], binary=True)
     else:
       s = Stream(["<binary chunk>"])
   elif isinstance(c, Stream):
-    s = Stream([c.recording]) if c.recording is not None else c
+    s = Stream([c.recording], binary=c.binary) if c.recording is not None else c
   else:
     assert False, f"Invalid content chunk type {type(c)}"
   return s

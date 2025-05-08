@@ -102,7 +102,7 @@ class Stream:
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
   `recording` array. All tokens must be of a same type (str or bytes). """
 
-  def __init__(self, generator, binary:bool=False, suggested_fname:str|None=None):
+  def __init__(self, generator, binary:None|bool=None, suggested_fname:str|None=None):
     self.generator = generator    # Descendant-specific token generator
     self.stop = False             # Interrupt flag
     self.recording = None         # Stream recording
@@ -127,12 +127,19 @@ class Stream:
     try:
       with _handle_exceptions():
         for ch in self.generator:
+          if self.recording is None:
+            if isinstance(ch,str):
+              assert self.binary is not True, "Expected non-binary contents"
+              self.binary = False
+              self.recording = ""
+            else:
+              assert self.binary is not False, "Expected binary contents"
+              self.binary = True
+              self.recording = b""
+          self.recording += ch
+          yield ch
           if self.stop:
             break
-          yield ch
-          if self.recording is None:
-            self.recording = "" if isinstance(ch,str) else b""
-          self.recording += ch
     finally:
       self.generator = None
 
