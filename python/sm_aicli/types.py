@@ -250,6 +250,8 @@ class Parser:
 
 
 class File:
+  def would_block(self)->bool:
+    raise NotImplementedError()
   def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
     raise NotImplementedError()
 

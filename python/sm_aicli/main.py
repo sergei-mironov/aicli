@@ -8,6 +8,7 @@ from sys import _getframe
 from pdb import Pdb
 from argparse import ArgumentParser
 from typing import Any
+from functools import partial
 from gnureadline import (parse_and_bind, clear_history, read_history_file,
                          write_history_file, set_completer, set_completer_delims)
 
@@ -156,12 +157,6 @@ def get_help_string(arg_parser):
   arg_parser.print_help(help_output)
   return help_output.getvalue()
 
-AICLI_PROVIDERS = {
-  "openai": OpenAIActor,
-  "gpt4all": GPT4AllActor,
-  "dummy": DummyActor,
-}
-
 
 class StdinFile(File):
   def __init__(self, args:Any, stream):
@@ -186,6 +181,9 @@ class StdinFile(File):
     else:
       info(f"History file is not used")
 
+  def would_block(self)->bool:
+    return len(self.stream.strip())==0
+
   def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
     try:
       if len(self.stream) == 0:
@@ -202,7 +200,6 @@ class StdinFile(File):
 
 def main(cmdline=None, providers=None):
   args = ARG_PARSER.parse_args(cmdline)
-  providers = AICLI_PROVIDERS if providers is None else providers
 
   if args.cd:
     chdir(args.cd)
@@ -228,6 +225,13 @@ def main(cmdline=None, providers=None):
     configs = []
 
   file = StdinFile(args, args2script(args, configs))
+
+  providers = {
+    "openai": OpenAIActor,
+    "gpt4all": GPT4AllActor,
+    "dummy": partial(DummyActor, file=file),
+  } if providers is None else providers
+
   cnv = Conversation.init()
   st = ActorState.init()
   current_actor = UserName()
