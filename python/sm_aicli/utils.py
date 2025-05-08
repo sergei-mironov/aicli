@@ -16,7 +16,7 @@ from typing import Iterable, Callable
 from traceback import print_exc
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
-                    Stream)
+                    Stream, Logger)
 
 REVISION:str|None
 try:
@@ -45,25 +45,6 @@ except Exception:
     VERSION = __ver__
   except ImportError:
     VERSION = None
-
-
-def err(s:str, actor:Actor)->None:
-  if actor and actor.opt.verbose > 0:
-    print(f"ERROR: {s}", file=stderr)
-    print_exc()
-
-def warn(s:str, actor:Actor)->None:
-  if actor and actor.opt.verbose > 1:
-    print(f"WARNING: {s}", file=stderr)
-
-def info(s:str, actor:Actor, prefix=True)->None:
-  if actor and actor.opt.verbose > 2:
-    prefix = "INFO: " if prefix else ""
-    print(f"{prefix}{s}", file=stderr)
-
-def dbg(s:str, actor:Actor)->None:
-  if actor and actor.opt.verbose > 3:
-    print(f"DEBUG: {s}", file=stderr)
 
 
 @contextmanager
@@ -335,3 +316,31 @@ def add_transparent_rectangle(input_image:bytes|BytesIO, ratio:float=0.15):
     output_bytes = output_buffer.getvalue()
     return output_bytes
 
+
+def err(s:str, actor:Actor)->None:
+  if actor and actor.opt.verbose > 0:
+    print(f"ERROR: {s}", file=stderr)
+    print_exc()
+
+def warn(s:str, actor:Actor)->None:
+  if actor and actor.opt.verbose > 1:
+    print(f"WARNING: {s}", file=stderr)
+
+def info(s:str, actor:Actor, prefix=True)->None:
+  if actor and actor.opt.verbose > 2:
+    prefix = "INFO: " if prefix else ""
+    print(f"{prefix}{s}", file=stderr)
+
+def dbg(s:str, actor:Actor)->None:
+  if actor and actor.opt.verbose > 3:
+    print(f"DEBUG: {s}", file=stderr)
+
+class ConsoleLogger(Logger):
+  def err(self, s:str):
+    err(s, actor=self.actor)
+  def info(self, s:str):
+    info(s, actor=self.actor)
+  def warn(self, s:str):
+    warn(s, actor=self.actor)
+  def dbg(self, s:str):
+    dbg(s, actor=self.actor)

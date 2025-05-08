@@ -17,7 +17,7 @@ from collections import OrderedDict
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions,
                      Conversation, Intention, ModelName, UserName, Utterance,
                      Modality, ConversationException, SAU, Stream, Contents)
-from ..utils import (warn, dbg, find_last_message, err, uts_2sau, uts_lastfull,
+from ..utils import (ConsoleLogger, find_last_message, err, uts_2sau, uts_lastfull,
                      uts_lastref, cont2str, add_transparent_rectangle)
 
 
@@ -57,6 +57,7 @@ class OpenAIActor(Actor):
     assert isinstance(name, ModelName), name
     assert name.provider == "openai", name.provider
     super().__init__(name, opt)
+    self.logger = ConsoleLogger(self)
     try:
       self.client = OpenAI(api_key=opt.apikey)
     except OpenAIError as err:
@@ -64,7 +65,7 @@ class OpenAIActor(Actor):
     self.reset()
 
   def reset(self):
-    dbg("Resetting session", actor=self)
+    self.logger.dbg("Resetting session")
     self.cache = OrderedDict()
 
   def _cnv2sau(self, cnv:Conversation) -> SAU:
@@ -82,7 +83,7 @@ class OpenAIActor(Actor):
 
   def _react_text(self, act:ActorView, cnv:Conversation) -> Utterance:
     sau = self._cnv2sau(cnv)
-    dbg(f"sau: {sau}", actor=self)
+    self.logger.dbg(f"sau: {sau}")
     try:
       chunks = self.client.chat.completions.create(
         model=self.name.model,
@@ -113,7 +114,7 @@ class OpenAIActor(Actor):
       url = datum.url
       if url is None:
         raise ConversationException(f"Datum url is None")
-      dbg(url, actor=self)
+      self.logger.dbg(url)
       url_response = requests_get(url, stream=True)
       url_response.raise_for_status()  # Check for HTTP errors
       acc.append(BinStream(url_response, suggested_fname=url2fname(url, self.opt.image_dir)))
@@ -122,9 +123,9 @@ class OpenAIActor(Actor):
   def _react_image_create(self, act:ActorView, cont:Contents) -> Utterance:
     prompt = cont2str(cont)
     if self.opt.verbose > 0:
-      dbg(f"create image prompt: {prompt}", actor=self)
+      self.logger.dbg(f"create image prompt: {prompt}")
     if self.opt.seed is not None:
-      warn(f"Image generation does not support seed", actor=self)
+      self.logger.warn(f"Image generation does not support seed")
     try:
       response = self.client.images.generate(
         prompt=prompt,
@@ -155,9 +156,9 @@ class OpenAIActor(Actor):
         assert False, f"Unsupported content fragemnt type {type(cf)}"
 
     if self.opt.verbose > 0:
-      dbg(f"edit image prompt: {sbuf.getvalue()}", actor=self)
+      self.logger.dbg(f"edit image prompt: {sbuf.getvalue()}")
     if self.opt.seed is not None:
-      warn(f"Image editing does not support seed", actor=self)
+      self.logger.warn(f"Image editing does not support seed")
     try:
       response = self.client.images.edit(
         image=bbuf,

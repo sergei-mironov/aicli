@@ -14,11 +14,11 @@ from io import StringIO
 from pdb import set_trace as ST
 from subprocess import run, PIPE
 
-from ..types import (Actor, ActorName, ActorOptions, Intention, Utterance,
+from ..types import (Logger, Actor, ActorName, ActorOptions, Intention, Utterance,
                      Conversation, ActorView, ModelName, Modality, QuotedString, UnquotedString)
 
-from ..utils import (info, err, with_sigint, dbg, cont2strm, version, sys2exitcode, WLState,
-                     wraplong, warn, onematch, expanddir)
+from ..utils import (ConsoleLogger, with_sigint, cont2strm, version, sys2exitcode, WLState,
+                     wraplong, onematch, expanddir)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -297,7 +297,7 @@ IN='in'
 OUT='out'
 
 class Repl(Interpreter):
-  def __init__(self, owner:"UserActor"):
+  def __init__(self, owner:"UserActor", logger:Logger):
     self.owner = owner
     self.buffers:dict[str,list[str|bytes]] = defaultdict(list)  # Changed type to list[str]
     self.av = None
@@ -307,6 +307,7 @@ class Repl(Interpreter):
     self.paste_mode = False
     self.readline_prompt = owner.args.readline_prompt
     self.wlstate = WLState(None)
+    self.logger = logger
 
   def _check_next_actor(self):
     if self.actor_next is None:
@@ -324,7 +325,7 @@ class Repl(Interpreter):
     old_message = buffer2str(self.buffers[IN])
     self._reset()
     if len(old_message) > 0:
-      self.owner.info("Message buffer is now empty")
+      self.logger.info("Message buffer is now empty")
 
   def _finish_echo(self):
     if self.in_echo:
@@ -421,7 +422,7 @@ class Repl(Interpreter):
         assert isinstance(res[2], ModelName), f"{res[2]} is not a ModelName"
         name = res[2]
         opt = opts.get(name, ActorOptions.init())
-        self.owner.info(f"Setting target actor to '{name.repr()}'")
+        self.logger.info(f"Setting target actor to '{name.repr()}'")
         opts[name] = opt
         self.actor_next = name
       else:
@@ -435,58 +436,58 @@ class Repl(Interpreter):
           if not isinstance(pval, tuple) or len(pval) != 2:
             raise ValueError("Model API key should be formatted as `schema:value`")
           opts[self.actor_next].apikey = buffer2str(ref_read(pval, self.buffers))
-          self.owner.info(f"Setting model API key to the contents of '{pval[0]}:{pval[1]}'")
+          self.logger.info(f"Setting model API key to the contents of '{pval[0]}:{pval[1]}'")
         elif pname in ['t', 'temp']:
           val = as_float(pval)
           opts[self.actor_next].temperature = val
-          self.owner.info(f"Setting model temperature to '{val or 'default'}'")
+          self.logger.info(f"Setting model temperature to '{val or 'default'}'")
         elif pname in ['nt', 'nthreads']:
           val = as_int(pval)
           opts[self.actor_next].num_threads = val
-          self.owner.info(f"Setting model number of threads to '{val or 'default'}'")
+          self.logger.info(f"Setting model number of threads to '{val or 'default'}'")
         elif pname == 'imgsz':
           opts[self.actor_next].imgsz = pval
-          self.owner.info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
+          self.logger.info(f"Setting model image size to '{opts[self.actor_next].imgsz}'")
         elif pname == 'imgdir':
           val = as_str(pval)
           opts[self.actor_next].image_dir = onematch(expanddir(val)) if val else None
-          self.owner.info(f"Setting model image dir to '{opts[self.actor_next].image_dir}'")
+          self.logger.info(f"Setting model image dir to '{opts[self.actor_next].image_dir}'")
         elif pname == 'modeldir':
           val = as_str(pval)
           opts[self.actor_next].model_dir = onematch(expanddir(val)) if val else None
-          self.owner.info(f"Setting model dir to '{opts[self.actor_next].model_dir}'")
+          self.logger.info(f"Setting model dir to '{opts[self.actor_next].model_dir}'")
         elif pname == 'imgnum':
           opts[self.actor_next].imgnum = as_int(pval)
-          self.owner.info(f"Setting model image number to '{opts[self.actor_next].imgnum}'")
+          self.logger.info(f"Setting model image number to '{opts[self.actor_next].imgnum}'")
         elif pname == 'verbosity':
           val = as_int(pval)
           opts[self.actor_next].verbose = val
-          self.owner.info(f"Setting actor verbosity to '{val}'")
+          self.logger.info(f"Setting actor verbosity to '{val}'")
         elif pname == 'seed':
           val = as_int(pval)
           opts[self.actor_next].seed = val
-          self.owner.info(f"Setting actor seed to '{val}'")
+          self.logger.info(f"Setting actor seed to '{val}'")
         elif pname == 'modality':
           mod = as_modality(pval)
           opts[self.actor_next].modality = mod
-          self.owner.info(f"Setting model modality to '{mod}'")
+          self.logger.info(f"Setting model modality to '{mod}'")
         else:
           raise ValueError(f"Unknown actor parameter '{pname}'")
       elif section in ['term', 'terminal']:
         if pname == 'rawbin':
           val = as_bool(pval)
-          self.owner.info(f"Setting terminal raw binary mode to '{val}'")
+          self.logger.info(f"Setting terminal raw binary mode to '{val}'")
           self.rawbin = val
         elif pname == 'prompt':
           self.readline_prompt = pval
-          self.owner.info(f"Setting terminal prompt to '{self.readline_prompt}'")
+          self.logger.info(f"Setting terminal prompt to '{self.readline_prompt}'")
         elif pname == 'width':
           self.wlstate.max_width = as_int(pval, None)
-          self.owner.info(f"Setting terminal width to '{self.wlstate.max_width}'")
+          self.logger.info(f"Setting terminal width to '{self.wlstate.max_width}'")
         elif pname == 'verbosity':
           val = as_int(pval)
           self.owner.opt.verbose = val
-          self.owner.info(f"Setting terminal verbosity to '{val}'")
+          self.logger.info(f"Setting terminal verbosity to '{val}'")
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
@@ -498,7 +499,7 @@ class Repl(Interpreter):
       self._check_next_actor()
       if pname == 'prompt':
         opts[self.actor_next].prompt = pval
-        self.owner.info(f"Setting actor prompt to '{pval[:10]}...'")
+        self.logger.info(f"Setting actor prompt to '{pval[:10]}...'")
       else:
         raise ValueError(f"Unknown read parameter '{pname}'")
       self.buffers[IN] = []
@@ -507,10 +508,10 @@ class Repl(Interpreter):
       (schema, name) = args[2]
       if schema != 'buffer':
         raise ValueError(f'Required reference to buffer, not {schema}')
-      self.owner.info(f"Clearing buffer \"{name.lower()}\"")
+      self.logger.info(f"Clearing buffer \"{name.lower()}\"")
       ref_write((schema, name), [], self.buffers, append=False)
     elif command == CMD_RESET:
-      self.owner.info("Resetting conversation history and clearing message buffer")
+      self.logger.info("Resetting conversation history and clearing message buffer")
       self.reset()
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,
@@ -520,7 +521,7 @@ class Repl(Interpreter):
         )
       )
     elif command == CMD_DBG:
-      self.owner.info("Calling Python debugger")
+      self.logger.info("Calling Python debugger")
       raise InterpreterPause(
         unparsed=tree.meta.end_pos,
         utterance=Utterance.init(
@@ -534,7 +535,7 @@ class Repl(Interpreter):
       sref, dref = args[2], args[4]
       val = ref_read(sref, self.buffers)
       ref_write(dref, val, self.buffers, append=append)
-      self.owner.info(f"{'Appended' if append else 'Copied'} from {sref} to {dref}")
+      self.logger.info(f"{'Appended' if append else 'Copied'} from {sref} to {dref}")
     elif command == CMD_CAT:
       args = self.visit_children(tree)
       ref = args[2]
@@ -545,7 +546,7 @@ class Repl(Interpreter):
       ref = args[2]
       cmd = buffer2str(ref_read(ref, self.buffers)).replace('\n',' ').strip()
       retcode = sys2exitcode(system(cmd))
-      self.owner.info(f"Shell command '{cmd}' exited with code {retcode}")
+      self.logger.info(f"Shell command '{cmd}' exited with code {retcode}")
       if ref == ('buffer','in'):
         ref_write(('buffer','in'), [], self.buffers, append=False)
     elif command == CMD_PIPE:
@@ -560,7 +561,7 @@ class Repl(Interpreter):
       except UnicodeDecodeError:
         out = runres.stdout
       ref_write(ref_out, [out], self.buffers, append=False)
-      self.owner.info(f"Pipe command '{cmd}' exited with code {retcode}")
+      self.logger.info(f"Pipe command '{cmd}' exited with code {retcode}")
       if inp == ('buffer','in') or cmd == ('buffer','in'):
         ref_write(('buffer','in'), [], self.buffers, append=False)
     elif command == CMD_CD:
@@ -569,7 +570,7 @@ class Repl(Interpreter):
       path = buffer2str(ref_read(ref, self.buffers))
       try:
         chdir(path)
-        self.owner.info(f"Changing current directory to '{path}'")
+        self.logger.info(f"Changing current directory to '{path}'")
       except Exception as err:
         raise ValueError(str(err)) from err
     elif command == CMD_PWD:
@@ -580,9 +581,9 @@ class Repl(Interpreter):
       args = self.visit_children(tree)
       val = as_bool(args[2])
       if val:
-        self.owner.info("Entering paste mode. Type '/paste off' to finish.")
+        self.logger.info("Entering paste mode. Type '/paste off' to finish.")
       else:
-        self.owner.info("Exiting paste mode.")
+        self.logger.info("Exiting paste mode.")
       self.paste_mode = val
     else:
       raise ValueError(f"Unknown command: {command}")
@@ -593,7 +594,7 @@ class Repl(Interpreter):
       if cmd in text:
         commands.append(cmd)
     if commands:
-      self.owner.warn(f"{', '.join(['`'+c+'`' for c in commands])} were parsed as a {hint}")
+      self.logger.warn(f"{', '.join(['`'+c+'`' for c in commands])} were parsed as a {hint}")
 
   def text(self, tree):
     text = tree.children[0].value
@@ -633,6 +634,7 @@ class UserActor(Actor):
                args:Any,
                prefix_stream:str|None = None):
     super().__init__(name, opt)
+    self.logger = ConsoleLogger(self)
 
     self.args = args
     if args.readline_history is None:
@@ -646,7 +648,7 @@ class UserActor(Actor):
       for line in self._read_configs(rcnames.split(',')):
         header.write(line+'\n')
     else:
-      self.info("Skipping configuration files")
+      self.logger.info("Skipping configuration files")
     if args.model is not None:
       header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
     if args.model_apikey is not None:
@@ -658,7 +660,7 @@ class UserActor(Actor):
 
     for file in args.filenames:
       with open(file) as f:
-        self.info(f"Reading {file}")
+        self.logger.info(f"Reading {file}")
         header.write(f.read())
 
     set_completer_delims('')
@@ -666,32 +668,26 @@ class UserActor(Actor):
     parse_and_bind('tab: complete')
     parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
     hint = args.readline_key_send.replace('\\', '')
-    self.info(f"Type /help or a question followed by the /ask command (or by pressing "
+    self.logger.info(f"Type /help or a question followed by the /ask command (or by pressing "
           f"`{hint}` key).")
 
     self._reload_history()
 
     self.stream = header.getvalue()
-    self.repl = Repl(self)
+    self.repl = Repl(self, self.logger)
     self.batch_mode = len(args.filenames) > 0
     self.reset()
-
-  def info(self, message: str):
-    info(message, self)
-
-  def warn(self, message: str):
-    warn(message, self)
 
   def _reload_history(self):
     if self.args.readline_history is not None:
       try:
         clear_history()
         read_history_file(self.args.readline_history)
-        info(f"History file loaded", self)
+        self.logger.info(f"History file loaded")
       except FileNotFoundError:
-        info(f"History file not loaded", self)
+        self.logger.info(f"History file not loaded")
     else:
-      info(f"History file is not used", self)
+      self.logger.info(f"History file is not used")
 
   def _read_configs(self, rcnames:list[str])->list[str]:
     acc = []
@@ -704,7 +700,7 @@ class UserActor(Actor):
         candidate_file = join(directory, fn)
         if isfile(candidate_file):
           with open(candidate_file, 'r') as file:
-            info(f"Reading {candidate_file}", self)
+            self.logger.info(f"Reading {candidate_file}")
             new_dir = dirname(candidate_file)
             if last_dir != new_dir:
               acc.append(f"{CMD_CD} \"{new_dir}\"")
@@ -798,7 +794,7 @@ class UserActor(Actor):
               with open(s.suggested_fname, 'wb') as f:
                 for token in s.gen():
                   f.write(token)
-              self.info("Binary stream has been saved to file")
+              self.logger.info("Binary stream has been saved to file")
               out_content = s.suggested_fname
               buffer_out.append(out_content + ' ')
               self.repl._print(f"{out_content}", flush=True)
@@ -843,7 +839,7 @@ class UserActor(Actor):
             else:
               self.stream = input(self._prompt()) + '\n'
           tree = PARSER.parse(self.stream)
-          dbg(tree, self)
+          self.logger.dbg(tree)
           self.repl.visit(tree)
           while self.repl.paste_mode: # [1]
             line = input(self._paste_prompt())
@@ -854,9 +850,9 @@ class UserActor(Actor):
           if self.args.readline_history is not None:
             write_history_file(self.args.readline_history)
         except (RuntimeWarning,) as e:
-          warn(str(e), actor=self)
+          self.logger.warn(str(e))
         except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
-          err(str(e), actor=self)
+          self.logger.err(str(e))
         except EOFError:
           print()
           break

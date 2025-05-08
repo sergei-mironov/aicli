@@ -227,3 +227,16 @@ class Actor:
     """ Get actor's options """
     return self.opt
 
+
+class Logger:
+  def __init__(self, actor:Actor):
+    self.actor = actor
+  def err(self, s:str):
+    raise NotImplementedError()
+  def info(self, s:str) -> None:
+    raise NotImplementedError()
+  def warn(self, s:str) -> None:
+    raise NotImplementedError()
+  def dbg(self, s:str):
+    raise NotImplementedError()
+

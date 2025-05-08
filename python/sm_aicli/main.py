@@ -190,7 +190,7 @@ def main(cmdline=None, providers=None):
       cnv.utterances.append(utterance)
       intention = utterance.intention
       if intention.dbg_flag:
-        info("Type `cont` to continue when done", user)
+        user.logger.info("Type `cont` to continue when done")
         Pdb(nosigint=True).set_trace(_getframe())
         user._reload_history()
       if intention.actor_updates is not None:
