@@ -626,6 +626,41 @@ class Repl(Interpreter):
       self._finish_echo()
     return res
 
+
+class Parser:
+  """ A Stateful text stream parser """
+  def parse(self, chunk:str) -> tuple[str,Any]:
+    """ Parse a chunk of input stream, return the unparsed stream and a parser-specific state """
+    raise NotImplementedError()
+
+class ReplParser(Parser):
+  def __init__(self, repl:Repl):
+    self.repl = repl
+  def parse(self, chunk:str) -> tuple[str,Utterance]:
+    try:
+      tree = PARSER.parse(chunk)
+      self.repl.logger.dbg(tree)
+      self.repl.visit(tree)
+    except InterpreterPause as p:
+      return (chunk[p.unparsed:], p.utterance)
+    except (RuntimeWarning,) as e:
+      self.repl.logger.warn(str(e))
+    except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
+      self.repl.logger.err(str(e))
+    return ('', None)
+
+class PasteModeReplParser(Parser):
+  def __init__(self, repl:Repl):
+    self.repl = repl
+  def parse(self, chunk:str) -> tuple[str,bool]:
+    assert self.repl.paste_mode is True
+    if chunk.strip() != f'{CMD_PASTE} off':
+      self.repl.buffers[IN].append(chunk + '\n')
+    else:
+      self.repl.paste_mode = False
+    return ('', None)
+
+
 class UserActor(Actor):
 
   def __init__(self,
@@ -830,40 +865,29 @@ class UserActor(Actor):
     # input first, and handles the paste mode after that. It should raise
     # InterpreterPause instead.
     self._sync(av, cnv)
-    try:
-      while True:
-        try:
-          if self.stream == '':
-            if self.batch_mode and not self.args.keep_running:
-              break
-            else:
-              self.stream = input(self._prompt()) + '\n'
-          tree = PARSER.parse(self.stream)
-          self.logger.dbg(tree)
-          self.repl.visit(tree)
-          while self.repl.paste_mode: # [1]
-            line = input(self._paste_prompt())
-            if line.strip() == f'{CMD_PASTE} off':
-              self.repl.paste_mode = False
-            else:
-              self.repl.buffers[IN].append(line + '\n')
-          if self.args.readline_history is not None:
-            write_history_file(self.args.readline_history)
-        except (RuntimeWarning,) as e:
-          self.logger.warn(str(e))
-        except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
-          self.logger.err(str(e))
-        except EOFError:
-          print()
-          break
-        self.stream = ''
-    except InterpreterPause as p:
-      self.stream = self.stream[p.unparsed:]
-      return p.utterance
-    return Utterance.init(
-      name=self.name,
-      intention=Intention.init(exit_flag=True)
-    )
+    normal_parser = ReplParser(self.repl)
+    paste_parser = PasteModeReplParser(self.repl)
+
+    stream = self.stream
+    while True:
+      try:
+        if len(stream) == 0:
+          if self.batch_mode and not self.args.keep_running:
+            break
+          else:
+            stream = input(self._prompt()) + '\n'
+        parser = paste_parser if self.repl.paste_mode else normal_parser
+        stream, utterance = parser.parse(stream)
+        if utterance is not None:
+          return utterance
+        if self.args.readline_history is not None:
+          write_history_file(self.args.readline_history)
+      except EOFError:
+        print()
+        return Utterance.init(
+          name=self.name,
+          intention=Intention.init(exit_flag=True)
+        )
 
   def set_options(self, opt:ActorOptions) -> None:
     pass

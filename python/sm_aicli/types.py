@@ -1,4 +1,4 @@
-from typing import Iterable, Callable
+from typing import Any, Iterable, Callable
 from dataclasses import dataclass
 from copy import copy, deepcopy
 from enum import Enum
