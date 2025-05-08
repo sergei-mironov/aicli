@@ -8,7 +8,7 @@
   inputs = {
     nixpkgs = {
       # Author's favorite nixpkgs
-      url = "github:grwlf/nixpkgs/local17";
+      url = "github:grwlf/nixpkgs/local17.2";
     };
 
     # litrepl = {
