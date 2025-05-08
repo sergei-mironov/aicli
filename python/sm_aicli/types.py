@@ -42,8 +42,8 @@ class Modality(Enum):
 
 @dataclass
 class ActorOptions:
-  """ Structure encoding all supported options an actor might accept. Unused options are to be
-  ignored with a warning. """
+  """ Structure that encodes all the supported options actors might accept.
+  Unused options are to be ignored with a warning. """
   verbose:int=3
   apikey:str|None = None
   temperature:float|None = None
@@ -74,8 +74,8 @@ class ActorView:
 
 @dataclass
 class Intention:
-  """ Intention encodes actions that actors might want to perform in addition to saying an
-  utterance """
+  """ Intention encodes actions that an actor might want to perform in addition to saying an
+  utterance. """
   actor_next: ActorName|None      # Select next actor
   actor_updates: ActorView|None   # Update the list of actors
   exit_flag:bool                  # Exit the application
@@ -140,7 +140,7 @@ class Stream:
     """ Declare that no more tokens are going to be fetched from this stream. """
     self.stop = True
 
-# Utterance content is a list of items, where item is either a string, an array of bytes (for
+# Utterance content is a list of items, where an item is either a string, an array of bytes (for
 # pictures), or a stream of thereof. The stream represents a promise to fetch the data from a remote
 # source of some kind.
 Contents = list[str|bytes|Stream]
