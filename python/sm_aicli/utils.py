@@ -316,23 +316,28 @@ def add_transparent_rectangle(input_image:bytes|BytesIO, ratio:float=0.15):
     output_bytes = output_buffer.getvalue()
     return output_bytes
 
+VERBOSITY:int = 1
 
-def err(s:str, actor:Actor)->None:
-  if actor and actor.opt.verbose > 0:
+def effective_verbosity(actor:Actor|None)->int:
+  return max(VERBOSITY, actor.opt.verbose if actor is not None else 0)
+
+
+def err(s:str, actor:Actor|None=None)->None:
+  if effective_verbosity(actor) > 0:
     print(f"ERROR: {s}", file=stderr)
     print_exc()
 
-def warn(s:str, actor:Actor)->None:
-  if actor and actor.opt.verbose > 1:
+def warn(s:str, actor:Actor|None=None)->None:
+  if effective_verbosity(actor) > 1:
     print(f"WARNING: {s}", file=stderr)
 
-def info(s:str, actor:Actor, prefix=True)->None:
-  if actor and actor.opt.verbose > 2:
+def info(s:str, actor:Actor|None=None, prefix=True)->None:
+  if effective_verbosity(actor) > 2:
     prefix = "INFO: " if prefix else ""
     print(f"{prefix}{s}", file=stderr)
 
-def dbg(s:str, actor:Actor)->None:
-  if actor and actor.opt.verbose > 3:
+def dbg(s:str, actor:Actor|None=None)->None:
+  if effective_verbosity(actor) > 3:
     print(f"DEBUG: {s}", file=stderr)
 
 class ConsoleLogger(Logger):

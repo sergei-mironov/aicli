@@ -9,16 +9,17 @@ from copy import copy
 from sys import stdout
 from collections import defaultdict
 from os import system, chdir, environ, getcwd, listdir
-from os.path import expanduser, abspath, sep, join, isfile, isdir, split, dirname
+from os.path import expanduser, sep, abspath, join, isfile, isdir, split, dirname
 from io import StringIO
 from pdb import set_trace as ST
 from subprocess import run, PIPE
 
 from ..types import (Logger, Actor, ActorName, ActorOptions, Intention, Utterance,
-                     Conversation, ActorView, ModelName, Modality, QuotedString, UnquotedString)
+                     Conversation, ActorView, ModelName, Modality, QuotedString, UnquotedString,
+                     Parser, File)
 
 from ..utils import (ConsoleLogger, with_sigint, cont2strm, version, sys2exitcode, WLState,
-                     wraplong, onematch, expanddir)
+                     wraplong, onematch, expanddir, info)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -627,12 +628,6 @@ class Repl(Interpreter):
     return res
 
 
-class Parser:
-  """ A Stateful text stream parser """
-  def parse(self, chunk:str) -> tuple[str,Any]:
-    """ Parse a chunk of input stream, return the unparsed stream and a parser-specific state """
-    raise NotImplementedError()
-
 class ReplParser(Parser):
   def __init__(self, repl:Repl):
     self.repl = repl
@@ -655,10 +650,53 @@ class PasteModeReplParser(Parser):
   def parse(self, chunk:str) -> tuple[str,bool]:
     assert self.repl.paste_mode is True
     if chunk.strip() != f'{CMD_PASTE} off':
-      self.repl.buffers[IN].append(chunk + '\n')
+      self.repl.buffers[IN].append(chunk)
     else:
       self.repl.paste_mode = False
     return ('', None)
+
+
+def read_configs(rcnames:list[str])->list[str]:
+  acc = []
+  current_dir = abspath(getcwd())
+  path_parts = current_dir.split(sep)
+  last_dir = None
+  for depth in range(2, len(path_parts) + 1):
+    directory = sep.join(path_parts[:depth])
+    for fn in rcnames:
+      candidate_file = join(directory, fn)
+      if isfile(candidate_file):
+        with open(candidate_file, 'r') as file:
+          info(f"Reading {candidate_file}")
+          new_dir = dirname(candidate_file)
+          if last_dir != new_dir:
+            acc.append(f"{CMD_CD} \"{new_dir}\"")
+            last_dir = new_dir
+          for line in file.readlines():
+            acc.append(line.strip())
+          if last_dir != getcwd():
+            acc.append(f"{CMD_CD} \"{getcwd()}\"")
+            last_dir = getcwd()
+  return acc
+
+def args2script(args, configs:list[str]) -> str:
+  header = StringIO()
+  for line in configs:
+    header.write(line+'\n')
+  if args.model is not None:
+    header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
+  if args.model_apikey is not None:
+    header.write(f"/set model apikey {ref_quote(args.model_apikey, SCHEMAS)}\n")
+  if args.image_dir is not None:
+    header.write(f"/set model imgdir \"{args.image_dir}\"\n")
+  if args.model_dir is not None:
+    header.write(f"/set model modeldir \"{args.model_dir}\"\n")
+
+  for file in args.filenames:
+    with open(file) as f:
+      info(f"Reading {file}")
+      header.write(f.read())
+  return header.getvalue()
 
 
 class UserActor(Actor):
@@ -667,85 +705,24 @@ class UserActor(Actor):
                name:ActorName,
                opt:ActorOptions,
                args:Any,
-               prefix_stream:str|None = None):
+               file:File):
     super().__init__(name, opt)
     self.logger = ConsoleLogger(self)
-
     self.args = args
-    if args.readline_history is None:
-      args.readline_history = environ.get("AICLI_HISTORY")
-    if args.readline_history is not None:
-      args.readline_history = abspath(expanduser(args.readline_history))
 
-    header = StringIO()
-    rcnames = environ.get('AICLI_RC', args.rc)
-    if rcnames is not None and len(rcnames)>0 and rcnames!='none':
-      for line in self._read_configs(rcnames.split(',')):
-        header.write(line+'\n')
-    else:
-      self.logger.info("Skipping configuration files")
-    if args.model is not None:
-      header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
-    if args.model_apikey is not None:
-      header.write(f"/set model apikey {ref_quote(args.model_apikey, SCHEMAS)}\n")
-    if args.image_dir is not None:
-      header.write(f"/set model imgdir \"{args.image_dir}\"\n")
-    if args.model_dir is not None:
-      header.write(f"/set model modeldir \"{args.model_dir}\"\n")
-
-    for file in args.filenames:
-      with open(file) as f:
-        self.logger.info(f"Reading {file}")
-        header.write(f.read())
-
+    # Setup Completion
     set_completer_delims('')
     set_completer(self._complete)
     parse_and_bind('tab: complete')
     parse_and_bind(f'"{args.readline_key_send}": "{CMD_ASK}\n"')
+
     hint = args.readline_key_send.replace('\\', '')
     self.logger.info(f"Type /help or a question followed by the /ask command (or by pressing "
           f"`{hint}` key).")
 
-    self._reload_history()
-
-    self.stream = header.getvalue()
+    self.file = file
     self.repl = Repl(self, self.logger)
-    self.batch_mode = len(args.filenames) > 0
     self.reset()
-
-  def _reload_history(self):
-    if self.args.readline_history is not None:
-      try:
-        clear_history()
-        read_history_file(self.args.readline_history)
-        self.logger.info(f"History file loaded")
-      except FileNotFoundError:
-        self.logger.info(f"History file not loaded")
-    else:
-      self.logger.info(f"History file is not used")
-
-  def _read_configs(self, rcnames:list[str])->list[str]:
-    acc = []
-    current_dir = abspath(getcwd())
-    path_parts = current_dir.split(sep)
-    last_dir = None
-    for depth in range(2, len(path_parts) + 1):
-      directory = sep.join(path_parts[:depth])
-      for fn in rcnames:
-        candidate_file = join(directory, fn)
-        if isfile(candidate_file):
-          with open(candidate_file, 'r') as file:
-            self.logger.info(f"Reading {candidate_file}")
-            new_dir = dirname(candidate_file)
-            if last_dir != new_dir:
-              acc.append(f"{CMD_CD} \"{new_dir}\"")
-              last_dir = new_dir
-            for line in file.readlines():
-              acc.append(line.strip())
-            if last_dir != getcwd():
-              acc.append(f"{CMD_CD} \"{getcwd()}\"")
-              last_dir = getcwd()
-    return acc
 
   def _complete(self, text:str, state:int) -> str|None:
     current_dict = COMPLETION
@@ -854,12 +831,6 @@ class UserActor(Actor):
   def reset(self):
     self.cnv_top = 0
 
-  def _prompt(self):
-    return self.repl.readline_prompt
-
-  def _paste_prompt(self):
-    return 'P' + self._prompt() if self._prompt() else ''
-
   def react(self, av:ActorView, cnv:Conversation) -> Utterance:
     # FIMXE: A minor problem here in the paste_mode [1]: interpreter eats the
     # input first, and handles the paste mode after that. It should raise
@@ -868,26 +839,17 @@ class UserActor(Actor):
     normal_parser = ReplParser(self.repl)
     paste_parser = PasteModeReplParser(self.repl)
 
-    stream = self.stream
     while True:
-      try:
-        if len(stream) == 0:
-          if self.batch_mode and not self.args.keep_running:
-            break
-          else:
-            stream = input(self._prompt()) + '\n'
-        parser = paste_parser if self.repl.paste_mode else normal_parser
-        stream, utterance = parser.parse(stream)
-        if utterance is not None:
-          return utterance
-        if self.args.readline_history is not None:
-          write_history_file(self.args.readline_history)
-      except EOFError:
+      parser = paste_parser if self.repl.paste_mode else normal_parser
+      eof, utterance = self.file.process(parser, prompt=self.repl.readline_prompt)
+      if eof:
         print()
         return Utterance.init(
           name=self.name,
           intention=Intention.init(exit_flag=True)
         )
+      if utterance is not None:
+        return utterance
 
   def set_options(self, opt:ActorOptions) -> None:
     pass

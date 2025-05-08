@@ -1,0 +1,31 @@
+#!/usr/bin/env expect-f.sh
+
+set timeout 2
+
+spawn aicli --model=dummy:dummy
+
+expect {
+  ">>> " { send "/paste on\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  ">>> " { send "ABC\r/clear in\r" }
+  timeout { puts "Error: Did not receive paste hint"; exit 1 }
+}
+expect {
+  ">>> " { send "/paste off\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  ">>> " { send "/cat in\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  "/clear in" { send "/exit\r" }
+  timeout { puts "Error: IN buffer does not contain '/clear in' command"; exit 1 }
+}
+expect {
+  eof {}
+  timeout { puts "Error: Did not receive eof"; exit 1 }
+}
+exit 0

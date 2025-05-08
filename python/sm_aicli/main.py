@@ -1,12 +1,15 @@
 import re
 from io import StringIO
-from os.path import expanduser
-from os import chdir
+from os.path import expanduser, abspath
+from os import chdir, environ, getcwd
 from contextlib import contextmanager
 from signal import signal, SIGINT
 from sys import _getframe
 from pdb import Pdb
 from argparse import ArgumentParser
+from typing import Any
+from gnureadline import (parse_and_bind, clear_history, read_history_file,
+                         write_history_file, set_completer, set_completer_delims)
 
 from lark.visitors import Interpreter
 from lark import Lark
@@ -14,7 +17,7 @@ from lark import Lark
 from sm_aicli import (
   Conversation, ActorState, ActorName, Utterance, UserName, Modality,
   UserActor, ActorOptions, onematch, expanddir, OpenAIActor, GPT4AllActor,
-  DummyActor, info, err, with_sigint
+  DummyActor, info, err, with_sigint, args2script, File, Parser, read_configs
 )
 
 from .utils import version, REVISION
@@ -159,6 +162,44 @@ AICLI_PROVIDERS = {
   "dummy": DummyActor,
 }
 
+
+class StdinFile(File):
+  def __init__(self, args:Any, stream):
+    self.args = args
+    self.stream = stream
+    self.batch_mode = len(args.filenames) > 0
+
+    if args.readline_history is None:
+      args.readline_history = environ.get("AICLI_HISTORY")
+    if args.readline_history is not None:
+      args.readline_history = abspath(expanduser(args.readline_history))
+    self._reload_history()
+
+  def _reload_history(self):
+    if self.args.readline_history is not None:
+      try:
+        clear_history()
+        read_history_file(self.args.readline_history)
+        info(f"History file loaded")
+      except FileNotFoundError:
+        info(f"History file not loaded")
+    else:
+      info(f"History file is not used")
+
+  def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
+    try:
+      if len(self.stream) == 0:
+        if self.batch_mode and not self.args.keep_running:
+          return True, None
+        self.stream = input(prompt) + '\n'
+        if self.args.readline_history is not None:
+          write_history_file(self.args.readline_history)
+      self.stream, res = parser.parse(self.stream)
+      return False, res
+    except EOFError:
+      return True, None
+
+
 def main(cmdline=None, providers=None):
   args = ARG_PARSER.parse_args(cmdline)
   providers = AICLI_PROVIDERS if providers is None else providers
@@ -174,11 +215,24 @@ def main(cmdline=None, providers=None):
       print(REVISION)
     return 0
 
+  if args.readline_history is None:
+    args.readline_history = environ.get("AICLI_HISTORY")
+  if args.readline_history is not None:
+    args.readline_history = abspath(expanduser(args.readline_history))
+
+  rcnames = environ.get('AICLI_RC', args.rc)
+  if rcnames is not None and len(rcnames)>0 and rcnames!='none':
+    configs = read_configs(rcnames.split(','))
+  else:
+    info("Skipping configuration files")
+    configs = []
+
+  file = StdinFile(args, args2script(args, configs))
   cnv = Conversation.init()
   st = ActorState.init()
   current_actor = UserName()
   current_modality = Modality.Text
-  user = UserActor(UserName(), ActorOptions.init(), args)
+  user = UserActor(UserName(), ActorOptions.init(), args, file)
   st.actors[current_actor] = user
 
   while True:
@@ -192,7 +246,7 @@ def main(cmdline=None, providers=None):
       if intention.dbg_flag:
         user.logger.info("Type `cont` to continue when done")
         Pdb(nosigint=True).set_trace(_getframe())
-        user._reload_history()
+        file._reload_history()
       if intention.actor_updates is not None:
         for name, opt in intention.actor_updates.options.items():
           actor = st.actors.get(name)

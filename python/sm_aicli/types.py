@@ -202,6 +202,7 @@ class ActorState:
   def init():
     return ActorState({})
 
+
 class Actor:
   """ A conversation participant, known by name. The descendants track actor resources such as
   remote API authorization tokens or AI models themselves. """
@@ -238,5 +239,17 @@ class Logger:
   def warn(self, s:str) -> None:
     raise NotImplementedError()
   def dbg(self, s:str):
+    raise NotImplementedError()
+
+
+class Parser:
+  """ A Stateful text stream parser """
+  def parse(self, chunk:str) -> tuple[str,Any]:
+    """ Parse a chunk of input stream, return the unparsed stream and a parser-specific state """
+    raise NotImplementedError()
+
+
+class File:
+  def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
     raise NotImplementedError()
 
