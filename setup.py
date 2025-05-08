@@ -45,16 +45,22 @@ gpt4all = environ['AICLI_GPT4ALL'] if 'AICLI_GPT4ALL' in environ else 'gpt4all >
 with open("README.md", "r") as f:
   long_description = f.read()
 
+from setuptools import setup, find_packages
+from os.path import join
+
 setup(
   name="sm-aicli",
-  zip_safe=False, # https://mypy.readthedocs.io/en/latest/installed_packages.html
+  zip_safe=False,  # https://mypy.readthedocs.io/en/latest/installed_packages.html
   version=VERSION,
-  package_dir={'':'python'},
+  package_dir={'': 'python'},
   packages=find_packages(where='python'),
   long_description=long_description,
   long_description_content_type="text/markdown",
   install_requires=[gpt4all, 'openai', 'gnureadline', 'lark', 'pillow'],
-  scripts=[join('.','python','aicli')],
+  scripts=[
+    join('.', 'python', 'aicli'),  # Python tool
+    # join('.', 'sh', 'aitree.sh')  # Shell script
+  ],
   python_requires='>=3.6',
   author="Sergei Mironov",
   author_email="sergei.v.mironov@proton.me",
