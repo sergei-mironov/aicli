@@ -12,11 +12,11 @@ from signal import signal, SIGINT, SIGALRM, setitimer, ITIMER_REAL
 from subprocess import check_output, DEVNULL
 from sys import stderr, platform, maxsize
 from textwrap import dedent
-from typing import Iterable, Callable
+from typing import Iterable, Callable, Any
 from traceback import print_exc
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
-                    Stream, Logger)
+                    Stream, Logger, Parser, File)
 
 REVISION:str|None
 try:
@@ -349,3 +349,29 @@ class ConsoleLogger(Logger):
     warn(s, actor=self.actor)
   def dbg(self, s:str):
     dbg(s, actor=self.actor)
+
+
+class ReadUntilPatternParser(Parser):
+  def __init__(self, pattern):
+    self.buffer = []
+    self.pattern = pattern
+  def parse(self, chunk:str) -> tuple[str,Any]:
+    try:
+      index = chunk.index(self.pattern)
+      self.buffer.append(chunk[:index])
+      return chunk[index+len(self.pattern):], self.buffer
+    except ValueError:
+      self.buffer.append(chunk)
+      return '', None
+
+
+def read_until_pattern(file:File, pattern:str, prompt:str) -> list[str]:
+  parser = ReadUntilPatternParser(pattern)
+  response = []
+  while True:
+    eof, response = file.process(parser, prompt=prompt)
+    if eof or response:
+      break
+  return response
+
+

@@ -16,10 +16,13 @@ from collections import OrderedDict
 
 from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions,
                      Conversation, Intention, ModelName, UserName, Utterance,
-                     Modality, ConversationException, SAU, Stream, Contents)
-from ..utils import (ConsoleLogger, find_last_message, err, uts_2sau, uts_lastfull,
-                     uts_lastref, cont2str, add_transparent_rectangle)
+                     Modality, ConversationException, SAU, Stream, Contents,
+                     File)
+from ..utils import (ConsoleLogger, find_last_message, err, uts_2sau,
+                     uts_lastfull, uts_lastref, cont2str,
+                     add_transparent_rectangle, read_until_pattern)
 
+from .user import CMD_ANS
 
 def url2ext(url)->str|None:
   parsed_url = urlparse(url)
@@ -53,11 +56,12 @@ class BinStream(Stream):
     yield from super().gen()
 
 class OpenAIActor(Actor):
-  def __init__(self, name:ActorName, opt:ActorOptions):
+  def __init__(self, name:ActorName, opt:ActorOptions, file:File):
     assert isinstance(name, ModelName), name
     assert name.provider == "openai", name.provider
     super().__init__(name, opt)
     self.logger = ConsoleLogger(self)
+    self.file = file
     try:
       self.client = OpenAI(api_key=opt.apikey)
     except OpenAIError as err:
@@ -84,17 +88,23 @@ class OpenAIActor(Actor):
   def _react_text(self, act:ActorView, cnv:Conversation) -> Utterance:
     sau = self._cnv2sau(cnv)
     self.logger.dbg(f"sau: {sau}")
-    try:
-      chunks = self.client.chat.completions.create(
-        model=self.name.model,
-        messages=sau,
-        stream=True,
-        temperature=self.opt.temperature,
-        seed=self.opt.seed,
-      )
-      return Utterance.init(self.name, Intention.init(actor_next=UserName()), [TextStream(chunks)])
-    except OpenAIError as err:
-      raise ConversationException(str(err)) from err
+    response = []
+    if self.opt.replay:
+      response = read_until_pattern(self.file, CMD_ANS, 'OpenAI>>> ')
+    else:
+      try:
+        chunks = self.client.chat.completions.create(
+          model=self.name.model,
+          messages=sau,
+          stream=True,
+          temperature=self.opt.temperature,
+          seed=self.opt.seed,
+        )
+        response = [TextStream(chunks)]
+      except OpenAIError as err:
+        raise ConversationException(str(err)) from err
+    assert len(response)>0, "Empty response"
+    return Utterance.init(self.name, Intention.init(actor_next=UserName()), response)
 
   def _cnv2cont(self, cnv:Conversation) -> Contents:
     # [1] - id of the request; [2] - non-empty utterance by the same issuer.

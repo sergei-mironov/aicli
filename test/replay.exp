@@ -1,0 +1,33 @@
+#!/usr/bin/env expect-f.sh
+
+# Set timeout for the expect script
+set timeout 2
+
+spawn aicli --model=dummy:dummy
+
+expect {
+  ">>> " { send "/set model replay true\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  "Setting model replay to 'True'\r" { send "Request/ask\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  ">>> " { send "Response/ans\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  ">>> " { send "/set model replay false\rRequest/ask\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  "I am a dummy " { send "/exit\r" }
+  timeout { puts "Error: Did not receive input"; exit 1 }
+}
+expect {
+  eof {}
+  timeout { puts "Error: Did not receive eof"; exit 1 }
+}
+exit 0
+

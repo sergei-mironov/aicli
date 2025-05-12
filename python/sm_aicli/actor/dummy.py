@@ -6,21 +6,9 @@ from typing import Any
 
 from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conversation,
                      Utterance, UserName, Stream, File, Parser)
+from ..utils import read_until_pattern
 
 from .user import CMD_ANS
-
-
-class DummyReplayParser(Parser):
-  def __init__(self):
-    self.buffer = []
-  def parse(self, chunk:str) -> tuple[str,Any]:
-    try:
-      index = chunk.index(CMD_ANS)
-      self.buffer.append(chunk[:index])
-      return chunk[index+len(CMD_ANS):], self.buffer
-    except ValueError:
-      self.buffer.append(chunk)
-      return '', None
 
 
 class DummyActor(Actor):
@@ -33,12 +21,7 @@ class DummyActor(Actor):
 
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:
     if self.opt.replay:
-      parser = DummyReplayParser()
-      response = []
-      while True:
-        eof, response = self.file.process(parser, prompt='(DUMMY)>>> ')
-        if eof or response:
-          break
+      response = read_until_pattern(self.file, CMD_ANS, '(DUMMY)>>> ')
     else:
       response = [Stream([
         f"I am a dummy actor '{self.name.repr()}'\n",

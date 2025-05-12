@@ -224,7 +224,7 @@ def main(cmdline=None, providers=None):
   file = StdinFile(args, args2script(args, configs))
 
   providers = {
-    "openai": OpenAIActor,
+    "openai": partial(OpenAIActor, file=file),
     "gpt4all": GPT4AllActor,
     "dummy": partial(DummyActor, file=file),
   } if providers is None else providers
