@@ -181,9 +181,6 @@ class StdinFile(File):
     else:
       info(f"History file is not used")
 
-  def would_block(self)->bool:
-    return len(self.stream.strip())==0
-
   def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
     try:
       if len(self.stream) == 0:

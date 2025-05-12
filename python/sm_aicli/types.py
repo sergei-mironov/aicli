@@ -17,6 +17,22 @@ class UnquotedString(str):
 # PathStr is a string holding a path to a file
 PathStr = str
 
+
+class Parser:
+  """ A Stateful text stream parser """
+  def parse(self, chunk:str) -> tuple[str,Any]:
+    """ Parse a chunk of input stream, return the unparsed stream and a parser-specific state """
+    raise NotImplementedError()
+
+
+class File:
+  """ Input file, e.g. stdin. """
+  def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
+    """ Read and parse the contents using a Parser. Unparsed stream should be
+    placed into a buffer and attempted on the next call. """
+    raise NotImplementedError()
+
+
 @dataclass(frozen=True)
 class ModelName:
   """ Name of an AI model, containing a model provider name (such as `openai` or `gpt4all`) and a
@@ -55,6 +71,7 @@ class ActorOptions:
   image_dir:str|None=None
   model_dir:str|None=None
   seed:int|None=None
+  replay:bool=False            # Read replies from a file instead of from models
 
   @staticmethod
   def init():
@@ -240,18 +257,3 @@ class Logger:
     raise NotImplementedError()
   def dbg(self, s:str):
     raise NotImplementedError()
-
-
-class Parser:
-  """ A Stateful text stream parser """
-  def parse(self, chunk:str) -> tuple[str,Any]:
-    """ Parse a chunk of input stream, return the unparsed stream and a parser-specific state """
-    raise NotImplementedError()
-
-
-class File:
-  def would_block(self)->bool:
-    raise NotImplementedError()
-  def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
-    raise NotImplementedError()
-

@@ -23,6 +23,7 @@ from ..utils import (ConsoleLogger, with_sigint, cont2strm, version, sys2exitcod
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
+CMD_ANS  = "/ans"
 CMD_CAT = "/cat"
 CMD_CLEAR = "/clear"
 CMD_CP = "/cp"
@@ -75,6 +76,7 @@ COMPLETION = {
       " apikey":    REF,
       " imgsz":     {" string": {}},
       " temp":      {" FLOAT":  {}, " default": {}},
+      " replay":    {" BOOL":   {}, " default": {}},
       " nt":        {" NUMBER": {}, " default": {}},
       " verbosity": {" NUMBER": {}, " default": {}},
       " seed":      {" NUMBER": {}, " default": {}},
@@ -148,6 +150,7 @@ GRAMMAR = fr"""
                                               /modeldir/ / +/ (string | DEF) | \
                                               /verbosity/ / +/ (NUMBER | DEF) | \
                                               /seed/ / +/ (NUMBER | DEF) | \
+                                              /replay/ / +/ (BOOL | DEF) | \
                                               /modality/ / +/ (MODALITY | DEF) | \
                                               /imgnum/ / +/ (NUMBER | DEF)) | \
                                (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
@@ -472,6 +475,10 @@ class Repl(Interpreter):
           mod = as_modality(pval)
           opts[self.actor_next].modality = mod
           self.logger.info(f"Setting model modality to '{mod}'")
+        elif pname == 'replay':
+          val = as_bool(pval)
+          opts[self.actor_next].replay = val
+          self.logger.info(f"Setting model replay to '{val}'")
         else:
           raise ValueError(f"Unknown actor parameter '{pname}'")
       elif section in ['term', 'terminal']:

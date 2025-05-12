@@ -7,17 +7,20 @@ from typing import Any
 from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conversation,
                      Utterance, UserName, Stream, File, Parser)
 
-from .user import CMD_ASK
+from .user import CMD_ANS
 
 
 class DummyReplayParser(Parser):
+  def __init__(self):
+    self.buffer = []
   def parse(self, chunk:str) -> tuple[str,Any]:
-    # from pdb import set_trace; set_trace()
     try:
-      index = chunk.index(CMD_ASK)
-      return chunk[index+len(CMD_ASK):], chunk[:index]
+      index = chunk.index(CMD_ANS)
+      self.buffer.append(chunk[:index])
+      return chunk[index+len(CMD_ANS):], self.buffer
     except ValueError:
-      return '', chunk
+      self.buffer.append(chunk)
+      return '', None
 
 
 class DummyActor(Actor):
@@ -29,9 +32,13 @@ class DummyActor(Actor):
     pass
 
   def react(self, act:ActorView, cnv:Conversation) -> Utterance:
-    if not self.file.would_block():
-      _,replay = self.file.process(DummyReplayParser(),'')
-      response = [replay]
+    if self.opt.replay:
+      parser = DummyReplayParser()
+      response = []
+      while True:
+        eof, response = self.file.process(parser, prompt='(DUMMY)>>> ')
+        if eof or response:
+          break
     else:
       response = [Stream([
         f"I am a dummy actor '{self.name.repr()}'\n",
