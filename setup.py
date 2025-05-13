@@ -59,7 +59,7 @@ setup(
   install_requires=[gpt4all, 'openai', 'gnureadline', 'lark', 'pillow'],
   scripts=[
     join('.', 'python', 'aicli'),  # Python tool
-    # join('.', 'sh', 'aitree.sh')  # Shell script
+    join('.', 'sh', 'aicli-process.sh')  # Shell script
   ],
   python_requires='>=3.6',
   author="Sergei Mironov",
