@@ -9,9 +9,10 @@ while [ $# -gt 0 ]; do
     -f|--format) FORMAT="$2"; shift ;;
     -w|--textwidth) TEXTWIDTH="$2"; shift ;;
     --no-comments) NOCOMMENTS=y ;;
+    --) shift; break ;;
     -h|--help)
       echo "Usage: $0 [-f|--format <format>] [-w|--textwidth <width>] [-P|--prompt <prompt>]
-[--style] [--grammar] [--code <context>] [--no-comments]"
+[--style] [--grammar] [--code <context>] [--no-comments] [-- ...]"
       exit 0
       ;;
     *) echo "Unknown argument: $1" ;;
@@ -33,7 +34,8 @@ cat
 cat <<EOF
 /paste off
 (end of `doc`)
-Please generate a pastable `doc` without any additional text document formatting.
+Please generate a pastable `doc` without any additional text document
+formatting. Please don't use Markdown formatting \`\`\` in your response.
 EOF
 
 if test "$NOCOMMENTS" = "y" ; then
@@ -42,7 +44,8 @@ Please omit any comments you might want to add, just output the required pastabl
 EOF
 elif test -n "$FORMAT" ; then
 cat <<EOF
-Put your own comments, if any, wrapped into comment blocks as we normally do in $FORMAT documents.
+For your own comments or questions or polite endings, if needed, please wrap them into
+comment blocks as we normally do in $FORMAT documents.
 EOF
 fi
 
@@ -53,5 +56,5 @@ EOF
 fi
 
 echo "/ask"
-} | litrepl eval-code ai
+} | litrepl "$@" eval-code ai
 
