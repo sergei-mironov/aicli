@@ -58,8 +58,10 @@ setup(
   long_description_content_type="text/markdown",
   install_requires=[gpt4all, 'openai', 'gnureadline', 'lark', 'pillow'],
   scripts=[
-    join('.', 'python', 'aicli'),  # Python tool
-    join('.', 'sh', 'aicli-process.sh')  # Shell script
+    join('.', 'python', 'aicli'),
+    join('.', 'sh', 'aicli-eval.sh'),
+    join('.', 'sh', 'aicli-grammar.sh'),
+    join('.', 'sh', 'aicli-style.sh'),
   ],
   python_requires='>=3.6',
   author="Sergei Mironov",
