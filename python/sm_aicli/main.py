@@ -91,7 +91,7 @@ ARG_PARSER.add_argument(
   '--verbose',
   type=str,
   metavar='NUM',
-  help="Set the verbosity level 0-no,1-full",
+  help="Set the verbosity level 0-no,9-full",
 )
 ARG_PARSER.add_argument(
   '--revision',

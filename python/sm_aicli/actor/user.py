@@ -19,7 +19,7 @@ from ..types import (Logger, Actor, ActorName, ActorOptions, Intention, Utteranc
                      Parser, File)
 
 from ..utils import (ConsoleLogger, with_sigint, cont2strm, version, sys2exitcode, WLState,
-                     wraplong, onematch, expanddir, info)
+                     wraplong, onematch, expanddir, info, set_global_verbosity)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -495,6 +495,7 @@ class Repl(Interpreter):
         elif pname == 'verbosity':
           val = as_int(pval)
           self.owner.opt.verbose = val
+          set_global_verbosity(val)
           self.logger.info(f"Setting terminal verbosity to '{val}'")
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
@@ -698,6 +699,9 @@ def args2script(args, configs:list[str]) -> str:
     header.write(f"/set model imgdir \"{args.image_dir}\"\n")
   if args.model_dir is not None:
     header.write(f"/set model modeldir \"{args.model_dir}\"\n")
+  if args.verbose is not None:
+    header.write(f"/set terminal verbosity {int(args.verbose)}\n")
+
 
   for file in args.filenames:
     with open(file) as f:

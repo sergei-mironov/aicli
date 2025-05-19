@@ -316,7 +316,11 @@ def add_transparent_rectangle(input_image:bytes|BytesIO, ratio:float=0.15):
     output_bytes = output_buffer.getvalue()
     return output_bytes
 
-VERBOSITY:int = 1
+VERBOSITY:int = 2
+
+def set_global_verbosity(verb):
+  global VERBOSITY
+  VERBOSITY=int(verb)
 
 def effective_verbosity(actor:Actor|None)->int:
   return max(VERBOSITY, actor.opt.verbose if actor is not None else 0)

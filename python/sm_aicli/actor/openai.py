@@ -165,8 +165,7 @@ class OpenAIActor(Actor):
       else:
         assert False, f"Unsupported content fragemnt type {type(cf)}"
 
-    if self.opt.verbose > 0:
-      self.logger.dbg(f"edit image prompt: {sbuf.getvalue()}")
+    self.logger.dbg(f"Image editing prompt: {sbuf.getvalue()}")
     if self.opt.seed is not None:
       self.logger.warn(f"Image editing does not support seed")
     try:
