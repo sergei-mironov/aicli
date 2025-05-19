@@ -3,7 +3,7 @@
 # Set timeout for the expect script
 set timeout 2
 
-spawn aicli --model=dummy:dummy
+spawn aicli --model=dummy:dummy --verbose=3
 
 expect {
   ">>> " { send "/shell \"echo 1; echo 2; exit 33\"\r" }

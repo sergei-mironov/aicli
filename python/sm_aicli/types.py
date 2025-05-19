@@ -60,7 +60,7 @@ class Modality(Enum):
 class ActorOptions:
   """ Structure that encodes all the supported options actors might accept.
   Unused options are to be ignored with a warning. """
-  verbose:int=3
+  verbose:int=2
   apikey:str|None = None
   temperature:float|None = None
   num_threads:int|None = None

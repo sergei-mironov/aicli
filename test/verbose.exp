@@ -2,7 +2,7 @@
 
 set timeout 2
 
-spawn aicli --model=dummy:dummy
+spawn aicli --model=dummy:dummy --verbose=3
 
 expect {
     ">>> " {
