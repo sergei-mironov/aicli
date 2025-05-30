@@ -6,7 +6,7 @@ from typing import Any
 
 from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conversation,
                      Utterance, UserName, Stream, File, Parser)
-from ..utils import read_until_pattern
+from ..utils import read_until_pattern, cont2str
 
 from .user import CMD_ANS
 
@@ -24,6 +24,10 @@ class DummyActor(Actor):
       response = read_until_pattern(self.file, CMD_ANS, '(DUMMY)>>> ')
     else:
       response = [Stream([
+        f"You said:\n```\n",
+        cont2str(cnv.utterances[-1].contents,False).strip(),
+        f"\n```\n",
+        f"I say:\n"
         f"I am a dummy actor '{self.name.repr()}'\n",
         f"My api key is '{self.opt.apikey}'\n",
         f"My temperature is '{self.opt.temperature}'\n",

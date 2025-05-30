@@ -117,7 +117,7 @@ ARG_PARSER.add_argument(
   '-C', '--cd',
   type=str,
   help="Change to this directory before execution",
-  default=None,
+  default=environ.get('AICLI_CWD'),
 )
 ARG_PARSER.add_argument(
   'filenames',
