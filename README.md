@@ -309,7 +309,7 @@ options:
                         Input prompt (default: >>>)
   --readline-history FILE
                         History file name, disabled by default.
-  --verbose NUM         Set the verbosity level 0-no,1-full
+  --verbose NUM         Set the verbosity level 0-no,9-full
   --revision            Print the revision
   --version             Print the version
   --rc RC               List of config file names (','-separated, use empty or
@@ -401,6 +401,7 @@ command.1: /\/version/ | \
                                             /seed/ / +/ (NUMBER | DEF) | \
                                             /replay/ / +/ (BOOL | DEF) | \
                                             /modality/ / +/ (MODALITY | DEF) | \
+                                            /proxy/ / +/ (string | DEF) | \
                                             /imgnum/ / +/ (NUMBER | DEF)) | \
                              (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
                                                          /prompt/ / +/ string | \
@@ -456,7 +457,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L8) | [Utterance](./python/sm_aicli/types.py#L173) | [Actor](./python/sm_aicli/types.py#L60) | [Intention](./python/sm_aicli/types.py#L93) | [Stream](./python/sm_aicli/types.py#L117)
+[Conversation](./python/sm_aicli/types.py#L8) | [Utterance](./python/sm_aicli/types.py#L175) | [Actor](./python/sm_aicli/types.py#L60) | [Intention](./python/sm_aicli/types.py#L95) | [Stream](./python/sm_aicli/types.py#L119)
 
 <!--noresult-->
 
