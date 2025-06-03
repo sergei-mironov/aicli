@@ -83,6 +83,7 @@ COMPLETION = {
       " imgnum":    {" NUMBER": {}, " default": {}},
       " imgdir":    {" string": {}, " default": {}},
       " modeldir":  {" string": {}, " default": {}},
+      " proxy":     {" string": {}, " default": {}},
     },
     " terminal": {
       " rawbin": VBOOL,
@@ -152,6 +153,7 @@ GRAMMAR = fr"""
                                               /seed/ / +/ (NUMBER | DEF) | \
                                               /replay/ / +/ (BOOL | DEF) | \
                                               /modality/ / +/ (MODALITY | DEF) | \
+                                              /proxy/ / +/ (string | DEF) | \
                                               /imgnum/ / +/ (NUMBER | DEF)) | \
                                (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
                                                            /prompt/ / +/ string | \
@@ -479,6 +481,10 @@ class Repl(Interpreter):
           val = as_bool(pval)
           opts[self.actor_next].replay = val
           self.logger.info(f"Setting model replay to '{val}'")
+        elif pname == 'proxy':
+          val = as_str(pval)
+          opts[self.actor_next].proxy = val
+          self.logger.info(f"Setting model proxy to '{val}'")
         else:
           raise ValueError(f"Unknown actor parameter '{pname}'")
       elif section in ['term', 'terminal']:

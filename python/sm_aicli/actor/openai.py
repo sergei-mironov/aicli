@@ -1,5 +1,5 @@
 from typing import Any
-from openai import OpenAI, OpenAIError
+from openai import OpenAI, OpenAIError, DefaultHttpxClient
 from openai.types.image import Image as OpenAIImage
 from json import loads as json_loads, dumps as json_dumps
 from io import StringIO, BytesIO
@@ -63,7 +63,7 @@ class OpenAIActor(Actor):
     self.logger = ConsoleLogger(self)
     self.file = file
     try:
-      self.client = OpenAI(api_key=opt.apikey)
+      self.client = OpenAI(api_key=opt.apikey, http_client=DefaultHttpxClient(proxy=opt.proxy))
     except OpenAIError as err:
       raise ValueError(str(err)) from err
     self.reset()

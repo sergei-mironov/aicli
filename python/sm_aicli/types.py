@@ -72,6 +72,8 @@ class ActorOptions:
   model_dir:str|None=None
   seed:int|None=None
   replay:bool=False            # Read replies from a file instead of from models
+  proxy:str|None=None          # Proxy string to use,
+                               # For OpenAI see https://www.python-httpx.org/advanced/proxies/
 
   @staticmethod
   def init():
