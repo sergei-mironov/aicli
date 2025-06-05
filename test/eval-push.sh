@@ -17,6 +17,7 @@ EOF
 
 cat result | tail -n 1 > result-filtered
 
+# FIMXE: Get the contents of the vim messages
 diff -u result-filtered - <<"EOF"
-You said:^@```^@Hi dummy!^@Please do not generate any polite endings in your response.^@```^@I say:^@I am a dummy actor 'dummy:default'^@My api key is 'None'^@My temperature is 'None'^@My prompt is 'None'
+You said:^@```^@Hi dummy!^@^@Please do not generate any polite endings in your response.^@```^@I say:^@I am a dummy actor 'dummy:default'^@My api key is 'None'^@My temperature is 'None'^@My prompt is 'None'
 EOF

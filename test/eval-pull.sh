@@ -23,6 +23,7 @@ Pull test
 You said:
 ```
 Hi dummy!
+
 Please do not generate any polite endings in your response.
 ```
 I say:

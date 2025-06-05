@@ -45,6 +45,14 @@ debug() {
   fi
 }
 
+projectlocal() {
+  if test -n "$PROJECT_ROOT" ; then
+    realpath --relative-to="$PROJECT_ROOT" "$1"
+  else
+    echo $1
+  fi
+}
+
 {
 echo "$AICLI_HEADER"
 
@@ -58,24 +66,35 @@ cat <<EOF
 /paste off
 
 (End of the 'selection' snippet)
+
 EOF
 else # PASTEMODE is disabled
 cat "$AICLI_SELECTION"
+cat <<EOF
+
+
+EOF
 fi
 fi
 
 for f in $FILES; do if test -f "$f" ; then cat <<EOF
-Consider the contents of the file named '$f':
+Consider the contents of the file named "$(projectlocal $f)":
 
 /append file:"$f" buffer:"in"
-(End of '$f' contents)
+
+(End of "$(projectlocal $f)" contents)
+
 EOF
 else
 echo "No such file: $f" >&2
 fi
 done
 
-echo "$AICLI_PROMPT"
+if test -n "$AICLI_PROMPT" ; then cat <<EOF
+$AICLI_PROMPT
+
+EOF
+fi
 
 if test -n "$AICLI_OFORMAT" ; then cat <<EOF
 Please generate a pastable `doc` without any additional text document
@@ -113,6 +132,7 @@ fi
 
 cat <<EOF
 Please do not generate any polite endings in your response.
+
 EOF
 
 echo "$AICLI_FOOTER"
