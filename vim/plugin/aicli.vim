@@ -23,6 +23,16 @@ if ! exists("g:aicli_script")
   let g:aicli_script = 'aicli-*.sh'
 endif
 
+if ! exists("g:aicli_plugin_version")
+  let devroot = getenv('AICLI_ROOT')
+  if ! empty(devroot)
+    let g:aicli_plugin_version = substitute(
+      \ system(devroot . '/python/aicli --version',''), "\n", "", 'g')
+  else
+    let g:aicli_plugin_version = 'version-to-be-filled-by-the-packager'
+  endif
+endif
+
 fun! AicliGet(name)
   if exists('b:'.a:name)
     return get(b:, a:name, '')
