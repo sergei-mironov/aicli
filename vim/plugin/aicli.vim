@@ -133,15 +133,10 @@ fun! AicliReplaceSelectionOrPull(action, prompt, selmode) range " -> int
   endif
 endfun
 
-fun! AicliTerminal(errcode) range
-  if a:errcode == 0
-    execute "terminal litrepl repl ai"
-    call feedkeys(" /cat out\n")
-    return 0
-  else
-    echomsg "Not opening the terminal"
-    return a:errcode
-  endif
+fun! AicliTerminal() range
+  execute "terminal litrepl repl ai"
+  call feedkeys(" /cat out\n")
+  return 0
 endfun
 
 fun! AicliPushSelectionOrPush(action, prompt, selmode) range " -> int
@@ -199,16 +194,20 @@ if exists(":AI") != 2
         \        Arg0(<q-args>), ArgStar(<q-args>), ArgSelMode(<range>, "<bang>"))
 endif
 
-if !exists(":AIP")
-  command! -complete=customlist,AicliCompletion -range -bar -nargs=* -bang AIP
+if !exists(":AIPush")
+  command! -complete=customlist,AicliCompletion -range -bar -nargs=* -bang AIPush
         \ call AicliPushSelectionOrPush(Arg0(<q-args>), ArgStar(<q-args>),
         \        ArgSelMode(<range>, "<bang>"))
 endif
 
-if !exists(":AIF")
-  command! -complete=customlist,AicliCompletion -range -bar -nargs=* -bang AIF
+if !exists(":AIFile")
+  command! -complete=customlist,AicliCompletion -range -bar -nargs=* -bang AIFile
         \ call AicliReplaceFile(Arg0(<q-args>), ArgStar(<q-args>),
         \        ArgSelMode(<range>, "<bang>"), expand("%:p"))
+endif
+
+if !exists(":AITerm")
+  command! -range -bar -nargs=0 AITerm call AicliTerminal()
 endif
 
 let g:aicli_loaded = 1

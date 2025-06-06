@@ -16,12 +16,16 @@ if exists(':AI')
   delcommand AI
 endif
 
-if exists(':AIP')
-  delcommand AIP
+if exists(':AIPush')
+  delcommand AIPush
 endif
 
-if exists(':AIF')
-  delcommand AIF
+if exists(':AIFile')
+  delcommand AIFile
+endif
+
+if exists(':AITerm')
+  delcommand AITerm
 endif
 
 let &runtimepath = '$PROJECT_ROOT/vim,'.&runtimepath

@@ -6,7 +6,7 @@ litrepl restart ai
 
 testvim.sh >_vim.log 2>&1 <<EOF
 :messages clear
-:AIP dummy Hi dummy!
+:AIPush dummy Hi dummy!
 :redir @a
 :messages
 :redir END
