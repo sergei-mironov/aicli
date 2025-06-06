@@ -43,8 +43,9 @@ fun! AicliGet(name)
   endif
 endfun
 
-fun! AicliCmdline(action, prompt, selmode, file)
-  let [action, prompt, selmode, file] = [a:action, a:prompt, a:selmode, a:file]
+fun! AicliCmdline(action, prompt, selmode, file, extras)
+  let [action, prompt, selmode, file, extras] = [a:action, a:prompt,
+        \ a:selmode, a:file, a:extras]
   let command = substitute(AicliGet('aicli_script'), '*', action, '')
   if prompt != '-'
     if len(trim(prompt)) == 0
@@ -67,7 +68,7 @@ fun! AicliCmdline(action, prompt, selmode, file)
     let command = command . ' ' . file
   endif
   let errfile = AicliGet('aicli_errfile')
-  let command = command .' 2>>'.errfile
+  let command = command . extras . ' 2>>'.errfile
   return command
 endfun
 
@@ -84,23 +85,23 @@ fun! AicliGetVisualSelection() range
   return join(lines, "\n")
 endfun
 
-fun! AicliReplace(action, prompt, source, selmode, file) range " -> int
+fun! AicliReplace(action, prompt, source, selmode, file, extras) range " -> int
   let [action, prompt, source] = [a:action, a:prompt, a:source]
-  let command = AicliCmdline(action, prompt, a:selmode, a:file)
+  let command = AicliCmdline(action, prompt, a:selmode, a:file, a:extras)
   let vimcommand = "silent! ".source."! ".command
-  echomsg vimcommand
+  " echomsg vimcommand
   execute vimcommand
   let errcode = v:shell_error
   return errcode
 endfun
 
 fun! AicliReplaceFile(action, prompt, selmode, file) range " -> int
-  return AicliReplace(a:action, a:prompt, "%", a:selmode, a:file)
+  return AicliReplace(a:action, a:prompt, "%", a:selmode, a:file, "")
 endfun
 
 fun! AicliPushSelection(action, prompt, selmode) range
   let [action, prompt] = [a:action, a:prompt]
-  let command = AicliCmdline(action, prompt, a:selmode, "")
+  let command = AicliCmdline(action, prompt, a:selmode, "", "")
   let selection = AicliGetVisualSelection() . "\n"
   silent let result = system(command, selection)
   echom result
@@ -110,7 +111,7 @@ endfun
 
 fun! AicliPush(action, prompt, selmode) range
   let [action, prompt] = [a:action, a:prompt]
-  let command = AicliCmdline(action, prompt, a:selmode, "")
+  let command = AicliCmdline(action, prompt, a:selmode, "", "")
   silent let result = system(command)
   echom result
   let errcode = v:shell_error
@@ -119,7 +120,7 @@ endfun
 
 fun! AicliPull(action, prompt) range
   let [action, prompt] = [a:action, a:prompt]
-  let command = AicliCmdline(action, prompt, "", "")
+  let command = AicliCmdline(action, prompt, "", "", "")
   silent execute 'r!'.command .'</dev/null'
   let errcode = v:shell_error
   return errcode
@@ -127,7 +128,7 @@ endfun
 
 fun! AicliReplaceSelectionOrPull(action, prompt, selmode) range " -> int
   if len(a:selmode)>0
-    return AicliReplace(a:action, a:prompt, "'<,'>", a:selmode, "")
+    return AicliReplace(a:action, a:prompt, "'<,'>", a:selmode, "", "--reindent")
   else
     return AicliPull(a:action, a:prompt)
   endif

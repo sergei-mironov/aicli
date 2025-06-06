@@ -3,6 +3,7 @@
 FILES=
 CMD=eval-code
 test -n "$LITREPL" || LITREPL=litrepl
+test -z "$AICLI_SELINDENT" && AICLI_SELINDENT=/tmp/aicli-eval-indent
 test -n "$AICLI_PROMPT" && AICLI_PROMPT="$AICLI_PROMPT "
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -13,6 +14,7 @@ while [ $# -gt 0 ]; do
     -f|--output-format) AICLI_OFORMAT="$2"; shift ;;
     -w|--textwidth) AICLI_TEXTWIDTH="$2"; shift ;;
     -d|--debug) AICLI_DEBUG=y ;;
+    -i|--reindent) AICLI_REINDENT=y ;;
     --header) AICLI_HEADER="${AICLI_HEADER}$2" ; shift ;;
     --footer) AICLI_FOOTER="${AICLI_FOOTER}$2" ; shift ;;
     -h|--help)
@@ -53,6 +55,28 @@ projectlocal() {
   fi
 }
 
+indent() {
+  if test "$AICLI_REINDENT" = "y" ; then
+    tee "$AICLI_SELINDENT"
+  else
+    cat
+  fi
+}
+
+dedent() {
+  if test "$AICLI_REINDENT" = "y" ; then
+    SPACES=""
+    while read line ; do
+      if test "$SPACES" = "" ; then
+        SPACES=$(sed 's/[^[:space:]]\(.*\)//' "$AICLI_SELINDENT" | grep -v "^$" | head -n 1)
+      fi
+      echo "${SPACES}${line}"
+    done
+  else
+    cat
+  fi
+}
+
 {
 echo "$AICLI_HEADER"
 
@@ -61,7 +85,7 @@ if test "$AICLI_PASTEMODE" = "y" ; then cat <<EOF
 Consider the following text snippet to which we refer as to 'selection':
 /paste on
 EOF
-cat "$AICLI_SELECTION"
+cat "$AICLI_SELECTION" | indent
 cat <<EOF
 /paste off
 
@@ -69,7 +93,7 @@ cat <<EOF
 
 EOF
 else # PASTEMODE is disabled
-cat "$AICLI_SELECTION"
+cat "$AICLI_SELECTION" | indent
 cat <<EOF
 
 
@@ -136,5 +160,5 @@ Please do not generate any polite endings in your response.
 EOF
 
 echo "$AICLI_FOOTER"
-} | debug | exec $LITREPL "$@" eval-code ai
+} | debug | exec $LITREPL "$@" eval-code ai | dedent
 
