@@ -123,8 +123,8 @@ class Stream:
     self.stop = False             # Interrupt flag
     self.recording = None         # Stream recording
 
-  def gen(self) -> Iterable[TextItem]:
-    """ Yield next TextItem. """
+  def gen(self) -> Iterable[ContentItem]:
+    """ Yield next ContentItem. """
     raise NotImplementedError
   def interrupt(self) -> None:
     """ Cause `gen` to exit. """

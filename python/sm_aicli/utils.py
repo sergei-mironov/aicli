@@ -17,7 +17,7 @@ from traceback import print_exc
 from copy import copy, deepcopy
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
-                    Stream, Logger, Parser, File, TextItem)
+                    Stream, Logger, Parser, File, ContentItem)
 
 REVISION:str|None
 try:
@@ -88,7 +88,7 @@ class IterableStream(Stream):
     memo[id(self)] = copied_obj
     return copied_obj
 
-  def gen(self) -> Iterable[TextItem]:
+  def gen(self) -> Iterable[ContentItem]:
     """ Iterate over tokens. Should be called once in the object's lifetime. Setting stop to True
     interrupts the generator. """
     assert self.recording is None, "Stream.gen has been called twice"
