@@ -190,8 +190,9 @@ UID = UtteranceId
 
 @dataclass
 class Conversation:
-  """ A conversation actors, a chain of utterances. The convention is to either add new utterances
-  to the end of the list or reset the conversation to the initial (empty) state. """
+  """ A conversation of actors, a chain of utterances. The convention is to
+  either add new utterances to the end of the list or reset the conversation to
+  the initial (empty) state. """
   utterances:Utterances
 
   def reset(self):

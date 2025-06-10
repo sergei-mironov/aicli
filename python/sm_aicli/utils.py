@@ -116,13 +116,21 @@ def uts_lastfullref(uts:Utterances, referree:ActorName) -> UID|None:
     uid = uts_lastfull(uts, uts[uid].actor_name)
   return uid
 
+FileId = str
+FileName = str
+
 def uts_2sau(
   uts:Utterances,
   names:dict[ActorName, str],
   default_name:str|None = None,
   system_prompt:str|None = None,
-  cache:dict[hash,SAU]|None = None
+  cache:dict[hash,SAU]|None = None,
 ) -> SAU:
+  """ Converts a list of Utterances into the System-Assistant-User JSON-like structure.
+
+  Parameters:
+  * ... - TODO
+  """
   # In [1] we assume that Utterances do not contain streams.
   def _cachekey(i):
     return tuple([i, system_prompt, *tuple(names.items())])
