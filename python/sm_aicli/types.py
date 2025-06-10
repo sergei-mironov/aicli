@@ -1,6 +1,6 @@
 from typing import Any, Iterable, Callable
 from dataclasses import dataclass
-from copy import copy, deepcopy
+from copy import deepcopy
 from enum import Enum
 from contextlib import contextmanager
 from traceback import print_exc
@@ -106,65 +106,24 @@ class Intention:
            dbg_flag=False):
     return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
 
-@contextmanager
-def _handle_exceptions():
-  try:
-    yield
-  except (SystemError,KeyboardInterrupt):
-    raise
-  except Exception as err:
-    print(f"<ERROR: {str(err)}>")
-    print_exc()
+@dataclass
+class Resource:
+  mimetype: str
+  ID: str
+
+type TextItem = str | bytes | Resource
 
 class Stream:
   """ Stream represents a promise to fetch the content from a remote source of some kind. The
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
   `recording` array. All tokens must be of a same type (str or bytes). """
+  def gen(self) -> Iterable[TextItem]:
+    """ Yield next TextItem. """
+    raise NotImplementedError
+  def interrupt(self) -> None:
+    """ Cause `gen` to exit. """
+    raise NotImplementedError
 
-  def __init__(self, generator, binary:None|bool=None, suggested_fname:str|None=None):
-    self.generator = generator    # Descendant-specific token generator
-    self.stop = False             # Interrupt flag
-    self.recording = None         # Stream recording
-    self.binary = binary          # Type of content (False => str; True => bytes)
-    self.suggested_fname = suggested_fname # Suggested filename with extension
-
-  def __deepcopy__(self, memo):
-    assert self.generator is None, "Cannot call deepcopy on an unread stream"
-    # Create a new instance of the current class
-    copied_obj = copy(self)
-    # Copy all instance attributes to the new instance
-    for k, v in self.__dict__.items():
-      copied_obj.__dict__[k] = deepcopy(v, memo)
-    # Store the copied object in the memo dictionary to handle recursive references
-    memo[id(self)] = copied_obj
-    return copied_obj
-
-  def gen(self):
-    """ Iterate over tokens. Should be called once in the object's lifetime. """
-    self.stop = False
-    self.recording = None
-    try:
-      with _handle_exceptions():
-        for ch in self.generator:
-          if self.recording is None:
-            if isinstance(ch,str):
-              assert self.binary is not True, "Expected non-binary contents"
-              self.binary = False
-              self.recording = ""
-            else:
-              assert self.binary is not False, "Expected binary contents"
-              self.binary = True
-              self.recording = b""
-          self.recording += ch
-          yield ch
-          if self.stop:
-            break
-    finally:
-      self.generator = None
-
-  def interrupt(self):
-    """ Declare that no more tokens are going to be fetched from this stream. """
-    self.stop = True
 
 # Utterance content is a list of items, where an item is either a string, an array of bytes (for
 # pictures), or a stream of thereof. The stream represents a promise to fetch the data from a remote

@@ -5,8 +5,8 @@ from itertools import cycle
 from typing import Any
 
 from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conversation,
-                     Utterance, UserName, Stream, File, Parser)
-from ..utils import read_until_pattern, cont2str
+                     Utterance, UserName, File, Parser)
+from ..utils import read_until_pattern, cont2str, IterableStream
 
 from .user import CMD_ANS
 
@@ -23,7 +23,7 @@ class DummyActor(Actor):
     if self.opt.replay:
       response = read_until_pattern(self.file, CMD_ANS, '(DUMMY)>>> ')
     else:
-      response = [Stream([
+      response = [IterableStream([
         f"You said:\n```\n",
         cont2str(cnv.utterances[-1].contents,False).strip(),
         f"\n```\n",

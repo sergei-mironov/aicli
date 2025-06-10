@@ -14,6 +14,7 @@ from sys import stderr, platform, maxsize
 from textwrap import dedent
 from typing import Iterable, Callable, Any
 from traceback import print_exc
+from copy import copy, deepcopy
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
                     Stream, Logger, Parser, File)
@@ -56,6 +57,68 @@ def with_sigint(_handler):
     yield
   finally:
     signal(SIGINT,prev)
+
+
+@contextmanager
+def _handle_exceptions():
+  try:
+    yield
+  except (SystemError,KeyboardInterrupt):
+    raise
+  except Exception as err:
+    print(f"<ERROR: {str(err)}>")
+    print_exc()
+
+
+class IterableStream(Stream):
+  def __init__(self, generator, binary:None|bool=None, suggested_fname:str|None=None):
+    self.generator = generator    # Descendant-specific token generator
+    self.stop = False             # Interrupt flag
+    self.recording = None         # Stream recording
+    self.binary = binary          # Type of content (False => str; True => bytes)
+    self.suggested_fname = suggested_fname # Suggested filename with extension
+
+  def __deepcopy__(self, memo):
+    assert self.generator is None, "Cannot call deepcopy on an unread stream"
+    # Create a new instance of the current class
+    copied_obj = copy(self)
+    # Copy all instance attributes to the new instance
+    for k, v in self.__dict__.items():
+      copied_obj.__dict__[k] = deepcopy(v, memo)
+    # Store the copied object in the memo dictionary to handle recursive references
+    memo[id(self)] = copied_obj
+    return copied_obj
+
+  def gen(self):
+    """ Iterate over tokens. Should be called once in the object's lifetime. Setting stop to True
+    interrupts the generator. """
+    assert self.recording is None, "Stream.gen has been called twice"
+    self.stop = False
+    self.recording = None
+    try:
+      with _handle_exceptions():
+        for ch in self.generator:
+          if self.recording is None:
+            if isinstance(ch,str):
+              assert self.binary is not True, "Expected non-binary contents"
+              self.binary = False
+              self.recording = ""
+            else:
+              assert self.binary is not False, "Expected binary contents"
+              self.binary = True
+              self.recording = b""
+          self.recording += ch
+          yield ch
+          if self.stop:
+            break
+    finally:
+      self.generator = None
+
+  def interrupt(self):
+    """ Declare that no more tokens are going to be fetched from this stream. """
+    self.stop = True
+
+
 
 def onematch(gen:Iterable[str])->str:
   res = list(gen)
@@ -160,14 +223,14 @@ def ensure_quoted(s:str)->str:
 
 def cont2strm(c:str|bytes|Stream, allow_bytes=True) -> Stream:
   if isinstance(c,str):
-    s = Stream([c])
+    s = IterableStream([c])
   elif isinstance(c, bytes):
     if allow_bytes:
-      s = Stream([c], binary=True)
+      s = IterableStream([c], binary=True)
     else:
-      s = Stream(["<binary chunk>"])
+      s = IterableStream(["<binary chunk>"])
   elif isinstance(c, Stream):
-    s = Stream([c.recording], binary=c.binary) if c.recording is not None else c
+    s = IterableStream([c.recording], binary=c.binary) if c.recording is not None else c
   else:
     assert False, f"Invalid content chunk type {type(c)}"
   return s
@@ -385,5 +448,6 @@ def read_until_pattern(file:File, pattern:str, prompt:str) -> list[str]:
     if eof or response:
       break
   return response
+
 
 
