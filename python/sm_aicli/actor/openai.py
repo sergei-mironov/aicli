@@ -14,13 +14,11 @@ from urllib.parse import urlparse, parse_qs
 from pdb import set_trace as ST
 from collections import OrderedDict
 
-from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions,
-                     Conversation, Intention, ModelName, UserName, Utterance,
-                     Modality, ConversationException, SAU, Stream, Contents,
-                     File)
-from ..utils import (ConsoleLogger, find_last_message, err, uts_2sau,
-                     uts_lastfull, uts_lastref, cont2str,
-                     add_transparent_rectangle, read_until_pattern)
+from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, Intention,
+                     ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream,
+                     Contents, File)
+from ..utils import (ConsoleLogger, IterableStream, find_last_message, err, uts_2sau, uts_lastfull,
+                     uts_lastref, cont2str, add_transparent_rectangle, read_until_pattern)
 
 from .user import CMD_ANS
 
@@ -40,7 +38,7 @@ def url2fname(url, image_dir:str|None)->str|None:
   fdir = image_dir or "."
   return join(fdir,fname)
 
-class TextStream(Stream):
+class TextStream(IterableStream):
   def __init__(self, chunks):
     def _map(c):
       res = c.choices[0].delta.content
@@ -49,7 +47,7 @@ class TextStream(Stream):
   def gen(self):
     yield from super().gen()
 
-class BinStream(Stream):
+class BinStream(IterableStream):
   def __init__(self, chunks, **kwargs):
     super().__init__(chunks.iter_content(4*1024), binary=True, **kwargs)
   def gen(self):

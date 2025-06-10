@@ -111,18 +111,24 @@ class Resource:
   mimetype: str
   ID: str
 
-type TextItem = str | bytes | Resource
+type ContentItem = str | bytes | Resource
+
+type LocalContent = list[ContentItem]
 
 class Stream:
   """ Stream represents a promise to fetch the content from a remote source of some kind. The
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
   `recording` array. All tokens must be of a same type (str or bytes). """
+  def __init__(self):
+    self.stop = False             # Interrupt flag
+    self.recording = None         # Stream recording
+
   def gen(self) -> Iterable[TextItem]:
     """ Yield next TextItem. """
     raise NotImplementedError
   def interrupt(self) -> None:
     """ Cause `gen` to exit. """
-    raise NotImplementedError
+    self.stop = True
 
 
 # Utterance content is a list of items, where an item is either a string, an array of bytes (for

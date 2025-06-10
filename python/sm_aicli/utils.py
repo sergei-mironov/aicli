@@ -17,7 +17,7 @@ from traceback import print_exc
 from copy import copy, deepcopy
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
-                    Stream, Logger, Parser, File)
+                    Stream, Logger, Parser, File, TextItem)
 
 REVISION:str|None
 try:
@@ -72,9 +72,8 @@ def _handle_exceptions():
 
 class IterableStream(Stream):
   def __init__(self, generator, binary:None|bool=None, suggested_fname:str|None=None):
+    super().__init__()
     self.generator = generator    # Descendant-specific token generator
-    self.stop = False             # Interrupt flag
-    self.recording = None         # Stream recording
     self.binary = binary          # Type of content (False => str; True => bytes)
     self.suggested_fname = suggested_fname # Suggested filename with extension
 
@@ -89,7 +88,7 @@ class IterableStream(Stream):
     memo[id(self)] = copied_obj
     return copied_obj
 
-  def gen(self):
+  def gen(self) -> Iterable[TextItem]:
     """ Iterate over tokens. Should be called once in the object's lifetime. Setting stop to True
     interrupts the generator. """
     assert self.recording is None, "Stream.gen has been called twice"
@@ -113,11 +112,6 @@ class IterableStream(Stream):
             break
     finally:
       self.generator = None
-
-  def interrupt(self):
-    """ Declare that no more tokens are going to be fetched from this stream. """
-    self.stop = True
-
 
 
 def onematch(gen:Iterable[str])->str:
