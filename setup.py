@@ -63,7 +63,7 @@ setup(
     join('.', 'sh', 'aicli-grammar.sh'),
     join('.', 'sh', 'aicli-style.sh'),
   ],
-  python_requires='>=3.6',
+  python_requires='>=3.12',
   author="Sergei Mironov",
   author_email="sergei.v.mironov@proton.me",
   url='https://github.com/sergei-mironov/aicli',

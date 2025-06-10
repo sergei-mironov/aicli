@@ -23,6 +23,8 @@ export LITREPL_WORKDIR="$PROJECT_SOURCE"
 export LITREPL_PYTHON_AUXDIR="$PROJECT_SOURCE/_litrepl/python"
 export LITREPL_AI_AUXDIR="$PROJECT_SOURCE/_litrepl/ai"
 
+export VIM_PLUGINS="$PROJECT_ROOT/vimrc"
+
 # FIXME: Do we need the below?
 # unset vim
 # unset VIMRUNTIME

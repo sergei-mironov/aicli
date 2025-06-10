@@ -10,7 +10,7 @@ let
                    pkg-config expect fim pdf2svg;
     inherit (pkgs.lib) fileContents;
 
-    python = pkgs.python3;
+    python = pkgs.python312;
 
     gpt4all-src = pkgs.gpt4all.src;
 
