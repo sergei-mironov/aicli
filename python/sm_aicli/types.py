@@ -100,16 +100,21 @@ class Intention:
            dbg_flag=False):
     return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
 
+
 @dataclass
 class Reference:
   mimetype: str
-  ID: str
+  url: str
+
+@dataclass
+class ActorReference(Reference):
+  actor_name: ActorName|None = None
 
 type ContentItem = str | bytes | Reference
 
 type LocalContent = list[ContentItem]
 
-class Stream:
+class Stream(ABC):
   """ Stream represents a promise to fetch the content from a remote source of some kind. The
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
   `recording` array. All tokens must be of a same type (str or bytes). """
@@ -117,11 +122,13 @@ class Stream:
     self.stop = False             # Interrupt flag
     self.recording = None         # Stream recording
 
+  @abstractmethod
   def gen(self) -> Iterable[ContentItem]:
     """ Yield next ContentItem. """
-    raise NotImplementedError
+    raise NotImplementedError()
+
   def interrupt(self) -> None:
-    """ Cause `gen` to exit. """
+    """ Makes `gen` exit. """
     self.stop = True
 
 
