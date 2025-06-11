@@ -4,7 +4,7 @@ from json import loads as json_loads, dumps as json_dumps
 from itertools import cycle
 from typing import Any
 
-from ..types import (Actor, ActorName, ActorOptions, ActorView, Intention, Conversation,
+from ..types import (Actor, ActorName, ActorOptions, ActorState, Intention, Conversation,
                      Utterance, UserName, File, Parser)
 from ..utils import read_until_pattern, cont2str, IterableStream
 
@@ -19,7 +19,7 @@ class DummyActor(Actor):
   def reset(self):
     pass
 
-  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, act:ActorState, cnv:Conversation) -> Utterance:
     if self.opt.replay:
       response = read_until_pattern(self.file, CMD_ANS, '(DUMMY)>>> ')
     else:

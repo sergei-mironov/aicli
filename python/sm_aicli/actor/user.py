@@ -14,8 +14,8 @@ from io import StringIO
 from pdb import set_trace as ST
 from subprocess import run, PIPE
 
-from ..types import (Logger, Actor, ActorName, ActorOptions, Intention, Utterance,
-                     Conversation, ActorView, ModelName, Modality, QuotedString, UnquotedString,
+from ..types import (Logger, Actor, ActorDesc, ActorName, ActorOptions, Intention, Utterance,
+                     Conversation, ActorState, ModelName, Modality, QuotedString, UnquotedString,
                      Parser, File)
 
 from ..utils import (ConsoleLogger, with_sigint, cont2strm, version, sys2exitcode, WLState,
@@ -306,7 +306,7 @@ class Repl(Interpreter):
   def __init__(self, owner:"UserActor", logger:Logger):
     self.owner = owner
     self.buffers:dict[str,list[str|bytes]] = defaultdict(list)  # Changed type to list[str]
-    self.av = None
+    self.opts: ActorDesc|None = None
     self.actor_next = None
     self.rawbin = False
     self._reset()
@@ -388,7 +388,7 @@ class Repl(Interpreter):
   def command(self, tree):
     self._finish_echo()
     command = tree.children[0].value
-    opts = self.av.options
+    opts = self.opts
     if command == CMD_ECHO:
       self.in_echo = 1
     elif command == CMD_ASK:
@@ -402,7 +402,7 @@ class Repl(Interpreter):
             contents=self.buffers[IN],
             intention=Intention.init(
               actor_next=self.actor_next,
-              actor_updates=self.av,
+              actor_updates=self.opts,
             )
           )
         )
@@ -419,7 +419,7 @@ class Repl(Interpreter):
         unparsed=tree.meta.end_pos,
         utterance=Utterance.init(
           name=self.owner.name,
-          intention=Intention.init(exit_flag=True, actor_updates=self.av)
+          intention=Intention.init(exit_flag=True, actor_updates=self.opts)
         )
       )
     elif command == CMD_MODEL:
@@ -803,10 +803,10 @@ class UserActor(Actor):
     except IndexError:
       return None
 
-  def _sync(self, av:ActorView, cnv:Conversation):
+  def _sync(self, ast:ActorState, cnv:Conversation):
     assert self.cnv_top <= len(cnv.utterances)
-    if self.repl.av is None:
-      self.repl.av = av
+    if self.repl.opts is None:
+      self.repl.opts = ast.get_desc()
     for i in range(self.cnv_top, len(cnv.utterances)):
       u:Utterance = cnv.utterances[i]
       if u.actor_name != self.name:
@@ -848,7 +848,7 @@ class UserActor(Actor):
   def reset(self):
     self.cnv_top = 0
 
-  def react(self, av:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, av:ActorState, cnv:Conversation) -> Utterance:
     # FIMXE: A minor problem here in the paste_mode [1]: interpreter eats the
     # input first, and handles the paste mode after that. It should raise
     # InterpreterPause instead.

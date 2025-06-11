@@ -6,7 +6,7 @@ from os.path import isfile
 from dataclasses import dataclass
 from collections import OrderedDict
 
-from ..types import (Conversation, Actor, ActorName, ActorView, ActorOptions, Utterance,
+from ..types import (Conversation, Actor, ActorName, ActorState, ActorOptions, Utterance,
                      Intention, ModelName, UserName, SAU, Stream)
 from ..utils import (ConsoleLogger, expandpath, find_last_message, uts_lastfullref, uts_2sau, firstfile)
 
@@ -67,7 +67,7 @@ class GPT4AllActor(Actor):
     assert sau[-1]['role'] == 'user', f"{sau}"
     return sau[:-1], sau[-1]['content']
 
-  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, act:ActorState, cnv:Conversation) -> Utterance:
     assert self.chunks is None, "Re-entering is not allowed"
     sau, prompt = self._sync(cnv)
     self.logger.dbg(f"sau: {sau}")

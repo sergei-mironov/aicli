@@ -14,7 +14,7 @@ from urllib.parse import urlparse, parse_qs
 from pdb import set_trace as ST
 from collections import OrderedDict
 
-from ..types import (Actor, ActorName, ActorView, PathStr, ActorOptions, Conversation, Intention,
+from ..types import (Actor, ActorName, ActorState, PathStr, ActorOptions, Conversation, Intention,
                      ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream,
                      Contents, File)
 from ..utils import (ConsoleLogger, IterableStream, find_last_message, err, uts_2sau, uts_lastfull,
@@ -83,7 +83,7 @@ class OpenAIActor(Actor):
       self.cache.popitem(last=False)
     return sau
 
-  def _react_text(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def _react_text(self, act:ActorState, cnv:Conversation) -> Utterance:
     sau = self._cnv2sau(cnv)
     self.logger.dbg(f"sau: {sau}")
     response = []
@@ -128,7 +128,7 @@ class OpenAIActor(Actor):
       acc.append(BinStream(url_response, suggested_fname=url2fname(url, self.opt.image_dir)))
     return acc
 
-  def _react_image_create(self, act:ActorView, cont:Contents) -> Utterance:
+  def _react_image_create(self, act:ActorState, cont:Contents) -> Utterance:
     prompt = cont2str(cont)
     if self.opt.verbose > 0:
       self.logger.dbg(f"create image prompt: {prompt}")
@@ -153,7 +153,7 @@ class OpenAIActor(Actor):
     except RequestException as err:
       raise ConversationException(str(err)) from err
 
-  def _react_image_modify(self, act:ActorView, cont:Contents) -> Utterance:
+  def _react_image_modify(self, act:ActorState, cont:Contents) -> Utterance:
     bbuf,sbuf = BytesIO(),StringIO()
     for cf in cont:
       if isinstance(cf,bytes):
@@ -186,7 +186,7 @@ class OpenAIActor(Actor):
     except RequestException as err:
       raise ConversationException(str(err)) from err
 
-  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, act:ActorState, cnv:Conversation) -> Utterance:
     if len(cnv.utterances) == 0:
       raise ConversationException(f'No context')
     modality = self.opt.modality

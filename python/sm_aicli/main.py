@@ -9,17 +9,18 @@ from pdb import Pdb
 from argparse import ArgumentParser
 from typing import Any
 from functools import partial
+from dataclasses import dataclass
+from copy import deepcopy
 from gnureadline import (parse_and_bind, clear_history, read_history_file,
                          write_history_file, set_completer, set_completer_delims)
 
 from lark.visitors import Interpreter
 from lark import Lark
 
-from sm_aicli import (
-  Conversation, ActorState, ActorName, Utterance, UserName, Modality,
-  UserActor, ActorOptions, onematch, expanddir, OpenAIActor, GPT4AllActor,
-  DummyActor, info, err, with_sigint, args2script, File, Parser, read_configs
-)
+from sm_aicli import (Actor, Conversation, ActorState, ActorName, Utterance, UserName, Modality,
+                      UserActor, ActorOptions, onematch, expanddir, OpenAIActor, GPT4AllActor,
+                      DummyActor, Reference, Stream, info, err, with_sigint, args2script, File,
+                      Parser, read_configs)
 
 from .utils import version, REVISION
 
@@ -195,6 +196,21 @@ class StdinFile(File):
       return True, None
 
 
+@dataclass
+class ActorStateImpl(ActorState):
+  actors: dict[ActorName, Actor]
+
+  def get_desc(self) -> dict[ActorName, ActorOptions]:
+    return {n:deepcopy(a.get_options()) for n,a in self.actors.items()}
+
+  def deref(self, Reference) -> tuple[Reference, Stream]:
+    raise NotImplementedError()
+
+  @staticmethod
+  def init():
+    return ActorStateImpl({})
+
+
 def main(cmdline=None, providers=None):
   args = ARG_PARSER.parse_args(cmdline)
 
@@ -230,7 +246,7 @@ def main(cmdline=None, providers=None):
   } if providers is None else providers
 
   cnv = Conversation.init()
-  st = ActorState.init()
+  st = ActorStateImpl.init()
   current_actor = UserName()
   current_modality = Modality.Text
   user = UserActor(UserName(), ActorOptions.init(), args, file)
@@ -238,7 +254,7 @@ def main(cmdline=None, providers=None):
 
   while True:
     try:
-      utterance = st.actors[current_actor].react(st.get_view(), cnv)
+      utterance = st.actors[current_actor].react(st, cnv)
       assert utterance.actor_name == st.actors[current_actor].name, (
         f"{utterance.actor_name} != {st.actors[current_actor].name}"
       )
@@ -249,7 +265,7 @@ def main(cmdline=None, providers=None):
         Pdb(nosigint=True).set_trace(_getframe())
         file._reload_history()
       if intention.actor_updates is not None:
-        for name, opt in intention.actor_updates.options.items():
+        for name, opt in intention.actor_updates.items():
           actor = st.actors.get(name)
           if actor is not None:
             actor.set_options(opt)

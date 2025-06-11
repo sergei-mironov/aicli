@@ -4,6 +4,7 @@ from copy import deepcopy
 from enum import Enum
 from contextlib import contextmanager
 from traceback import print_exc
+from abc import ABC, abstractmethod
 
 class ConversationException(ValueError):
   pass
@@ -82,21 +83,14 @@ class ActorOptions:
 # Actor name is either an AI model name or a tag representing a user actor.
 ActorName = ModelName | UserName
 
-@dataclass
-class ActorView:
-  """ Serializable subset of actor options. ActorView is a Monoid where `mappend` is implicit. """
-  options: dict[ActorName, ActorOptions]
-
-  @staticmethod
-  def init():
-    return ActorView({})
+ActorDesc = dict[ActorName, ActorOptions]
 
 @dataclass
 class Intention:
   """ Intention encodes actions that an actor might want to perform in addition to saying an
   utterance. """
   actor_next: ActorName|None      # Select next actor
-  actor_updates: ActorView|None   # Update to the list of actors
+  actor_updates: ActorDesc|None   # Update to the list of actors
   exit_flag:bool                  # Exit the application
   reset_flag:bool                 # Reset the conversation
   dbg_flag:bool                   # Run the Python debugger
@@ -107,11 +101,11 @@ class Intention:
     return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
 
 @dataclass
-class Resource:
+class Reference:
   mimetype: str
   ID: str
 
-type ContentItem = str | bytes | Resource
+type ContentItem = str | bytes | Reference
 
 type LocalContent = list[ContentItem]
 
@@ -175,19 +169,17 @@ class Conversation:
 # and GPT4All APIs.
 SAU = list[dict[str, str]]
 
-@dataclass
-class ActorState:
+class ActorState(ABC):
   """ Actor state represent a set of non-serializable resources allocated by conversation
   participants - actors."""
-  actors: dict[ActorName, "Actor"]
 
-  def get_view(self) -> ActorView:
-    """ For each actor, produce a serializable set of options. """
-    return ActorView({n:deepcopy(a.get_options()) for n,a in self.actors.items()})
+  @abstractmethod
+  def get_desc(self) -> ActorDesc:
+    raise NotImplementedError()
 
-  @staticmethod
-  def init():
-    return ActorState({})
+  @abstractmethod
+  def deref(self, Reference) -> tuple[Reference, Stream]:
+    raise NotImplementedError()
 
 
 class Actor:
@@ -197,7 +189,7 @@ class Actor:
     self.name = name
     self.opt = opt
 
-  def react(self, act:ActorView, cnv:Conversation) -> Utterance:
+  def react(self, act:ActorState, cnv:Conversation) -> Utterance:
     """ Take a view on participants, and a conversation object, produce a new Utterance to be added
     to the conversation. Actors are allowed to cache the conversation in some actor-specific way.
     """
@@ -208,11 +200,13 @@ class Actor:
     raise NotImplementedError()
 
   def set_options(self, opt:ActorOptions)->None:
-    """ Set new actor options """
+    """ Set new actor options.
+    FIXME: remove? Use react() to change options """
     self.opt = opt
 
   def get_options(self)->ActorOptions:
-    """ Get actor's options """
+    """ Get actor's options.
+    FIXME: Remove? There should be no need to ask clients for options? """
     return self.opt
 
 
