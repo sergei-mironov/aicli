@@ -84,7 +84,7 @@ ActorName = ModelName | UserName
 
 @dataclass
 class ActorView:
-  """ Serializable subset of actor options """
+  """ Serializable subset of actor options. ActorView is a Monoid where `mappend` is implicit. """
   options: dict[ActorName, ActorOptions]
 
   @staticmethod
@@ -96,7 +96,7 @@ class Intention:
   """ Intention encodes actions that an actor might want to perform in addition to saying an
   utterance. """
   actor_next: ActorName|None      # Select next actor
-  actor_updates: ActorView|None   # Update the list of actors
+  actor_updates: ActorView|None   # Update to the list of actors
   exit_flag:bool                  # Exit the application
   reset_flag:bool                 # Reset the conversation
   dbg_flag:bool                   # Run the Python debugger
@@ -134,12 +134,14 @@ class Stream:
 # Utterance content is a list of items, where an item is either a string, an array of bytes (for
 # pictures), or a stream of thereof. The stream represents a promise to fetch the data from a remote
 # source of some kind.
+# FIXME: Switch to `ContentItem` and co.
 Contents = list[str|bytes|Stream]
 
 @dataclass
 class Utterance:
   """ An abstraction over conversation utterances. An utterance has its owner (issuer), a target
-  actor, a contents, and an (non-verbal) intention. """
+  actor, a contents, and an (non-verbal) intention. A conversation is setializable provided that
+  Contents contains no unread Streams."""
   actor_name: ActorName
   intention: Intention
   contents: Contents
