@@ -18,8 +18,8 @@ from ..types import (Logger, Actor, ActorDesc, ActorName, ActorOptions, Intentio
                      Conversation, ActorState, ModelName, Modality, QuotedString, UnquotedString,
                      Parser, File)
 
-from ..utils import (ConsoleLogger, with_sigint, cont2strm, version, sys2exitcode, WLState,
-                     wraplong, onematch, expanddir, info, set_global_verbosity)
+from ..utils import (IterableStream, ConsoleLogger, with_sigint, cont2strm, version, sys2exitcode,
+                     WLState, wraplong, onematch, expanddir, info, set_global_verbosity)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -399,7 +399,7 @@ class Repl(Interpreter):
           unparsed=tree.meta.end_pos,
           utterance=Utterance.init(
             name=self.owner.name,
-            contents=self.buffers[IN],
+            contents=IterableStream(self.buffers[IN]),
             intention=Intention.init(
               actor_next=self.actor_next,
               actor_updates=self.opts,
@@ -812,7 +812,7 @@ class UserActor(Actor):
       if u.actor_name != self.name:
         need_eol = False
         buffer_out = []
-        for cont in u.contents:
+        for cont in u.contents.gen():
           s = cont2strm(cont)
           def _handler(*args, **kwargs):
             s.interrupt()

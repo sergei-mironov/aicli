@@ -7,7 +7,8 @@ def actor(name):
   return ModelName('test',name)
 
 def ut(owner, content, address):
-  return Utterance.init(owner, Intention.init(address), [content] if content else [])
+  return Utterance.init(owner, Intention.init(address),
+                        IterableStream([content]) if content else None)
 
 
 def test_uts_2sau():

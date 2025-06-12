@@ -23,7 +23,7 @@ class DummyActor(Actor):
     if self.opt.replay:
       response = read_until_pattern(self.file, CMD_ANS, '(DUMMY)>>> ')
     else:
-      response = [IterableStream([
+      response = [
         f"You said:\n```\n",
         cont2str(cnv.utterances[-1].contents,False).strip(),
         f"\n```\n",
@@ -32,5 +32,7 @@ class DummyActor(Actor):
         f"My api key is '{self.opt.apikey}'\n",
         f"My temperature is '{self.opt.temperature}'\n",
         f"My prompt is '{self.opt.prompt}'\n",
-      ])]
-    return Utterance.init(self.name, Intention.init(actor_next=UserName()), response)
+      ]
+    return Utterance.init(self.name,
+                          Intention.init(actor_next=UserName()),
+                          IterableStream(response))

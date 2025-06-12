@@ -136,7 +136,8 @@ class Stream(ABC):
 # pictures), or a stream of thereof. The stream represents a promise to fetch the data from a remote
 # source of some kind.
 # FIXME: Switch to `ContentItem` and co.
-Contents = list[str|bytes|Stream]
+# Contents = list[str|bytes|Stream]
+Contents = Stream
 
 @dataclass
 class Utterance:
@@ -145,12 +146,13 @@ class Utterance:
   Contents contains no unread Streams."""
   actor_name: ActorName
   intention: Intention
-  contents: Contents
-  def init(name, intention, contents:Contents|None = None):
-    assert contents is None or isinstance(contents, list), contents
-    return Utterance(name, intention, contents or [])
+  contents: Stream|None
+  def init(name, intention, contents:Stream|None = None):
+    assert contents is None or isinstance(contents, Stream), \
+      f"Utterance requires Stream contents or None, got {contents}"
+    return Utterance(name, intention, contents)
   def is_empty(ut):
-    return len(ut.contents)==0
+    return ut.contents is None
 
 Utterances = list[Utterance]
 UtteranceId = int

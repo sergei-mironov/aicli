@@ -224,18 +224,19 @@ def cont2strm(c:str|bytes|Stream, allow_bytes=True) -> Stream:
     else:
       s = IterableStream(["<binary chunk>"])
   elif isinstance(c, Stream):
-    s = IterableStream([c.recording], binary=c.binary) if c.recording is not None else c
+    if c.recording is None:
+      s = c
+    else:
+      s = IterableStream([c.recording], binary=c.binary)
   else:
     assert False, f"Invalid content chunk type {type(c)}"
   return s
 
 
 def cont2str(cs:Contents, allow_bytes=True)->str|bytes:
-  assert isinstance(cs, list), cs
   acc:str|bytes|None = None
-  for c in cs:
-    for token in cont2strm(c, allow_bytes=allow_bytes).gen():
-      acc = token if acc is None else (acc + token)
+  for token in cont2strm(cs, allow_bytes=allow_bytes).gen():
+    acc = token if acc is None else (acc + token)
   return acc or ''
 
 def firstfile(paths) -> str|None:
