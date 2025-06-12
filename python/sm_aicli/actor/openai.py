@@ -86,9 +86,9 @@ class OpenAIActor(Actor):
   def _react_text(self, act:ActorState, cnv:Conversation) -> Utterance:
     sau = self._cnv2sau(cnv)
     self.logger.dbg(f"sau: {sau}")
-    response = []
+    response = None
     if self.opt.replay:
-      response = read_until_pattern(self.file, CMD_ANS, 'OpenAI>>> ')
+      response = IterableStream(read_until_pattern(self.file, CMD_ANS, 'OpenAI>>> '))
     else:
       try:
         chunks = self.client.chat.completions.create(
@@ -98,10 +98,10 @@ class OpenAIActor(Actor):
           temperature=self.opt.temperature,
           seed=self.opt.seed,
         )
-        response = [TextStream(chunks)]
+        response = TextStream(chunks)
       except OpenAIError as err:
         raise ConversationException(str(err)) from err
-    assert len(response)>0, "Empty response"
+    assert response is not None
     return Utterance.init(self.name, Intention.init(actor_next=UserName()), response)
 
   def _cnv2cont(self, cnv:Conversation) -> Contents:

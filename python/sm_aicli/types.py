@@ -101,15 +101,21 @@ class Intention:
     return Intention(actor_next, actor_updates, exit_flag, reset_flag, dbg_flag)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Reference:
+  pass
+
+@dataclass(frozen=True)
+class RemoteReference(Reference):
   mimetype: str
   url: str
 
+@dataclass(frozen=True)
 class LocalReference(Reference):
-  pass
+  mimetype: str
+  path: str
 
-@dataclass
+@dataclass(frozen=True)
 class ActorReference(Reference):
   actor_name: ActorName|None = None
 
@@ -121,9 +127,11 @@ class Stream(ABC):
   """ Stream represents a promise to fetch the content from a remote source of some kind. The
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
   `recording` array. All tokens must be of a same type (str or bytes). """
-  def __init__(self):
-    self.stop = False             # Interrupt flag
-    self.recording = None         # Stream recording
+  def __init__(self, reference:Reference=Reference()):
+    self.binary: bool|None = None          # Binary flag, None means Unknown
+    self.stop:bool = False                 # Interrupt flag
+    self.recording:str|bytes|None = None   # Stream recording
+    self.reference:Reference = reference
 
   @abstractmethod
   def gen(self) -> Iterable[ContentItem]:
@@ -181,18 +189,19 @@ class Conversation:
 # and GPT4All APIs.
 SAU = list[dict[str, str]]
 
-class ActorState(ABC):
-  """ Actor state represent a set of non-serializable resources allocated by conversation
-  participants - actors."""
 
-  @abstractmethod
-  def get_desc(self) -> ActorDesc:
-    raise NotImplementedError()
-
+class Dereferencer(ABC):
   @abstractmethod
   def deref(self, Reference) -> tuple[Reference, Stream]:
     raise NotImplementedError()
 
+class ActorViewer(ABC):
+  @abstractmethod
+  def get_desc(self) -> ActorDesc:
+    raise NotImplementedError()
+
+class ActorState(ActorViewer, Dereferencer):
+  pass
 
 class Actor:
   """ A conversation participant, known by name. The descendants track actor resources such as

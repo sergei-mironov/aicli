@@ -17,7 +17,7 @@ from traceback import print_exc
 from copy import copy, deepcopy
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
-                    Stream, Logger, Parser, File, ContentItem)
+                    Stream, Logger, Parser, File, ContentItem, Dereferencer)
 
 REVISION:str|None
 try:
@@ -238,6 +238,16 @@ def cont2str(cs:Contents, allow_bytes=True)->str|bytes:
   for token in cont2strm(cs, allow_bytes=allow_bytes).gen():
     acc = token if acc is None else (acc + token)
   return acc or ''
+
+def traverse_stream(s:Stream,
+                    handler:Callable[[Stream, ContentItem], Stream|None]
+                    ) -> None:
+  def _traverse(s):
+    for item in s.gen():
+      s2 = handler(s,item)
+      if s2 is not None:
+        _traverse(s2)
+  _traverse(s)
 
 def firstfile(paths) -> str|None:
   for p in paths:

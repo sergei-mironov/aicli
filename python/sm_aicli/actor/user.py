@@ -14,12 +14,12 @@ from io import StringIO
 from pdb import set_trace as ST
 from subprocess import run, PIPE
 
-from ..types import (Logger, Actor, ActorDesc, ActorName, ActorOptions, Intention, Utterance,
-                     Conversation, ActorState, ModelName, Modality, QuotedString, UnquotedString,
-                     Parser, File)
+from ..types import (Stream, Logger, Actor, ActorDesc, ActorName, ActorOptions, Intention,
+                     Utterance, Conversation, ActorState, ModelName, Modality, QuotedString,
+                     UnquotedString, Parser, File, ContentItem, Reference, LocalReference)
 
-from ..utils import (IterableStream, ConsoleLogger, with_sigint, cont2strm, version, sys2exitcode,
-                     WLState, wraplong, onematch, expanddir, info, set_global_verbosity)
+from ..utils import (IterableStream, ConsoleLogger, with_sigint, version, sys2exitcode, WLState,
+                     wraplong, onematch, expanddir, info, set_global_verbosity, traverse_stream)
 
 CMD_APPEND = "/append"
 CMD_ASK  = "/ask"
@@ -803,45 +803,97 @@ class UserActor(Actor):
     except IndexError:
       return None
 
-  def _sync(self, ast:ActorState, cnv:Conversation):
+  def _sync2(self, ast:ActorState, cnv:Conversation):
     assert self.cnv_top <= len(cnv.utterances)
     if self.repl.opts is None:
       self.repl.opts = ast.get_desc()
     for i in range(self.cnv_top, len(cnv.utterances)):
       u:Utterance = cnv.utterances[i]
-      if u.actor_name != self.name:
-        need_eol = False
-        buffer_out = []
-        def _handler(*args, **kwargs):
-          u.contents.interrupt()
-        with with_sigint(_handler):
-          if u.contents.binary and not self.repl.rawbin:
-            assert u.contents.suggested_fname is not None, \
+      if u.actor_name == self.name:
+        continue
+      need_eol = False
+      buffer_out = []
+      streams = {}
+
+      def _sigint(*args, **kwargs):
+        for s in streams.values():
+          s.interrupt()
+
+      def _printer(s:Stream, token:ContentItem) -> Stream|None:
+        nonlocal need_eol
+        streams[s.reference] = s
+        stream2 = None
+        if isinstance(token, bytes):
+          need_eol = True
+          stdout.buffer.write(token)
+          stdout.buffer.flush()
+        elif isinstance(token, str):
+          need_eol = not token.rstrip(' ').endswith("\n")
+          self.repl._print(token, end='')
+        elif isinstance(token, Reference):
+          token, sn = ast.deref(token)
+          if sn.binary and not self.repl.rawbin:
+            need_eol = True
+            assert sn.suggested_fname is not None, \
               f"Suggested file name for binary stream must be set"
-            with open(u.contents.suggested_fname, 'wb') as f:
-              for token in u.contents.gen():
+            with open(sn.suggested_fname, 'wb') as f:
+              for token in sn.gen():
                 f.write(token)
             self.logger.info("Binary stream has been saved to file")
-            out_content = u.contents.suggested_fname
-            buffer_out.append(out_content + ' ')
-            self.repl._print(f"{out_content}", flush=True)
+            buffer_out.append(sn.suggested_fname)
+            self.repl._print(f"{sn.suggested_fname}", flush=True)
           else:
-            for token in u.contents.gen():
-              if isinstance(token, bytes):
-                need_eol = True
-                stdout.buffer.write(token)
-                stdout.buffer.flush()
-              elif isinstance(token, str):
-                need_eol = not token.rstrip(' ').endswith("\n")
-                # print(token, end='', flush=True)
-                # wraplong(token, self.repl.wlstate, lambda x: print(x, end=''))
-                self.repl._print(token, end='')
-              buffer_out.append(token)
-        self.repl.buffers[OUT] = buffer_out
-        if need_eol:
-          self.repl._print()
-        self.repl._print(flush=True, end='')
-      self.cnv_top += 1
+            stream2 = sn
+        buffer_out.append(token)
+        return stream2
+
+      with with_sigint(_sigint):
+        traverse_stream(u.contents, _printer)
+      self.repl.buffers[OUT] = buffer_out
+      if need_eol:
+        self.repl._print()
+      self.repl._print(flush=True, end='')
+    self.cnv_top += 1
+
+  # def _sync(self, ast:ActorState, cnv:Conversation):
+  #   assert self.cnv_top <= len(cnv.utterances)
+  #   if self.repl.opts is None:
+  #     self.repl.opts = ast.get_desc()
+  #   for i in range(self.cnv_top, len(cnv.utterances)):
+  #     u:Utterance = cnv.utterances[i]
+  #     if u.actor_name != self.name:
+  #       need_eol = False
+  #       buffer_out = []
+  #       def _handler(*args, **kwargs):
+  #         u.contents.interrupt()
+  #       with with_sigint(_handler):
+  #         if u.contents.binary and not self.repl.rawbin:
+  #           assert u.contents.suggested_fname is not None, \
+  #             f"Suggested file name for binary stream must be set"
+  #           with open(u.contents.suggested_fname, 'wb') as f:
+  #             for token in u.contents.gen():
+  #               f.write(token)
+  #           self.logger.info("Binary stream has been saved to file")
+  #           out_content = u.contents.suggested_fname
+  #           buffer_out.append(out_content + ' ')
+  #           self.repl._print(f"{out_content}", flush=True)
+  #         else:
+  #           for token in u.contents.gen():
+  #             if isinstance(token, bytes):
+  #               need_eol = True
+  #               stdout.buffer.write(token)
+  #               stdout.buffer.flush()
+  #             elif isinstance(token, str):
+  #               need_eol = not token.rstrip(' ').endswith("\n")
+  #               # print(token, end='', flush=True)
+  #               # wraplong(token, self.repl.wlstate, lambda x: print(x, end=''))
+  #               self.repl._print(token, end='')
+  #             buffer_out.append(token)
+  #       self.repl.buffers[OUT] = buffer_out
+  #       if need_eol:
+  #         self.repl._print()
+  #       self.repl._print(flush=True, end='')
+  #     self.cnv_top += 1
 
   def reset(self):
     self.cnv_top = 0
@@ -850,7 +902,7 @@ class UserActor(Actor):
     # FIMXE: A minor problem here in the paste_mode [1]: interpreter eats the
     # input first, and handles the paste mode after that. It should raise
     # InterpreterPause instead.
-    self._sync(av, cnv)
+    self._sync2(av, cnv)
     normal_parser = ReplParser(self.repl)
     paste_parser = PasteModeReplParser(self.repl)
 
