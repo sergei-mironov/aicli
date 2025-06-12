@@ -855,46 +855,6 @@ class UserActor(Actor):
       self.repl._print(flush=True, end='')
     self.cnv_top += 1
 
-  # def _sync(self, ast:ActorState, cnv:Conversation):
-  #   assert self.cnv_top <= len(cnv.utterances)
-  #   if self.repl.opts is None:
-  #     self.repl.opts = ast.get_desc()
-  #   for i in range(self.cnv_top, len(cnv.utterances)):
-  #     u:Utterance = cnv.utterances[i]
-  #     if u.actor_name != self.name:
-  #       need_eol = False
-  #       buffer_out = []
-  #       def _handler(*args, **kwargs):
-  #         u.contents.interrupt()
-  #       with with_sigint(_handler):
-  #         if u.contents.binary and not self.repl.rawbin:
-  #           assert u.contents.suggested_fname is not None, \
-  #             f"Suggested file name for binary stream must be set"
-  #           with open(u.contents.suggested_fname, 'wb') as f:
-  #             for token in u.contents.gen():
-  #               f.write(token)
-  #           self.logger.info("Binary stream has been saved to file")
-  #           out_content = u.contents.suggested_fname
-  #           buffer_out.append(out_content + ' ')
-  #           self.repl._print(f"{out_content}", flush=True)
-  #         else:
-  #           for token in u.contents.gen():
-  #             if isinstance(token, bytes):
-  #               need_eol = True
-  #               stdout.buffer.write(token)
-  #               stdout.buffer.flush()
-  #             elif isinstance(token, str):
-  #               need_eol = not token.rstrip(' ').endswith("\n")
-  #               # print(token, end='', flush=True)
-  #               # wraplong(token, self.repl.wlstate, lambda x: print(x, end=''))
-  #               self.repl._print(token, end='')
-  #             buffer_out.append(token)
-  #       self.repl.buffers[OUT] = buffer_out
-  #       if need_eol:
-  #         self.repl._print()
-  #       self.repl._print(flush=True, end='')
-  #     self.cnv_top += 1
-
   def reset(self):
     self.cnv_top = 0
 
