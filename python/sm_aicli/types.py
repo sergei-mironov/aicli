@@ -106,6 +106,9 @@ class Reference:
   mimetype: str
   url: str
 
+class LocalReference(Reference):
+  pass
+
 @dataclass
 class ActorReference(Reference):
   actor_name: ActorName|None = None
@@ -137,7 +140,7 @@ class Stream(ABC):
 # source of some kind.
 # FIXME: Switch to `ContentItem` and co.
 # Contents = list[str|bytes|Stream]
-Contents = Stream
+type Contents = Stream
 
 @dataclass
 class Utterance:
