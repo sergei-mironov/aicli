@@ -94,8 +94,7 @@ class OpenAIActor(Actor):
       # acc.append(BinStream(url_response, suggested_fname=url2fname(url, self.opt.image_dir)))
     return acc
 
-  def _react_image_create(self, act:ActorState, cont:Contents) -> Utterance:
-    prompt = cont2str(cont)
+  def _react_image_create(self, act:ActorState, prompt:str) -> Utterance:
     if self.opt.verbose > 0:
       self.logger.dbg(f"create image prompt: {prompt}")
     if self.opt.seed is not None:
@@ -119,23 +118,14 @@ class OpenAIActor(Actor):
     except RequestException as err:
       raise ConversationException(str(err)) from err
 
-  def _react_image_modify(self, act:ActorState, cont:Contents) -> Utterance:
-    bbuf,sbuf = BytesIO(),StringIO()
-    for cf in cont:
-      if isinstance(cf,bytes):
-        bbuf.write(cf)
-      elif isinstance(cf,str):
-        sbuf.write(cf)
-      else:
-        assert False, f"Unsupported content fragemnt type {type(cf)}"
-
-    self.logger.dbg(f"Image editing prompt: {sbuf.getvalue()}")
+  def _react_image_modify(self, act:ActorState, prompt:str, image:BytesIO) -> Utterance:
+    self.logger.dbg(f"Image editing prompt: {prompt}")
     if self.opt.seed is not None:
       self.logger.warn(f"Image editing does not support seed")
     try:
       response = self.client.images.edit(
-        image=bbuf,
-        prompt=sbuf.getvalue(),
+        image=image,
+        prompt=prompt,
         model=self.name.model,
         n=self.opt.imgnum or 1,
         size=self.opt.imgsz or "256x256",
@@ -165,10 +155,21 @@ class OpenAIActor(Actor):
       return self._react_text(act, cnv)
     elif modality == Modality.Image:
       cont = self._cnv2cont(cnv)
-      if any([isinstance(cf, bytes) for cf in cont]):
-        return self._react_image_modify(act, cont)
+      bbuf,sbuf = None,StringIO()
+      for cf in cont.gen():
+        match cf:
+          case bytes():
+            if bbuf is None:
+              bbuf = BytesIO()
+            bbuf.write(cf)
+          case str():
+            sbuf.write(cf)
+          case _:
+            raise ValueError(f"Unsupported content type: {cf}")
+      if bbuf is not None:
+        return self._react_image_modify(act, sbuf.getvalue(), bbuf)
       else:
-        return self._react_image_create(act, cont)
+        return self._react_image_create(act, sbuf.getvalue())
     else:
       raise ConversationException(f'Unsupported modality {modality}')
 

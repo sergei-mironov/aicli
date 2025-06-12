@@ -95,20 +95,20 @@ class IterableStream(Stream):
     interrupts the generator. """
     assert self.recording is None, "Stream.gen has been called twice"
     self.stop = False
-    self.recording = None
     try:
       with _handle_exceptions():
+        self.recording = []
         for ch in self.generator:
-          if self.recording is None:
-            if isinstance(ch,str):
-              assert self.binary is not True, "Expected non-binary contents"
+          match ch:
+            case str():
+              assert self.binary is not True, f"Expected non-binary contents, got {self.binary}"
               self.binary = False
-              self.recording = ""
-            else:
-              assert self.binary is not False, "Expected binary contents"
+            case bytes():
+              assert self.binary is not False, f"Expected binary contents, got {self.binary}"
               self.binary = True
-              self.recording = b""
-          self.recording += ch
+            case _:
+              pass
+          self.recording.append(ch)
           yield ch
           if self.stop:
             break
@@ -229,7 +229,7 @@ def cont2strm(c:str|bytes|Stream, allow_bytes=True) -> Stream:
     if c.recording is None:
       s = c
     else:
-      s = IterableStream([c.recording], binary=c.binary)
+      s = IterableStream(c.recording, binary=c.binary)
   else:
     assert False, f"Invalid content chunk type {type(c)}"
   return s
@@ -458,7 +458,6 @@ def read_until_pattern(file:File, pattern:str, prompt:str) -> list[str]:
     if eof or response:
       break
   return response
-
 
 
 def url2ext(url)->str|None:

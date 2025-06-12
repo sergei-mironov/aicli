@@ -16,7 +16,8 @@ from subprocess import run, PIPE
 
 from ..types import (Stream, Logger, Actor, ActorDesc, ActorName, ActorOptions, Intention,
                      Utterance, Conversation, ActorState, ModelName, Modality, QuotedString,
-                     UnquotedString, Parser, File, ContentItem, Reference, LocalReference)
+                     UnquotedString, Parser, File, ContentItem, Reference, LocalReference,
+                     LocalContent, RemoteReference)
 
 from ..utils import (IterableStream, ConsoleLogger, with_sigint, version, sys2exitcode, WLState,
                      wraplong, onematch, expanddir, info, set_global_verbosity, traverse_stream)
@@ -41,6 +42,7 @@ CMD_VERSION = "/version"
 CMD_CD = "/cd"
 CMD_PASTE = "/paste"
 CMD_PWD = "/pwd"  # Added the command for printing the current directory
+CMD_REF = "/ref"
 
 def _mkref(tail):
   return {
@@ -99,7 +101,8 @@ COMPLETION = {
   CMD_SHELL:   REF,
   CMD_PIPE:    REF_REF_REF,
   CMD_CD:      REF,
-  CMD_PWD:     {}
+  CMD_PWD:     {},
+  CMD_REF:     {" string": {" string": {}}}
 }
 
 SCHEMAS = [str(k).strip().replace(':','') for k in REF.keys()]
@@ -125,6 +128,7 @@ CMDHELP = {
   CMD_PIPE:    ("REF REF REF",   "Run a system shell command, piping its input and output"),
   CMD_VERSION: ("",              "Print version"),
   CMD_PWD:     ("",              "Print the current working directory."),
+  CMD_REF:     ("STR STR",       "Insert a reference to a remote object"),
 }
 
 GRAMMAR = fr"""
@@ -167,6 +171,7 @@ GRAMMAR = fr"""
              /\{CMD_PIPE}/ / +/ ref / +/ ref / +/ ref | \
              /\{CMD_CD}/ / +/ ref | \
              /\{CMD_PASTE}/ / +/ BOOL | \
+             /\{CMD_REF}/ / +/ string / +/ string | \
              /\{CMD_PWD}/
   # Everything else is a regular text.
   text: TEXT
@@ -284,15 +289,53 @@ def ref_quote(ref:str, prefixes:list[str])->str:
       return f"{p}\"{ref[len(p):]}\""
   return ref
 
-def buffer2str(buffer:list[str|bytes]) -> str:
+def ref2str(ref:Reference) -> str:
+  match ref:
+    case RemoteReference():
+      return f"/ref \"{ref.mimetype}\" \"{ref.url}\""
+    case LocalReference():
+      return f"/ref \"{ref.mimetype}\" \"{ref.path}\""
+    case _:
+      raise ValueError(f"Unsupported reference: {ref}")
+
+
+def buffer2str(buffer:LocalContent) -> str:
   """Convert a list of strings or bytes into a single string. Convert bytes to strings using
   utf-8."""
-  return ''.join(item if isinstance(item, str) else item.decode('utf-8') for item in buffer)
+  acc = []
+  for item in buffer:
+    match item:
+      case str():
+        acc.append(item)
+      case bytes():
+        acc.append(item.decode('utf-8'))
+      case Reference():
+        acc.append(ref2str(item))
+      case _:
+        raise ValueError(f"Unsupported buffer item: {item}")
+  return ''.join(acc)
 
-def buffer2bytes(buffer:list[str|bytes]) -> bytes:
+
+def buffer2bytes(buffer:LocalContent) -> bytes:
   """Convert a list of strings or bytes into a single bytes object. Convert strings to bytes using
   utf-8."""
-  return b''.join(item if isinstance(item, bytes) else item.encode('utf-8') for item in buffer)
+  acc = []
+  for item in buffer:
+    match item:
+      case str():
+        acc.append(item.encode('utf-8'))
+      case bytes():
+        acc.append(item)
+      case _:
+        raise ValueError(f"Unsupported buffer item: {item}")
+  return b''.join(acc)
+
+
+def bufferadd(buffer:LocalContent, val:str|bytes) -> None:
+  if len(buffer)==0 or not isinstance(buffer[-1], type(val)):
+    buffer.append(type(val)())
+  buffer[-1] += val
+
 
 @dataclass
 class InterpreterPause(Exception):
@@ -305,7 +348,7 @@ OUT='out'
 class Repl(Interpreter):
   def __init__(self, owner:"UserActor", logger:Logger):
     self.owner = owner
-    self.buffers:dict[str,list[str|bytes]] = defaultdict(list)  # Changed type to list[str]
+    self.buffers:dict[str,LocalContent] = defaultdict(list)  # Changed type to list[str]
     self.opts: ActorDesc|None = None
     self.actor_next = None
     self.rawbin = False
@@ -600,6 +643,17 @@ class Repl(Interpreter):
       else:
         self.logger.info("Exiting paste mode.")
       self.paste_mode = val
+    elif command == CMD_REF:
+      args = self.visit_children(tree)
+      mimetype = as_str(args[2])
+      url = as_str(args[4])
+      ref = None
+      if any(url.startswith(sch) for sch in ['http', 'https', 'ftp']):
+        ref = RemoteReference(mimetype, url)
+      else:
+        ref = LocalReference(mimetype, url)
+      assert ref is not None
+      self.buffers[IN].append(ref)
     else:
       raise ValueError(f"Unknown command: {command}")
 
@@ -621,14 +675,15 @@ class Repl(Interpreter):
         self._print(text, end='')
     else:
       self._check_no_commands(text, hint='text')
-      self.buffers[IN].append(text)
+      # self.buffers[IN].append(text)
+      bufferadd(self.buffers[IN], text)
 
   def escape(self, tree):
     text = tree.children[0].value[1:]
     if self.in_echo:
       self._print(text)
     else:
-      self.buffers[IN].append(text)
+      bufferadd(self.buffers[IN], text)
 
   def comment(self, tree):
     pass
@@ -664,7 +719,8 @@ class PasteModeReplParser(Parser):
   def parse(self, chunk:str) -> tuple[str,bool]:
     assert self.repl.paste_mode is True
     if chunk.strip() != f'{CMD_PASTE} off':
-      self.repl.buffers[IN].append(chunk)
+      # self.repl.buffers[IN].append(chunk)
+      bufferadd(self.repl.buffers[IN], chunk)
     else:
       self.repl.paste_mode = False
     return ('', None)

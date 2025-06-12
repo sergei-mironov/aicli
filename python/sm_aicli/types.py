@@ -128,15 +128,15 @@ class Stream(ABC):
   convention is to call gen() only once for every stream. The returned tokens are also stored in the
   `recording` array. All tokens must be of a same type (str or bytes). """
   def __init__(self, reference:Reference=Reference()):
-    self.binary: bool|None = None          # Binary flag, None means Unknown
-    self.stop:bool = False                 # Interrupt flag
-    self.recording:str|bytes|None = None   # Stream recording
+    self.binary: bool|None = None           # Binary flag, None means Unknown
+    self.stop:bool = False                  # Interrupt flag
+    self.recording:LocalContent|None = None # Stream recording
     self.reference:Reference = reference
 
   @abstractmethod
   def gen(self) -> Iterable[ContentItem]:
     """ Yield next ContentItem. """
-    raise NotImplementedError()
+    ...
 
   def interrupt(self) -> None:
     """ Makes `gen` exit. """

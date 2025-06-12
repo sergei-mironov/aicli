@@ -23,7 +23,7 @@ from sm_aicli import (Actor, Conversation, ActorState, ActorName, Utterance, Use
                       DummyActor, Reference, RemoteReference, LocalReference, Stream, info, err,
                       with_sigint, args2script, File, Parser, read_configs)
 
-from .utils import version, REVISION
+from .utils import version, REVISION, url2fname, BinStream
 
 ARG_PARSER = ArgumentParser(description="Command-line arguments")
 ARG_PARSER.add_argument(
@@ -208,7 +208,7 @@ class ActorStateImpl(ActorState):
     if isinstance(ref, RemoteReference):
       url_response = requests_get(ref.url, stream=True)
       url_response.raise_for_status()  # Check for HTTP errors
-      filename = url2fname(url, self.actors[UserName()].opt.image_dir)
+      filename = url2fname(ref.url, self.actors[UserName()].opt.image_dir)
       lref = LocalReference(ref.mimetype, filename)
       return lref, BinStream(url_response, suggested_fname=filename)
     else:
