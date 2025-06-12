@@ -13,14 +13,15 @@ from dataclasses import dataclass
 from copy import deepcopy
 from gnureadline import (parse_and_bind, clear_history, read_history_file,
                          write_history_file, set_completer, set_completer_delims)
+from requests import get as requests_get
 
 from lark.visitors import Interpreter
 from lark import Lark
 
 from sm_aicli import (Actor, Conversation, ActorState, ActorName, Utterance, UserName, Modality,
                       UserActor, ActorOptions, onematch, expanddir, OpenAIActor, GPT4AllActor,
-                      DummyActor, Reference, Stream, info, err, with_sigint, args2script, File,
-                      Parser, read_configs)
+                      DummyActor, Reference, RemoteReference, LocalReference, Stream, info, err,
+                      with_sigint, args2script, File, Parser, read_configs)
 
 from .utils import version, REVISION
 
@@ -203,8 +204,15 @@ class ActorStateImpl(ActorState):
   def get_desc(self) -> dict[ActorName, ActorOptions]:
     return {n:deepcopy(a.get_options()) for n,a in self.actors.items()}
 
-  def deref(self, Reference) -> tuple[Reference, Stream]:
-    raise NotImplementedError()
+  def deref(self, ref:Reference) -> tuple[Reference, Stream]:
+    if isinstance(ref, RemoteReference):
+      url_response = requests_get(ref.url, stream=True)
+      url_response.raise_for_status()  # Check for HTTP errors
+      filename = url2fname(url, self.actors[UserName()].opt.image_dir)
+      lref = LocalReference(ref.mimetype, filename)
+      return lref, BinStream(url_response, suggested_fname=filename)
+    else:
+      raise NotImplementedError(f"Dereferencing '{ref}' is not implemented")
 
   @staticmethod
   def init():

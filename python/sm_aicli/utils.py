@@ -15,6 +15,8 @@ from textwrap import dedent
 from typing import Iterable, Callable, Any
 from traceback import print_exc
 from copy import copy, deepcopy
+from urllib.parse import urlparse, parse_qs
+from requests.exceptions import RequestException
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
                     Stream, Logger, Parser, File, ContentItem, Dereferencer)
@@ -242,12 +244,15 @@ def cont2str(cs:Contents, allow_bytes=True)->str|bytes:
 def traverse_stream(s:Stream,
                     handler:Callable[[Stream, ContentItem], Stream|None]
                     ) -> None:
-  def _traverse(s):
-    for item in s.gen():
-      s2 = handler(s,item)
-      if s2 is not None:
-        _traverse(s2)
-  _traverse(s)
+  try:
+    def _traverse(s):
+      for item in s.gen():
+        s2 = handler(s,item)
+        if s2 is not None:
+          _traverse(s2)
+    _traverse(s)
+  except RequestException as err:
+    raise ConversationException(str(err)) from err
 
 def firstfile(paths) -> str|None:
   for p in paths:
@@ -455,4 +460,36 @@ def read_until_pattern(file:File, pattern:str, prompt:str) -> list[str]:
   return response
 
 
+
+def url2ext(url)->str|None:
+  parsed_url = urlparse(url)
+  query_params = parse_qs(parsed_url.query)
+  mime_type = query_params.get('rsct', [None])[0].split('/')
+  if len(mime_type)==2 and mime_type[0]=='image':
+    return f".{mime_type[1]}"
+  else:
+    return None
+
+def url2fname(url, image_dir:str|None)->str|None:
+  ext = url2ext(url)
+  base_name = sha256(url.encode()).hexdigest()[:10]
+  fname = f"{base_name}{ext}" if ext is not None else base_name
+  fdir = image_dir or "."
+  return join(fdir,fname)
+
+
+class TextStream(IterableStream):
+  def __init__(self, chunks):
+    def _map(c):
+      res = c.choices[0].delta.content
+      return res or ''
+    super().__init__(map(_map, chunks))
+  def gen(self):
+    yield from super().gen()
+
+class BinStream(IterableStream):
+  def __init__(self, chunks, **kwargs):
+    super().__init__(chunks.iter_content(4*1024), binary=True, **kwargs)
+  def gen(self):
+    yield from super().gen()
 

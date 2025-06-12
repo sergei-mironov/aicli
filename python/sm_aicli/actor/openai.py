@@ -6,52 +6,17 @@ from io import StringIO, BytesIO
 from dataclasses import dataclass
 from os import makedirs, path
 from os.path import join, basename, exists
-from requests import get as requests_get
-from requests.exceptions import RequestException
-from requests import get, exceptions
-from hashlib import sha256
-from urllib.parse import urlparse, parse_qs
+# from requests import get, exceptions
 from pdb import set_trace as ST
 from collections import OrderedDict
 
 from ..types import (Actor, ActorName, ActorState, PathStr, ActorOptions, Conversation, Intention,
                      ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream,
-                     Contents, File)
+                     Contents, File, RemoteReference, ContentItem)
 from ..utils import (ConsoleLogger, IterableStream, find_last_message, err, uts_2sau, uts_lastfull,
                      uts_lastref, cont2str, add_transparent_rectangle, read_until_pattern)
 
 from .user import CMD_ANS
-
-def url2ext(url)->str|None:
-  parsed_url = urlparse(url)
-  query_params = parse_qs(parsed_url.query)
-  mime_type = query_params.get('rsct', [None])[0].split('/')
-  if len(mime_type)==2 and mime_type[0]=='image':
-    return f".{mime_type[1]}"
-  else:
-    return None
-
-def url2fname(url, image_dir:str|None)->str|None:
-  ext = url2ext(url)
-  base_name = sha256(url.encode()).hexdigest()[:10]
-  fname = f"{base_name}{ext}" if ext is not None else base_name
-  fdir = image_dir or "."
-  return join(fdir,fname)
-
-class TextStream(IterableStream):
-  def __init__(self, chunks):
-    def _map(c):
-      res = c.choices[0].delta.content
-      return res or ''
-    super().__init__(map(_map, chunks))
-  def gen(self):
-    yield from super().gen()
-
-class BinStream(IterableStream):
-  def __init__(self, chunks, **kwargs):
-    super().__init__(chunks.iter_content(4*1024), binary=True, **kwargs)
-  def gen(self):
-    yield from super().gen()
 
 class OpenAIActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions, file:File):
@@ -114,7 +79,7 @@ class OpenAIActor(Actor):
       raise ConversationException("No meaningful utterance were found")
     return cnv.utterances[uid].contents
 
-  def _read_image_response(self, response) -> list[BinStream]:
+  def _read_image_response(self, response) -> list[ContentItem]:
     acc = []
     for datum in response.data:
       if not isinstance(datum, OpenAIImage):
@@ -123,9 +88,10 @@ class OpenAIActor(Actor):
       if url is None:
         raise ConversationException(f"Datum url is None")
       self.logger.dbg(url)
-      url_response = requests_get(url, stream=True)
-      url_response.raise_for_status()  # Check for HTTP errors
-      acc.append(BinStream(url_response, suggested_fname=url2fname(url, self.opt.image_dir)))
+      acc.append(RemoteReference('image',url))
+      # url_response = requests_get(url, stream=True)
+      # url_response.raise_for_status()  # Check for HTTP errors
+      # acc.append(BinStream(url_response, suggested_fname=url2fname(url, self.opt.image_dir)))
     return acc
 
   def _react_image_create(self, act:ActorState, cont:Contents) -> Utterance:
@@ -142,11 +108,11 @@ class OpenAIActor(Actor):
         size=self.opt.imgsz or "256x256",
         response_format="url",
       )
-      streams = self._read_image_response(response)
+      content = self._read_image_response(response)
       return Utterance.init(
         name=self.name,
         intention=Intention.init(actor_next=UserName()),
-        contents=streams
+        contents=IterableStream(content)
       )
     except OpenAIError as err:
       raise ConversationException(str(err)) from err
@@ -175,11 +141,11 @@ class OpenAIActor(Actor):
         size=self.opt.imgsz or "256x256",
         response_format="url"
       )
-      streams = self._read_image_response(response)
+      content = self._read_image_response(response)
       return Utterance.init(
         name=self.name,
         intention=Intention.init(actor_next=UserName()),
-        contents=streams
+        contents=IterableStream(content)
       )
     except OpenAIError as err:
       raise ConversationException(str(err)) from err
