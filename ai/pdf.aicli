@@ -1,0 +1,10 @@
+#!/usr/bin/env -S aicli --rc=none --keep-running --verbose=9
+/model openai:"gpt-4o"
+/set model apikey file:"_openai-apikey.txt"
+
+Look at this PDF document please
+
+/ref "application/pdf" "_test.pdf"
+
+Can you describe it please?
+/ask
