@@ -7,6 +7,7 @@
 
   inputs = {
     nixpkgs = {
+      # url = "git+file:/home/nixcfg/nixpkgs/";
       # Author's favorite nixpkgs
       url = "github:grwlf/nixpkgs/local17.2";
     };
