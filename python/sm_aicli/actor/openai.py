@@ -9,15 +9,17 @@ from os.path import join, basename, exists
 # from requests import get, exceptions
 from pdb import set_trace as ST
 from collections import OrderedDict
+from os import stat
 
 from ..types import (Actor, ActorName, ActorState, PathStr, ActorOptions, Conversation, Intention,
                      ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream,
-                     Contents, File, RemoteReference, ContentItem)
+                     Contents, File, LocalReference, RemoteReference, ContentItem)
 from ..utils import (ConsoleLogger, IterableStream, find_last_message, err, uts_2sau, uts_lastfull,
-                     uts_lastref, cont2str, add_transparent_rectangle, read_until_pattern,
-                     TextStream)
+                     uts_lastref, add_transparent_rectangle, read_until_pattern, TextStream)
 
 from .user import CMD_ANS
+
+OpenAIFileID = str
 
 class OpenAIActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions, file:File):
@@ -26,6 +28,7 @@ class OpenAIActor(Actor):
     super().__init__(name, opt)
     self.logger = ConsoleLogger(self)
     self.file = file
+    self.uploads:dict[LocalReference,OpenAIFileID] = {}
     try:
       self.client = OpenAI(api_key=opt.apikey, http_client=DefaultHttpxClient(proxy=opt.proxy))
     except OpenAIError as err:
@@ -36,14 +39,49 @@ class OpenAIActor(Actor):
     self.logger.dbg("Resetting session")
     self.cache = OrderedDict()
 
+  def upload_reference_cached(self, ref:LocalReference) -> OpenAIFileID:
+    assert isinstance(ref, LocalReference), f"Not a LocalReference: {ref}"
+    if file := self.uploads.get(ref):
+      return file.id
+    upload = self.client.uploads.upload_file_chunked(
+      file = ref.path,
+      mime_type = ref.mimetype,
+      purpose = "assistants",
+    )
+    self.logger.dbg(f"{ref} upload status: {upload.status}")
+    assert upload.status == "completed"
+    self.uploads[ref] = upload.file.id
+    return self.uploads[ref]
+
   def _cnv2sau(self, cnv:Conversation) -> SAU:
     """ Convert conversation to the SAU format. """
+    def _cont2str(c:Contents) -> list:
+      acc = []
+      def _append_text(text):
+        if len(acc) == 0 or acc[-1]['type'] != 'text':
+          acc.append({'type':'text', 'text':''})
+        if acc[-1]['type'] == 'text':
+          acc[-1]['text'] += text
+      for tok in c.gen():
+        match tok:
+          case str():
+            _append_text(tok)
+          case bytes():
+            _append_text(tok.decode('utf-8'))
+          case LocalReference():
+            file_id = self.upload_reference_cached(tok)
+            acc.append({'type':'file', 'file':{'file_id':file_id}})
+          case _:
+            raise ValueError(f"Unsupported content item: {tok}")
+      return acc
+
     sau = uts_2sau(
       cnv.utterances,
       names={UserName():'user'},
       default_name='assistant',
       system_prompt=self.opt.prompt,
-      cache=self.cache
+      cache=self.cache,
+      cont2str_fn=_cont2str,
     )
     if len(self.cache)>5:
       self.cache.popitem(last=False)

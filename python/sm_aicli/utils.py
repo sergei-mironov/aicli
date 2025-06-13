@@ -93,7 +93,10 @@ class IterableStream(Stream):
   def gen(self) -> Iterable[ContentItem]:
     """ Iterate over tokens. Should be called once in the object's lifetime. Setting stop to True
     interrupts the generator. """
-    assert self.recording is None, "Stream.gen has been called twice"
+    if self.recording is not None:
+      yield from self.recording
+      return
+    # assert self.recording is None, "Stream.gen has been called twice"
     self.stop = False
     try:
       with _handle_exceptions():
@@ -178,38 +181,6 @@ def uts_lastfullref(uts:Utterances, referree:ActorName) -> UID|None:
 FileId = str
 FileName = str
 
-def uts_2sau(
-  uts:Utterances,
-  names:dict[ActorName, str],
-  default_name:str|None = None,
-  system_prompt:str|None = None,
-  cache:dict[hash,SAU]|None = None,
-) -> SAU:
-  """ Converts a list of Utterances into the System-Assistant-User JSON-like structure.
-
-  Parameters:
-  * ... - TODO
-  """
-  # In [1] we assume that Utterances do not contain streams.
-  def _cachekey(i):
-    return tuple([i, system_prompt, *tuple(names.items())])
-  racc:SAU = []
-  for i in reversed(range(0, len(uts))):
-    if cache is not None:
-      cache_key = _cachekey(i)
-      cached = cache.get(cache_key)
-      if cached is not None:
-        return cached + list(reversed(racc))
-    ut:Utterance = uts[i]
-    name = names.get(ut.actor_name, default_name)
-    # assert name in ['user','assistant'], f"Unknown SAU name {name}"
-    racc.append({'role':name, 'content':cont2str(ut.contents)}) # [1]
-  racc.append({'role':'system', 'content':system_prompt or ''})
-  acc = list(reversed(racc))
-  if cache is not None:
-    cache[_cachekey(len(uts)-1)] = acc
-  return acc
-
 def ensure_quoted(s:str)->str:
   if not (len(s)>0 and s[0]=='"'):
     s = '"' + s
@@ -240,6 +211,40 @@ def cont2str(cs:Contents, allow_bytes=True)->str|bytes:
   for token in cont2strm(cs, allow_bytes=allow_bytes).gen():
     acc = token if acc is None else (acc + token)
   return acc or ''
+
+def uts_2sau(
+  uts:Utterances,
+  names:dict[ActorName, str],
+  default_name:str|None = None,
+  system_prompt:str|None = None,
+  cache:dict[hash,SAU]|None = None,
+  cont2str_fn:Callable[[Contents],Any] = cont2str,
+) -> SAU:
+  """ Converts a list of Utterances into the System-Assistant-User JSON-like structure.
+
+  Parameters:
+  * ... - TODO
+  """
+  # In [1] we assume that Utterances do not contain streams.
+  def _cachekey(i):
+    return tuple([i, system_prompt, *tuple(names.items())])
+  racc:SAU = []
+  for i in reversed(range(0, len(uts))):
+    if cache is not None:
+      cache_key = _cachekey(i)
+      cached = cache.get(cache_key)
+      if cached is not None:
+        return cached + list(reversed(racc))
+    ut:Utterance = uts[i]
+    name = names.get(ut.actor_name, default_name)
+    # assert name in ['user','assistant'], f"Unknown SAU name {name}"
+    racc.append({'role':name, 'content':cont2str_fn(ut.contents)}) # [1]
+  racc.append({'role':'system', 'content':system_prompt or ''})
+  acc = list(reversed(racc))
+  if cache is not None:
+    cache[_cachekey(len(uts)-1)] = acc
+  return acc
+
 
 def traverse_stream(s:Stream,
                     handler:Callable[[Stream, ContentItem], Stream|None]

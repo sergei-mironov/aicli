@@ -182,9 +182,11 @@ let
       '';
     };
 
+    openai-src = python.pkgs.openai.src;
+
     collection = rec {
       inherit shell gpt4all-src gpt4all-backend aicli python-dev python-aicli
-              vim-aicli;
+              vim-aicli openai-src;
     };
   };
 
