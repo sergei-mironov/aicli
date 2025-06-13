@@ -14,7 +14,8 @@ from ..types import (Actor, ActorName, ActorState, PathStr, ActorOptions, Conver
                      ModelName, UserName, Utterance, Modality, ConversationException, SAU, Stream,
                      Contents, File, RemoteReference, ContentItem)
 from ..utils import (ConsoleLogger, IterableStream, find_last_message, err, uts_2sau, uts_lastfull,
-                     uts_lastref, cont2str, add_transparent_rectangle, read_until_pattern)
+                     uts_lastref, cont2str, add_transparent_rectangle, read_until_pattern,
+                     TextStream)
 
 from .user import CMD_ANS
 
