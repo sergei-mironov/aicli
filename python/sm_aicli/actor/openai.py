@@ -41,8 +41,8 @@ class OpenAIActor(Actor):
 
   def upload_reference_cached(self, ref:LocalReference) -> OpenAIFileID:
     assert isinstance(ref, LocalReference), f"Not a LocalReference: {ref}"
-    if file := self.uploads.get(ref):
-      return file.id
+    if file_id := self.uploads.get(ref):
+      return file_id
     upload = self.client.uploads.upload_file_chunked(
       file = ref.path,
       mime_type = ref.mimetype,
