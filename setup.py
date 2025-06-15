@@ -16,9 +16,9 @@ except Exception:
 
 REVISION:str|None
 try:
-  REVISION=environ["GPT4ALLCLI_REVISION"]
+  REVISION=environ["AICLI_REVISION"]
 except Exception as e:
-  warning("Couldn't read GPT4ALLCLI_REVISION, trying `git rev-parse`")
+  warning("Couldn't read AICLI_REVISION, trying `git rev-parse`")
   cmd = ['git', 'rev-parse', 'HEAD']
   cwd = None
   try:
