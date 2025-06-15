@@ -908,7 +908,7 @@ class UserActor(Actor):
         if need_eol:
           self.repl._print()
         self.repl._print(flush=True, end='')
-    self.cnv_top += 1
+      self.cnv_top += 1
 
   def reset(self):
     self.cnv_top = 0
