@@ -865,50 +865,49 @@ class UserActor(Actor):
       self.repl.opts = ast.get_desc()
     for i in range(self.cnv_top, len(cnv.utterances)):
       u:Utterance = cnv.utterances[i]
-      if u.actor_name == self.name:
-        continue
-      need_eol = False
-      buffer_out = []
-      streams = {}
+      if u.actor_name != self.name:
+        need_eol = False
+        buffer_out = []
+        streams = {}
 
-      def _sigint(*args, **kwargs):
-        for s in streams.values():
-          s.interrupt()
+        def _sigint(*args, **kwargs):
+          for s in streams.values():
+            s.interrupt()
 
-      def _printer(s:Stream, token:ContentItem) -> Stream|None:
-        nonlocal need_eol
-        streams[s.reference] = s
-        stream2 = None
-        if isinstance(token, bytes):
-          need_eol = True
-          stdout.buffer.write(token)
-          stdout.buffer.flush()
-        elif isinstance(token, str):
-          need_eol = not token.rstrip(' ').endswith("\n")
-          self.repl._print(token, end='')
-        elif isinstance(token, Reference):
-          token, sn = ast.deref(token)
-          if sn.binary and not self.repl.rawbin:
+        def _printer(s:Stream, token:ContentItem) -> Stream|None:
+          nonlocal need_eol
+          streams[s.reference] = s
+          stream2 = None
+          if isinstance(token, bytes):
             need_eol = True
-            assert sn.suggested_fname is not None, \
-              f"Suggested file name for binary stream must be set"
-            with open(sn.suggested_fname, 'wb') as f:
-              for token in sn.gen():
-                f.write(token)
-            self.logger.info("Binary stream has been saved to file")
-            buffer_out.append(sn.suggested_fname)
-            self.repl._print(f"{sn.suggested_fname}", flush=True)
-          else:
-            stream2 = sn
-        buffer_out.append(token)
-        return stream2
+            stdout.buffer.write(token)
+            stdout.buffer.flush()
+          elif isinstance(token, str):
+            need_eol = not token.rstrip(' ').endswith("\n")
+            self.repl._print(token, end='')
+          elif isinstance(token, Reference):
+            token, sn = ast.deref(token)
+            if sn.binary and not self.repl.rawbin:
+              need_eol = True
+              assert sn.suggested_fname is not None, \
+                f"Suggested file name for binary stream must be set"
+              with open(sn.suggested_fname, 'wb') as f:
+                for token in sn.gen():
+                  f.write(token)
+              self.logger.info("Binary stream has been saved to file")
+              buffer_out.append(sn.suggested_fname)
+              self.repl._print(f"{sn.suggested_fname}", flush=True)
+            else:
+              stream2 = sn
+          buffer_out.append(token)
+          return stream2
 
-      with with_sigint(_sigint):
-        traverse_stream(u.contents, _printer)
-      self.repl.buffers[OUT] = buffer_out
-      if need_eol:
-        self.repl._print()
-      self.repl._print(flush=True, end='')
+        with with_sigint(_sigint):
+          traverse_stream(u.contents, _printer)
+        self.repl.buffers[OUT] = buffer_out
+        if need_eol:
+          self.repl._print()
+        self.repl._print(flush=True, end='')
     self.cnv_top += 1
 
   def reset(self):
