@@ -68,7 +68,7 @@ fun! AicliCmdline(action, prompt, selmode, file, extras)
     let command = command . ' ' . file
   endif
   let errfile = AicliGet('aicli_errfile')
-  let command = command . extras . ' 2>>'.errfile
+  let command = command . ' ' . extras . ' 2>>'.errfile
   return command
 endfun
 

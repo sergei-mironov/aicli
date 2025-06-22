@@ -120,11 +120,18 @@ $AICLI_PROMPT
 EOF
 fi
 
-if test -n "$AICLI_OFORMAT" ; then cat <<EOF
-Please generate a pastable `doc` without any additional text document
-formatting. Please don't use Markdown formatting \`\`\` in your response.
+if test -n "$AICLI_OFORMAT" ; then
+if test "`doc`" = "markdown" -o "`doc`" = "tex"; then
+cat <<EOF
+Please don't wrap your response in Markdown or Latex code block markers.
 
 EOF
+else cat <<EOF
+Please don't wrap your response in Markdown or Latex code section
+markers unless they present in the selection.
+
+EOF
+fi
 fi
 
 case $AICLI_OCFORMAT in
