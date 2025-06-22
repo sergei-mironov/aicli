@@ -65,12 +65,16 @@ indent() {
 
 dedent() {
   if test "$AICLI_REINDENT" = "y" ; then
-    SPACES=""
-    while read line ; do
-      if test "$SPACES" = "" ; then
+    SPACES=-
+    while read -r line ; do
+      if test "$SPACES" = "-" ; then
         SPACES=$(sed 's/[^[:space:]]\(.*\)//' "$AICLI_SELINDENT" | grep -v "^$" | head -n 1)
       fi
-      echo "${SPACES}${line}"
+      if test "$SPACES" != "-" ; then
+        echo "${SPACES}${line}"
+      else
+        echo "${line}"
+      fi
     done
   else
     cat
@@ -127,8 +131,8 @@ Please don't wrap your response in Markdown or Latex code block markers.
 
 EOF
 else cat <<EOF
-Please don't wrap your response in Markdown or Latex code section
-markers unless they present in the selection.
+Please generate a pastable `doc`. Please don't wrap your response in Markdown or
+Latex code block markers unless they present in the selection.
 
 EOF
 fi
