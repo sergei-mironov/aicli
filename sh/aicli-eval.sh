@@ -66,9 +66,9 @@ indent() {
 dedent() {
   if test "$AICLI_REINDENT" = "y" ; then
     SPACES=-
-    while read -r line ; do
+    while IFS= read -r line ; do
       if test "$SPACES" = "-" ; then
-        SPACES=$(sed 's/[^[:space:]]\(.*\)//' "$AICLI_SELINDENT" | grep -v "^$" | head -n 1)
+        SPACES=$(grep -v "^$" "$AICLI_SELINDENT" | sed 's/[^[:space:]]\(.*\)//' | head -n 1)
       fi
       if test "$SPACES" != "-" ; then
         echo "${SPACES}${line}"

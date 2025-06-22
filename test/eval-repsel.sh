@@ -7,7 +7,8 @@ litrepl restart ai
 cat >source <<EOF
 Paste-mode replace
 ==================
-xxx /echo AAA
+xxx
+  xxx /echo AAA
 
 Raw replace
 ===========
@@ -17,6 +18,7 @@ EOF
 testvim.sh source >_vim.log 2>&1 <<EOF
 /xxx
 V\
+j\
 :AI dummy -
 /yyy
 V\
@@ -32,7 +34,8 @@ You said:
 ```
 Consider the following text snippet to which we refer as to 'selection':
 
-xxx /echo AAA
+xxx
+  xxx /echo AAA
 
 (End of the 'selection' snippet)
 
