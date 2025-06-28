@@ -161,6 +161,7 @@ def get_help_string(arg_parser):
 
 
 class StdinFile(File):
+  """ Stdin input file with readline and history management """
   def __init__(self, args:Any, stream):
     self.args = args
     self.stream = stream
@@ -219,8 +220,21 @@ class ActorStateImpl(ActorState):
     return ActorStateImpl({})
 
 
-def main(cmdline=None, providers=None):
+def actor_factory(name:ActorName, opt:ActorOptions, file:File) -> Actor:
+  match name.provider:
+    case "openai":
+      return OpenAIActor(name, opt, file=file)
+    case "gpt4all":
+      return GPT4AllActor(name, opt)
+    case "dummy":
+      return DummyActor(name, opt, file)
+    case _:
+      raise ValueError(f"Unsupported actor name \"{name}\"")
+
+
+def main(cmdline=None, actor_factory_fn=None):
   args = ARG_PARSER.parse_args(cmdline)
+  actor_factory_fn = actor_factory_fn or actor_factory
 
   if args.cd:
     chdir(args.cd)
@@ -247,12 +261,6 @@ def main(cmdline=None, providers=None):
 
   file = StdinFile(args, args2script(args, configs))
 
-  providers = {
-    "openai": partial(OpenAIActor, file=file),
-    "gpt4all": GPT4AllActor,
-    "dummy": partial(DummyActor, file=file),
-  } if providers is None else providers
-
   cnv = Conversation.init()
   st = ActorStateImpl.init()
   current_actor = UserName()
@@ -278,10 +286,7 @@ def main(cmdline=None, providers=None):
           if actor is not None:
             actor.set_options(opt)
           else:
-            provider = providers.get(name.provider)
-            if provider is None:
-              raise RuntimeError(f"Unsupported provider {name.provider}")
-            st.actors[name] = provider(name, opt)
+            st.actors[name] = actor_factory_fn(name, opt, file)
       if intention.actor_next is not None:
         assert intention.actor_next in st.actors, (
           f"{intention.actor_next} is not among {st.actors.keys()}"

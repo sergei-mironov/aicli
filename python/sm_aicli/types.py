@@ -242,3 +242,8 @@ class Logger:
     raise NotImplementedError()
   def dbg(self, s:str):
     raise NotImplementedError()
+
+
+# A global function decoding actor names into actors. See `sm_aicli.main.actor_factory`.
+ActorFactory = Callable[[ActorName, File], Actor]
+
