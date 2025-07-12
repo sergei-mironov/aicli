@@ -19,9 +19,10 @@ from lark.visitors import Interpreter
 from lark import Lark
 
 from sm_aicli import (Actor, Conversation, ActorState, ActorName, Utterance, UserName, Modality,
-                      UserActor, ActorOptions, onematch, expanddir, OpenAIActor, GPT4AllActor,
-                      DummyActor, Reference, RemoteReference, LocalReference, Stream, info, err,
-                      with_sigint, args2script, File, Parser, read_configs)
+                      UserActor, ActorOptions, onematch, expanddir, OpenAIImageActor,
+                      OpenAITextActor, GPT4AllActor, DummyActor, Reference, RemoteReference,
+                      LocalReference, Stream, info, err, with_sigint, args2script, File, Parser,
+                      read_configs)
 
 from .utils import version, REVISION, url2fname, BinStream
 
@@ -223,7 +224,10 @@ class ActorStateImpl(ActorState):
 def actor_factory(name:ActorName, opt:ActorOptions, file:File) -> Actor:
   match name.provider:
     case "openai":
-      return OpenAIActor(name, opt, file=file)
+      if 'dall' in name.model:
+        return OpenAIImageActor(name, opt, file=file)
+      else:
+        return OpenAITextActor(name, opt, file=file)
     case "gpt4all":
       return GPT4AllActor(name, opt)
     case "dummy":
