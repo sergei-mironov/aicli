@@ -249,6 +249,8 @@ def uts_2sau(
 def traverse_stream(s:Stream,
                     handler:Callable[[Stream, ContentItem], Stream|None]
                     ) -> None:
+  """ Read stream `s` of `ContentItem` items, call `handler` for every item and optionally dive into
+  the resulting stream. """
   try:
     def _traverse(s):
       for item in s.gen():
