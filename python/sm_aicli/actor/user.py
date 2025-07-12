@@ -602,7 +602,8 @@ class Repl(Interpreter):
     elif command == CMD_SHELL:
       args = self.visit_children(tree)
       ref = args[2]
-      cmd = buffer2str(ref_read(ref, self.buffers)).replace('\n',' ').strip()
+      ref_cont = ref_read(ref, self.buffers)
+      cmd = buffer2str(ref_cont).replace('\n',' ').strip()
       retcode = sys2exitcode(system(cmd))
       self.logger.info(f"Shell command '{cmd}' exited with code {retcode}")
       if ref == ('buffer','in'):
@@ -892,8 +893,8 @@ class UserActor(Actor):
               assert sn.suggested_fname is not None, \
                 f"Suggested file name for binary stream must be set"
               with open(sn.suggested_fname, 'wb') as f:
-                for token in sn.gen():
-                  f.write(token)
+                for token2 in sn.gen():
+                  f.write(token2)
               self.logger.info("Binary stream has been saved to file")
               buffer_out.append(sn.suggested_fname)
               self.repl._print(f"{sn.suggested_fname}", flush=True)

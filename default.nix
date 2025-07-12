@@ -7,7 +7,7 @@ let
   local = rec {
 
     inherit (pkgs) cmake fmt shaderc vulkan-headers vulkan-loader wayland
-                   pkg-config expect fim pdf2svg;
+                   pkg-config expect fim pdf2svg pandoc;
     inherit (pkgs.lib) fileContents;
 
     python = pkgs.python312;
@@ -172,6 +172,7 @@ let
         fim
         texlive-dev
         pdf2svg
+        pandoc
         # litrepl.litrepl-release
       ];
 
