@@ -8,22 +8,23 @@ update_pathvar() {
     esac
 }
 
-export PROJECT_SOURCE=`pwd`
-export PROJECT_ROOT=`pwd`
-export AICLI_ROOT=$PROJECT_SOURCE
-export AICLI_HISTORY=$PROJECT_SOURCE/_aicli_history
-update_pathvar "PYTHONPATH" "$PROJECT_SOURCE/python"
-update_pathvar "PATH" "$PROJECT_SOURCE/sh"
-update_pathvar "PATH" "$PROJECT_SOURCE/python"
-update_pathvar "PATH" "$PROJECT_SOURCE/test"
+if test -z "$PROJECT_ROOT" ; then
+    export PROJECT_ROOT=`pwd`
+fi
+export AICLI_ROOT=`pwd`
+export AICLI_HISTORY=$AICLI_ROOT/_aicli_history
+update_pathvar "PYTHONPATH" "$AICLI_ROOT/python"
+update_pathvar "PATH" "$AICLI_ROOT/sh"
+update_pathvar "PATH" "$AICLI_ROOT/python"
+update_pathvar "PATH" "$AICLI_ROOT/test"
 
 alias ipython=ipython.sh
 
-export LITREPL_WORKDIR="$PROJECT_SOURCE"
-export LITREPL_PYTHON_AUXDIR="$PROJECT_SOURCE/_litrepl/python"
-export LITREPL_AI_AUXDIR="$PROJECT_SOURCE/_litrepl/ai"
+export LITREPL_WORKDIR="$AICLI_ROOT"
+export LITREPL_PYTHON_AUXDIR="$AICLI_ROOT/_litrepl/python"
+export LITREPL_AI_AUXDIR="$AICLI_ROOT/_litrepl/ai"
 
-export VIM_PLUGINS="$PROJECT_ROOT/vimrc"
+export VIM_PLUGINS="$AICLI_ROOT/vimrc"
 
 # FIXME: Do we need the below?
 # unset vim

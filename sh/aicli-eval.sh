@@ -81,6 +81,11 @@ dedent() {
   fi
 }
 
+
+if test -n "$AICLI_DEBUG" ; then
+  $LITREPL status >&2 2>&1 || true
+fi
+
 {
 echo "$AICLI_HEADER"
 

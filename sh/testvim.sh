@@ -15,5 +15,5 @@ not() {(
   echo ":let g:aicli_errfile='_aicli.err'"
   cat
 } | \
-$PROJECT_ROOT/sh/vimdev.sh -n --clean "$@"
+$AICLI_ROOT/sh/vimdev.sh -n --clean "$@"
 not grep -E '^E[0-9]+|Error' _vim_messages.log

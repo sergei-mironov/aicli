@@ -22,6 +22,9 @@ endif
 if ! exists("g:aicli_script")
   let g:aicli_script = 'aicli-*.sh'
 endif
+if ! exists("g:aiclii_use_interactive_shell")
+  let g:aiclii_use_interactive_shell = 1
+endif
 
 if ! exists("g:aicli_plugin_version")
   let devroot = getenv('AICLI_ROOT')
@@ -46,7 +49,9 @@ endfun
 fun! AicliCmdline(action, prompt, selmode, file, extras)
   let [action, prompt, selmode, file, extras] = [a:action, a:prompt,
         \ a:selmode, a:file, a:extras]
-  let command = substitute(AicliGet('aicli_script'), '*', action, '')
+
+  let command = "cd \"".expand('%:p:h')."\"; "
+  let command = command . substitute(AicliGet('aicli_script'), '*', action, '')
   if prompt != '-'
     if len(trim(prompt)) == 0
       let prompt = input("Your question: ")
@@ -99,11 +104,57 @@ fun! AicliReplaceFile(action, prompt, selmode, file) range " -> int
   return AicliReplace(a:action, a:prompt, "%", a:selmode, a:file, "")
 endfun
 
+fun! AicliSystem(line, input)
+  let ret = ''
+  let old = &shellcmdflag
+  try
+    if AicliGet('aicli_use_interactive_shell') == 1
+      let &shellcmdflag = '-i '.&shellcmdflag
+    endif
+    let $AICLI_FILE = expand('%:p')
+    let ret = system(a:line, a:input)
+  finally
+    let &shellcmdflag = old
+    unlet $AICLI_FILE
+  endtry
+  return ret
+endfun
+
+fun! AicliExecute(line)
+  let old = &shellcmdflag
+  try
+    if AicliGet('aicli_use_interactive_shell') == 1
+      let &shellcmdflag = '-i '.&shellcmdflag
+    endif
+    let $AICLI_FILE = expand('%:p')
+    silent execute a:line
+  finally
+    let &shellcmdflag = old
+    unlet $AICLI_FILE
+  endtry
+endfun
+
+fun! AicliTerminal(line)
+  let old = &shellcmdflag
+  let shell = ""
+  try
+    if AicliGet('aicli_use_interactive_shell') == 1
+      let &shellcmdflag = '-i '.&shellcmdflag
+      let shell = "++shell"
+    endif
+    let $AICLI_FILE = expand('%:p')
+    execute 'terminal '.shell.' '.a:line
+  finally
+    let &shellcmdflag = old
+    unlet $AICLI_FILE
+  endtry
+endfun
+
 fun! AicliPushSelection(action, prompt, selmode) range
   let [action, prompt] = [a:action, a:prompt]
   let command = AicliCmdline(action, prompt, a:selmode, "", "")
   let selection = AicliGetVisualSelection() . "\n"
-  silent let result = system(command, selection)
+  silent let result = AicliSystem(command, selection)
   echom result
   let errcode = v:shell_error
   return errcode
@@ -112,7 +163,7 @@ endfun
 fun! AicliPush(action, prompt, selmode) range
   let [action, prompt] = [a:action, a:prompt]
   let command = AicliCmdline(action, prompt, a:selmode, "", "")
-  silent let result = system(command)
+  silent let result = AicliSystem(command,'')
   echom result
   let errcode = v:shell_error
   return errcode
@@ -121,7 +172,7 @@ endfun
 fun! AicliPull(action, prompt) range
   let [action, prompt] = [a:action, a:prompt]
   let command = AicliCmdline(action, prompt, "", "", "")
-  silent execute 'r!'.command .'</dev/null'
+  call AicliExecute('r!'.command .'</dev/null')
   let errcode = v:shell_error
   return errcode
 endfun
@@ -134,8 +185,8 @@ fun! AicliReplaceSelectionOrPull(action, prompt, selmode) range " -> int
   endif
 endfun
 
-fun! AicliTerminal() range
-  execute "terminal litrepl repl ai"
+fun! AicliOpenTerminal() range
+  call AicliTerminal("litrepl repl ai")
   call feedkeys(" /cat out\n")
   return 0
 endfun
@@ -208,7 +259,7 @@ if !exists(":AIFile")
 endif
 
 if !exists(":AITerm")
-  command! -range -bar -nargs=0 AITerm call AicliTerminal()
+  command! -range -bar -nargs=0 AITerm call AicliOpenTerminal()
 endif
 
 let g:aicli_loaded = 1
