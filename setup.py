@@ -62,6 +62,7 @@ setup(
     join('.', 'sh', 'aicli-eval.sh'),
     join('.', 'sh', 'aicli-grammar.sh'),
     join('.', 'sh', 'aicli-style.sh'),
+    join('.', 'sh', 'litrepl-aicli.sh'),
   ],
   python_requires='>=3.12',
   author="Sergei Mironov",
