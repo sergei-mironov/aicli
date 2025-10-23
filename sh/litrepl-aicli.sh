@@ -10,17 +10,16 @@ while [ $# -gt 0 ]; do
     -P|--prompt) export AICLI_PROMPT="$AICLI_PROMPT$2"; shift ;;
     -s|--selection-paste) AICLI_PASTEMODE=y; AICLI_SELECTION="$2"; shift ;;
     -S|--selection-raw) AICLI_PASTEMODE=n; AICLI_SELECTION="$2"; shift ;;
-    -c|--output-comments-format) AICLI_OCFORMAT="$2"; shift ;;
     -f|--output-format) AICLI_OFORMAT="$2"; shift ;;
     -w|--textwidth) AICLI_TEXTWIDTH="$2"; shift ;;
-    -d|--debug) AICLI_DEBUG=y ;;
+    -v|-d|--debug|--verbose) AICLI_DEBUG=y ;;
     -i|--reindent) AICLI_REINDENT=y ;;
     --header) AICLI_HEADER="${AICLI_HEADER}$2" ; shift ;;
     --footer) AICLI_FOOTER="${AICLI_FOOTER}$2" ; shift ;;
     -h|--help)
       echo "Usage: $0 [-f|--output-format STR] [-w|--textwidth NUM] \
-[-P|--prompt STR] [-c--output-comments-format (none|commented|free)] \
-[-(s|S)|--selection[-raw] (FILE|-)] [FILE...] [start|stop|restart|repl] [-- ...]"
+[-P|--prompt STR] [-(s|S)|--selection[-raw] (FILE|-)] [FILE...] \
+[start|stop|restart|repl] [-- ...]"
       exit 0
       ;;
     start|stop|restart|repl|status|eval-code) CMD=$1 ;;
@@ -129,40 +128,29 @@ $AICLI_PROMPT
 EOF
 fi
 
-if test -n "$AICLI_OFORMAT" ; then
-if test "`doc`" = "markdown" -o "`doc`" = "tex"; then
-cat <<EOF
-Please don't wrap your response in Markdown or Latex code block markers.
+echo -n "("
 
-EOF
-else cat <<EOF
-Please generate a pastable `doc`. Please don't wrap your response in Markdown or
-Latex code block markers unless they present in the selection.
-
-EOF
-fi
-fi
-
-case $AICLI_OCFORMAT in
-no|none|empty) cat <<EOF
-Please generate no comments. Do not ask questions.
+case $AICLI_OFORMAT in
+"") ;;
+markdown|tex|latex) cat <<EOF
+Please generate a pastable fragment of `doc` document.
 
 EOF
 ;;
-any|free) cat <<EOF
-Feel free to put your own comments or questions in a free form.
+python|sh|cpp|c) cat <<EOF
+Please generate a pastable fragment of `doc`. Specifically, please do not wrap
+your response with the Markdown- or Latex-style code blocks of any kind. Feel
+free to put your own comments into `doc` comment blocks.
 
 EOF
 ;;
-fenced|commented) cat <<EOF
-For your own comments or questions, if needed, please wrap
-them into comment blocks as we normally do in `doc` documents.
-Please don't use Markdown formatting \`\`\` in your response.
+*) cat <<EOF
+Please generate a pastable fragment of `doc`. Specifically, please do not wrap
+your response with the Markdown- or Latex-style code blocks of any kind.
 
 EOF
 ;;
-*)
-;;
+*);;
 esac
 
 if test -n "$AICLI_TEXTWIDTH" ; then cat <<EOF
@@ -171,11 +159,12 @@ EOF
 fi
 
 cat <<EOF
-Please do not generate any polite endings in your response.
+Please do not generate any polite endings in your response.)
 
 EOF
 
 echo "$AICLI_FOOTER"
+echo "/ask"
 } | debug | exec $LITREPL "$@" eval-code ai | dedent
 
 
