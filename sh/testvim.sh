@@ -1,9 +1,9 @@
 #!/bin/sh
 
-set -e
+set -e -x
 
-if test -n "$VIM_LITREPL" ; then
-  echo "Please set VIM_LITREPL to a valid litrepl Vim plugin"
+if test -z "$VIM_LITREPL" ; then
+  echo "Please set VIM_LITREPL to a valid litrepl Vim plugin" >&2
   exit 1
 fi
 
@@ -23,6 +23,6 @@ not() {(
   echo ":source $VIM_LITREPL/plugin/litrepl_extras.vim"
   cat
 } | \
-$AICLI_ROOT/sh/vimdev.sh -n --clean "$@" >_vim.log
+$AICLI_ROOT/sh/vimdev.sh -n --clean "$@" >_vim.log || true
 not grep -E '^E[0-9]+|Error' _vim_messages.log
 not grep -E '^E[0-9]+:' _vim.log
