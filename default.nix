@@ -1,6 +1,6 @@
 { pkgs
 , stdenv ? pkgs.stdenv
-# , litrepl
+, litrepl
 , revision ? null
 } :
 let
@@ -173,10 +173,11 @@ let
         texlive-dev
         pdf2svg
         pandoc
-        # litrepl.litrepl-release
+        litrepl.litrepl-release
       ];
 
       shellHook = with pkgs; ''
+        export VIM_LITREPL=${litrepl.vim-litrepl-release}
         if test -f ./env.sh ; then
           . ./env.sh
         fi

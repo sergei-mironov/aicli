@@ -12,16 +12,21 @@
       url = "github:grwlf/nixpkgs/local17.2";
     };
 
-    # litrepl = {
-    #   url = "git+file:/home/grwlf/proj/litrepl.vim/";
-    # };
+    litrepl = {
+      url = "git+file:/home/grwlf/proj/litrepl.vim/";
+    };
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = {
+    self
+  , nixpkgs
+  , litrepl
+  }:
     let
       defaults = system : (import ./default.nix) {
         pkgs = import nixpkgs { inherit system; };
         revision = if self ? rev then self.rev else null;
+        litrepl = litrepl.outputs.packages.${system};
       };
       defaults-x86_64 = defaults "x86_64-linux";
       defaults-aarch64 = defaults "aarch64-linux";

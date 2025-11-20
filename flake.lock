@@ -1,6 +1,39 @@
 {
   "nodes": {
+    "litrepl": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "dirtyRev": "011931aa921e53b1ee08e391ddad21cfdc630a7c-dirty",
+        "dirtyShortRev": "011931a-dirty",
+        "lastModified": 1763541493,
+        "narHash": "sha256-m1YGAvDSUVSoM2nA3NDOvRr1aetOrGhEWw/dkpf43DY=",
+        "type": "git",
+        "url": "file:/home/grwlf/proj/litrepl.vim/"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:/home/grwlf/proj/litrepl.vim/"
+      }
+    },
     "nixpkgs": {
+      "locked": {
+        "lastModified": 1742218846,
+        "narHash": "sha256-uVO7Uquz+noiOGNxEoRQheH/TjNFTNVEVgEspQViwBE=",
+        "owner": "grwlf",
+        "repo": "nixpkgs",
+        "rev": "a545cb348c64af8989ce61260b5e2edcfcfa6185",
+        "type": "github"
+      },
+      "original": {
+        "owner": "grwlf",
+        "ref": "local17.2",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
       "locked": {
         "lastModified": 1749811874,
         "narHash": "sha256-ZzqBCS3Ux3/2kmmV2L+BiIQi6//A3me8JW7BP7ATcRM=",
@@ -18,7 +51,8 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "litrepl": "litrepl",
+        "nixpkgs": "nixpkgs_2"
       }
     }
   },
