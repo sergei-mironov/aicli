@@ -6,7 +6,7 @@ from typing import Any
 
 from ..types import (Actor, ActorName, ActorOptions, ActorState, Intention, Conversation,
                      Utterance, UserName, File, Parser)
-from ..utils import read_until_pattern, cont2str, IterableStream
+from ..utils import read_until_pattern, cont2str, TextStream
 
 from .user import CMD_ANS
 
@@ -32,8 +32,8 @@ class DummyActor(Actor):
         f"My api key is '{self.opt.apikey}'\n",
         f"My temperature is '{self.opt.temperature}'\n",
         f"My prompt is '{self.opt.prompt}'\n",
-        f"```\n",
+        f"```",
       ]
     return Utterance.init(self.name,
                           Intention.init(actor_next=UserName()),
-                          IterableStream(response))
+                          TextStream(response, force_eol=True))

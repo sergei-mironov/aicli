@@ -22,6 +22,14 @@ from .user import CMD_ANS
 
 OpenAIFileID = str
 
+class TextChunkStream(TextStream):
+  def __init__(self, chunks, **kwargs):
+    def _map(c):
+      res = c.choices[0].delta.content
+      return res or ''
+    super().__init__(map(_map, chunks), **kwargs)
+  def gen(self):
+    yield from super().gen()
 
 class OpenAIImageActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions, file:File):
@@ -199,27 +207,6 @@ class OpenAITextActor(Actor):
       self.cache.popitem(last=False)
     return sau
 
-  def _react_text(self, act:ActorState, cnv:Conversation) -> Utterance:
-    sau = self._cnv2sau(cnv)
-    self.logger.dbg(f"sau: {sau}")
-    response = None
-    if self.opt.replay:
-      response = IterableStream(read_until_pattern(self.file, CMD_ANS, 'OpenAI>>> '))
-    else:
-      try:
-        chunks = self.client.chat.completions.create(
-          model=self.name.model,
-          messages=sau,
-          stream=True,
-          temperature=self.opt.temperature,
-          seed=self.opt.seed,
-        )
-        response = TextStream(chunks)
-      except OpenAIError as err:
-        raise ConversationException(str(err)) from err
-    assert response is not None
-    return Utterance.init(self.name, Intention.init(actor_next=UserName()), response)
-
   def _cnv2cont(self, cnv:Conversation) -> Contents:
     # [1] - id of the request; [2] - non-empty utterance by the same issuer.
     uid = uts_lastref(cnv.utterances, self.name) # [1]
@@ -247,7 +234,7 @@ class OpenAITextActor(Actor):
           temperature=self.opt.temperature,
           seed=self.opt.seed,
         )
-        response = TextStream(chunks)
+        response = TextChunkStream(chunks, force_eol=True)
       except OpenAIError as err:
         raise ConversationException(str(err)) from err
     assert response is not None

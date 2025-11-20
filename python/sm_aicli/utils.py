@@ -485,13 +485,17 @@ def url2fname(url, image_dir:str|None)->str|None:
 
 
 class TextStream(IterableStream):
-  def __init__(self, chunks):
+  def __init__(self, gen, force_eol=False):
+    self.force_eol = force_eol
+    self.eol = False
     def _map(c):
-      res = c.choices[0].delta.content
-      return res or ''
-    super().__init__(map(_map, chunks))
+      self.eol = c.endswith('\n')
+      return c
+    super().__init__(map(_map, gen))
   def gen(self):
     yield from super().gen()
+    if self.force_eol:
+      yield "\n"
 
 class BinStream(IterableStream):
   def __init__(self, chunks, **kwargs):
