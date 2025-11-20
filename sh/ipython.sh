@@ -1,7 +1,7 @@
 #!/bin/sh
 
-if ! test -d "$AICLI_SOURCE" ; then
-  echo "AICLI_SOURCE is not set"
+if ! test -d "$AICLI_ROOT" ; then
+  echo "AICLI_ROOT is not set"
   exit 1
 fi
 
@@ -11,8 +11,8 @@ fi
 #   alias ipython0='ipython --profile-dir=$CWD/.ipython-profile'
 # fi
 
-mkdir $AICLI_SOURCE/.ipython-profile 2>/dev/null || true
-cat >$AICLI_SOURCE/.ipython-profile/ipython_config.py <<EOF
+mkdir $AICLI_ROOT/.ipython-profile 2>/dev/null || true
+cat >$AICLI_ROOT/.ipython-profile/ipython_config.py <<EOF
 c = get_config()
 c.InteractiveShellApp.exec_lines = []
 c.InteractiveShellApp.exec_lines.append('%load_ext autoreload')
@@ -45,6 +45,6 @@ def tweak():
 tweak()
 EOF
 
-ipython3 --profile-dir=$AICLI_SOURCE/.ipython-profile \
-         --logfile="$AICLI_SOURCE/_ipython.log" -i "$@"
+ipython3 --profile-dir=$AICLI_ROOT/.ipython-profile \
+         --logfile="$AICLI_ROOT/_ipython.log" -i "$@"
 
