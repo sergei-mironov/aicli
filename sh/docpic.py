@@ -11,7 +11,7 @@ def docpic(tex, width='10%'):
     \documentclass{standalone}
     \usepackage{tikz-cd}
     \begin{document}
-    """) + tex + "\end{document}"
+    """) + tex + r"\end{document}"
   makedirs('doc', exist_ok=True)
   fn = sha256(texdoc.encode()).hexdigest()[:10]
   with open(f"doc/{fn}.tex", 'w') as f:

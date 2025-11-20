@@ -354,6 +354,7 @@ for command, (arguments, description) in CMDHELP.items():
 | /pipe           | REF REF REF     | Run a system shell command, piping its input and output |
 | /version        |                 | Print version |
 | /pwd            |                 | Print the current working directory. |
+| /ref            | STR STR         | Insert a reference to a remote object |
 <!--noresult-->
 
 where:
@@ -415,6 +416,7 @@ command.1: /\/version/ | \
            /\/pipe/ / +/ ref / +/ ref / +/ ref | \
            /\/cd/ / +/ ref | \
            /\/paste/ / +/ BOOL | \
+           /\/ref/ / +/ string / +/ string | \
            /\/pwd/
 # Everything else is a regular text.
 text: TEXT
@@ -454,10 +456,11 @@ COMMENT: "#" /[^\n]*/
 %%bash
 mdlink.py --file ./python/sm_aicli/types.py \
     Conversation Utterance Actor Intention Stream
+
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L8) | [Utterance](./python/sm_aicli/types.py#L175) | [Actor](./python/sm_aicli/types.py#L60) | [Intention](./python/sm_aicli/types.py#L95) | [Stream](./python/sm_aicli/types.py#L119)
+[Conversation](./python/sm_aicli/types.py#L9) | [Utterance](./python/sm_aicli/types.py#L154) | [Actor](./python/sm_aicli/types.py#L61) | [Intention](./python/sm_aicli/types.py#L89) | [Stream](./python/sm_aicli/types.py#L126)
 
 <!--noresult-->
 
@@ -480,6 +483,7 @@ docpic.py '60%' <<"EOF"
 Actor \arrow[rr, "related", bend left] &              & {Actor,Utterance} \arrow[ll, "new", bend left]
 \end{tikzcd}
 EOF
+
 ```-->
 
 <p align='center'>
@@ -507,6 +511,7 @@ Actor \arrow[rr, "related"] &              & {Actor,Utterance} \arrow[d, "respon
                             &              & Utterance' \arrow[llu, "target"]      
 \end{tikzcd}
 EOF
+
 ```-->
 
 <p align='center'>
