@@ -59,9 +59,6 @@ setup(
   install_requires=[gpt4all, 'openai', 'gnureadline', 'lark', 'pillow'],
   scripts=[
     join('.', 'python', 'aicli'),
-    join('.', 'sh', 'aicli-eval.sh'),
-    join('.', 'sh', 'aicli-grammar.sh'),
-    join('.', 'sh', 'aicli-style.sh'),
     join('.', 'sh', 'litrepl-aicli.sh'),
   ],
   python_requires='>=3.12',

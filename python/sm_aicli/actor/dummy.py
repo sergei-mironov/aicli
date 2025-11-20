@@ -27,11 +27,12 @@ class DummyActor(Actor):
         f"You said:\n```\n",
         cont2str(cnv.utterances[-1].contents,False).strip(),
         f"\n```\n",
-        f"I say:\n"
+        f"I say:\n```\n",
         f"I am a dummy actor '{self.name.repr()}'\n",
         f"My api key is '{self.opt.apikey}'\n",
         f"My temperature is '{self.opt.temperature}'\n",
         f"My prompt is '{self.opt.prompt}'\n",
+        f"```\n",
       ]
     return Utterance.init(self.name,
                           Intention.init(actor_next=UserName()),

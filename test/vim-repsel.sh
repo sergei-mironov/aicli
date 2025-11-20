@@ -19,10 +19,10 @@ testvim.sh source >_vim.log 2>&1 <<EOF
 /xxx
 V\
 j\
-:AI dummy -
+:LPipe dummy -
 /yyy
 V\
-:AI! dummy -
+:LPipe! dummy -
 :w! result
 :qa!
 EOF
@@ -39,13 +39,15 @@ xxx
 
 (End of the 'selection' snippet)
 
-Please do not generate any polite endings in your response.
+(Please do not generate any polite endings in your response.)
 ```
 I say:
+```
 I am a dummy actor 'dummy:default'
 My api key is 'None'
 My temperature is 'None'
 My prompt is 'None'
+```
 
 Raw replace
 ===========
@@ -54,11 +56,13 @@ You said:
 ```
 yyy
 
-Please do not generate any polite endings in your response.
+(Please do not generate any polite endings in your response.)
 ```
 I say:
+```
 I am a dummy actor 'dummy:default'
 My api key is 'None'
 My temperature is 'None'
 My prompt is 'None'
+```
 EOF
