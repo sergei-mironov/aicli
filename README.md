@@ -456,11 +456,12 @@ COMMENT: "#" /[^\n]*/
 %%bash
 mdlink.py --file ./python/sm_aicli/types.py \
     Conversation Utterance Actor Intention Stream
-
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L9) | [Utterance](./python/sm_aicli/types.py#L154) | [Actor](./python/sm_aicli/types.py#L61) | [Intention](./python/sm_aicli/types.py#L89) | [Stream](./python/sm_aicli/types.py#L126)
+[Conversation](./python/sm_aicli/types.py#L9) | [Utterance](./python/sm_aicli/types.py#L154) |
+[Actor](./python/sm_aicli/types.py#L61) | [Intention](./python/sm_aicli/types.py#L89) |
+[Stream](./python/sm_aicli/types.py#L126)
 
 <!--noresult-->
 
@@ -483,7 +484,6 @@ docpic.py '60%' <<"EOF"
 Actor \arrow[rr, "related", bend left] &              & {Actor,Utterance} \arrow[ll, "new", bend left]
 \end{tikzcd}
 EOF
-
 ```-->
 
 <p align='center'>
@@ -511,7 +511,6 @@ Actor \arrow[rr, "related"] &              & {Actor,Utterance} \arrow[d, "respon
                             &              & Utterance' \arrow[llu, "target"]      
 \end{tikzcd}
 EOF
-
 ```-->
 
 <p align='center'>
