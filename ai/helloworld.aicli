@@ -1,0 +1,11 @@
+#!/usr/bin/env -S aicli --rc=none
+/model openai:"gpt-4o"
+/set model apikey file:"_openai-apikey.txt"
+Please write a complete hello world program in C++
+/ask
+/cat "# "
+/cat "# Now we number the lines:"
+/cat "# "
+/cp "nl -ba" cmd
+/pipe cmd out in
+/cat in
