@@ -22,7 +22,7 @@ from sm_aicli import (Actor, Conversation, ActorState, ActorName, Utterance, Use
                       UserActor, ActorOptions, onematch, expanddir, OpenAIImageActor,
                       OpenAITextActor, GPT4AllActor, DummyActor, Reference, RemoteReference,
                       LocalReference, Stream, info, err, with_sigint, args2script, File, Parser,
-                      read_configs)
+                      read_configs, ParsingResults, RecordingParams, Recorder, UserRecorder)
 
 from .utils import version, REVISION, url2fname, BinStream
 
@@ -163,10 +163,11 @@ def get_help_string(arg_parser):
 
 class StdinFile(File):
   """ Stdin input file with readline and history management """
-  def __init__(self, args:Any, stream):
+  def __init__(self, args:Any, stream, recorder:UserRecorder):
     self.args = args
     self.stream = stream
     self.batch_mode = len(args.filenames) > 0
+    self.recorder = recorder
 
     if args.readline_history is None:
       args.readline_history = environ.get("AICLI_HISTORY")
@@ -190,11 +191,16 @@ class StdinFile(File):
       if len(self.stream) == 0:
         if self.batch_mode and not self.args.keep_running:
           return True, None
-        self.stream = input(prompt) + '\n'
+        external_input = input(prompt) + '\n'
+        self.recorder.record(external_input)
+        self.stream = external_input
         if self.args.readline_history is not None:
           write_history_file(self.args.readline_history)
-      self.stream, res = parser.parse(self.stream)
-      return False, res
+      pres = parser.parse(self.stream)
+      self.stream = pres.unparsed
+      if pres.recording is not None:
+        self.recorder.update_params(pres.recording)
+      return False, pres.result
     except EOFError:
       return True, None
 
@@ -221,13 +227,13 @@ class ActorStateImpl(ActorState):
     return ActorStateImpl({})
 
 
-def actor_factory(name:ActorName, opt:ActorOptions, file:File) -> Actor:
+def actor_factory(name:ActorName, opt:ActorOptions, file:File, recorder:Recorder) -> Actor:
   match name.provider:
     case "openai":
       if 'dall' in name.model:
         return OpenAIImageActor(name, opt, file=file)
       else:
-        return OpenAITextActor(name, opt, file=file)
+        return OpenAITextActor(name, opt, file=file, recorder=recorder)
     case "gpt4all":
       return GPT4AllActor(name, opt)
     case "dummy":
@@ -263,55 +269,58 @@ def main(cmdline=None, actor_factory_fn=None):
     info("Skipping configuration files")
     configs = []
 
-  file = StdinFile(args, args2script(args, configs))
+  recorder = UserRecorder()
+  try:
+    file = StdinFile(args, args2script(args, configs), recorder=recorder)
 
-  cnv = Conversation.init()
-  st = ActorStateImpl.init()
-  current_actor = UserName()
-  current_modality = Modality.Text
-  user = UserActor(UserName(), ActorOptions.init(), args, file)
-  st.actors[current_actor] = user
+    cnv = Conversation.init()
+    st = ActorStateImpl.init()
+    current_actor = UserName()
+    current_modality = Modality.Text
+    user = UserActor(UserName(), ActorOptions.init(), args, file)
+    st.actors[current_actor] = user
 
-  while True:
-    try:
-      utterance = st.actors[current_actor].react(st, cnv)
-      assert utterance.actor_name == st.actors[current_actor].name, (
-        f"{utterance.actor_name} != {st.actors[current_actor].name}"
-      )
-      cnv.utterances.append(utterance)
-      intention = utterance.intention
-      if intention.dbg_flag:
-        user.logger.info("Type `cont` to continue when done")
-        Pdb(nosigint=True).set_trace(_getframe())
-        file._reload_history()
-      if intention.actor_updates is not None:
-        for name, opt in intention.actor_updates.items():
-          actor = st.actors.get(name)
-          if actor is not None:
-            actor.set_options(opt)
-          else:
-            st.actors[name] = actor_factory_fn(name, opt, file)
-      if intention.actor_next is not None:
-        assert intention.actor_next in st.actors, (
-          f"{intention.actor_next} is not among {st.actors.keys()}"
+    while True:
+      try:
+        utterance = st.actors[current_actor].react(st, cnv)
+        assert utterance.actor_name == st.actors[current_actor].name, (
+          f"{utterance.actor_name} != {st.actors[current_actor].name}"
         )
-        current_actor = intention.actor_next
-      if intention.reset_flag:
-        cnv = Conversation.init()
-        for a in st.actors.values():
-          a.reset()
-      if intention.exit_flag:
-        break
-    except KeyboardInterrupt:
-      info("^C", user, prefix=False)
-      current_actor = UserName()
-      current_modality = Modality.Text
-    except NotImplementedError as e:
-      err("<Not implemented>", user)
-      current_actor = UserName()
-      current_modality = Modality.Text
-    except ValueError as e:
-      err(e, user)
-      current_actor = UserName()
-      current_modality = Modality.Text
-
+        cnv.utterances.append(utterance)
+        intention = utterance.intention
+        if intention.dbg_flag:
+          user.logger.info("Type `cont` to continue when done")
+          Pdb(nosigint=True).set_trace(_getframe())
+          file._reload_history()
+        if intention.actor_updates is not None:
+          for name, opt in intention.actor_updates.items():
+            actor = st.actors.get(name)
+            if actor is not None:
+              actor.set_options(opt)
+            else:
+              st.actors[name] = actor_factory_fn(name, opt, file=file, recorder=recorder)
+        if intention.actor_next is not None:
+          assert intention.actor_next in st.actors, (
+            f"{intention.actor_next} is not among {st.actors.keys()}"
+          )
+          current_actor = intention.actor_next
+        if intention.reset_flag:
+          cnv = Conversation.init()
+          for a in st.actors.values():
+            a.reset()
+        if intention.exit_flag:
+          break
+      except KeyboardInterrupt:
+        info("^C", user, prefix=False)
+        current_actor = UserName()
+        current_modality = Modality.Text
+      except NotImplementedError as e:
+        err("<Not implemented>", user)
+        current_actor = UserName()
+        current_modality = Modality.Text
+      except ValueError as e:
+        err(e, user)
+        current_actor = UserName()
+        current_modality = Modality.Text
+  finally:
+    recorder.update_params(RecordingParams())

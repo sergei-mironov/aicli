@@ -18,11 +18,29 @@ class UnquotedString(str):
 # PathStr is a string holding a path to a file
 PathStr = str
 
+@dataclass
+class RecordingParams:
+  filename:str|None = None
+
+
+class Recorder:
+  def record(self, chunk:str) -> None:
+    raise NotImplementedError()
+
+
+@dataclass
+class ParsingResults:
+  """ Results are: (1) unparsed stream (2) parse result (3) opitonal request to record the
+  subsequent stream. """
+  unparsed: str
+  result: Any
+  recording:RecordingParams|None = None
 
 class Parser:
   """ A Stateful text stream parser """
-  def parse(self, chunk:str) -> tuple[str,Any]:
-    """ Parse a chunk of input stream, return the unparsed stream and a parser-specific state """
+  def parse(self, chunk:str) -> ParsingResults:
+    """ Parse a chunk of input stream, return the unparsed stream and a parser-specific state.
+    """
     raise NotImplementedError()
 
 

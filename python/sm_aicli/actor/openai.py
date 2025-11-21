@@ -13,7 +13,7 @@ from os import stat
 
 from ..types import (Actor, ActorName, ActorState, PathStr, ActorOptions, Conversation, Intention,
                      ModelName, UserName, Utterance, ConversationException, SAU, Stream, Contents,
-                     File, LocalReference, RemoteReference, ContentItem)
+                     File, LocalReference, RemoteReference, ContentItem, Recorder)
 
 from ..utils import (ConsoleLogger, IterableStream, find_last_message, err, uts_2sau, uts_lastfull,
                      uts_lastref, add_transparent_rectangle, read_until_pattern, TextStream)
@@ -23,11 +23,20 @@ from .user import CMD_ANS
 OpenAIFileID = str
 
 class TextChunkStream(TextStream):
-  def __init__(self, chunks, **kwargs):
-    def _map(c):
-      res = c.choices[0].delta.content
-      return res or ''
-    super().__init__(map(_map, chunks), **kwargs)
+  def __init__(self, recorder:Recorder, chunks, ensure_eol):
+    def _gen():
+      has_eol=False
+      for c in chunks:
+        data = c.choices[0].delta.content or ''
+        has_eol = data.endswith("\n")
+        recorder.record(data)
+        yield data
+      if not has_eol:
+        data = "\n"
+        yield data
+        recorder.record(data)
+      recorder.record(f"{CMD_ANS}\n")
+    super().__init__(_gen())
   def gen(self):
     yield from super().gen()
 
@@ -140,7 +149,7 @@ class OpenAIImageActor(Actor):
 
 
 class OpenAITextActor(Actor):
-  def __init__(self, name:ActorName, opt:ActorOptions, file:File):
+  def __init__(self, name:ActorName, opt:ActorOptions, file:File, recorder:Recorder):
     assert isinstance(name, ModelName), name
     assert name.provider == "openai", f"Unsupported provider '{name.provider}'"
     assert 'gpt-4' in name.model, f"Unsupported model '{name.model}'"
@@ -149,6 +158,7 @@ class OpenAITextActor(Actor):
     self.logger = ConsoleLogger(self)
     self.file = file
     self.uploads:dict[LocalReference,OpenAIFileID] = {}
+    self.recorder = recorder
     try:
       self.client = OpenAI(api_key=opt.apikey, http_client=DefaultHttpxClient(proxy=opt.proxy))
     except OpenAIError as err:
@@ -234,7 +244,7 @@ class OpenAITextActor(Actor):
           temperature=self.opt.temperature,
           seed=self.opt.seed,
         )
-        response = TextChunkStream(chunks, force_eol=True)
+        response = TextChunkStream(self.recorder, chunks, ensure_eol=True)
       except OpenAIError as err:
         raise ConversationException(str(err)) from err
     assert response is not None

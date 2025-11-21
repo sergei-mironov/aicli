@@ -36,4 +36,4 @@ class DummyActor(Actor):
       ]
     return Utterance.init(self.name,
                           Intention.init(actor_next=UserName()),
-                          TextStream(response, force_eol=True))
+                          TextStream(response, ensure_eol=True))

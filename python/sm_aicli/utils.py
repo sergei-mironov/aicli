@@ -19,7 +19,8 @@ from urllib.parse import urlparse, parse_qs
 from requests.exceptions import RequestException
 
 from .types import (Actor, Conversation, UID, Utterance, Utterances, SAU, ActorName, Contents,
-                    Stream, Logger, Parser, File, ContentItem, Dereferencer)
+                    Stream, Logger, Parser, File, ContentItem, Dereferencer, ParsingResults,
+                    RecordingParams)
 
 REVISION:str|None
 try:
@@ -447,14 +448,14 @@ class ReadUntilPatternParser(Parser):
   def __init__(self, pattern):
     self.buffer = []
     self.pattern = pattern
-  def parse(self, chunk:str) -> tuple[str,Any]:
+  def parse(self, chunk:str) -> ParsingResults:
     try:
       index = chunk.index(self.pattern)
       self.buffer.append(chunk[:index])
-      return chunk[index+len(self.pattern):], self.buffer
+      return ParsingResults(chunk[index+len(self.pattern):], self.buffer)
     except ValueError:
       self.buffer.append(chunk)
-      return '', None
+      return ParsingResults('', None)
 
 
 def read_until_pattern(file:File, pattern:str, prompt:str) -> list[str]:
@@ -485,16 +486,16 @@ def url2fname(url, image_dir:str|None)->str|None:
 
 
 class TextStream(IterableStream):
-  def __init__(self, gen, force_eol=False):
-    self.force_eol = force_eol
-    self.eol = False
+  def __init__(self, gen, ensure_eol=False):
+    self.ensure_eol = ensure_eol
+    self.has_eol = False
     def _map(c):
-      self.eol = c.endswith('\n')
+      self.has_eol = c.endswith('\n')
       return c
     super().__init__(map(_map, gen))
   def gen(self):
     yield from super().gen()
-    if self.force_eol:
+    if self.ensure_eol and not self.has_eol:
       yield "\n"
 
 class BinStream(IterableStream):

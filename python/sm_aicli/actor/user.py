@@ -17,7 +17,7 @@ from subprocess import run, PIPE
 from ..types import (Stream, Logger, Actor, ActorDesc, ActorName, ActorOptions, Intention,
                      Utterance, Conversation, ActorState, ModelName, Modality, QuotedString,
                      UnquotedString, Parser, File, ContentItem, Reference, LocalReference,
-                     LocalContent, RemoteReference)
+                     LocalContent, RemoteReference, ParsingResults, RecordingParams, Recorder)
 
 from ..utils import (IterableStream, ConsoleLogger, with_sigint, version, sys2exitcode, WLState,
                      wraplong, onematch, expanddir, info, set_global_verbosity, traverse_stream)
@@ -92,6 +92,7 @@ COMPLETION = {
       " prompt": {" string": {}},
       " width": {" NUMBER": {}, " default": {}},
       " verbosity": {" NUMBER": {}, " default": {}},
+      " recording": REF,
     }
   },
   CMD_CP:      REF_REF,
@@ -161,6 +162,7 @@ GRAMMAR = fr"""
                                               /imgnum/ / +/ (NUMBER | DEF)) | \
                                (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
                                                            /prompt/ / +/ string | \
+                                                           /recording/ / +/ ref | \
                                                            /width/ / +/ (NUMBER | DEF) | \
                                                            /verbosity/ / +/ (NUMBER | DEF))) | \
              /\{CMD_CP}/ / +/ ref / +/ ref | \
@@ -337,10 +339,27 @@ def bufferadd(buffer:LocalContent, val:str|bytes) -> None:
   buffer[-1] += val
 
 
+class UserRecorder(Recorder):
+  def __init__(self):
+    self.recfile = None
+  def record(self, chunk:str) -> None:
+    if self.recfile is not None:
+      self.recfile.write(chunk)
+  def update_params(self, recording:RecordingParams) ->None:
+    if self.recfile is not None:
+      self.recfile.write(f"{CMD_SET} model replay off\n")
+      self.recfile.close()
+    if recording.filename is not None:
+      self.recfile = open(recording.filename, "w")
+      self.recfile.write(f"{CMD_SET} model replay on\n")
+    else:
+      self.recfile = None
+
 @dataclass
 class InterpreterPause(Exception):
   unparsed:int
-  utterance:Utterance
+  utterance:Utterance|None=None
+  recording:RecordingParams|None=None
 
 IN='in'
 OUT='out'
@@ -546,6 +565,15 @@ class Repl(Interpreter):
           self.owner.opt.verbose = val
           set_global_verbosity(val)
           self.logger.info(f"Setting terminal verbosity to '{val}'")
+        elif pname == 'recording':
+          # val = as_ref(ref_read(pval, self.buffers))
+          if pval[0]!='file':
+            raise ValueError(f"Reference should be a file, not {pval}")
+          self.logger.info(f"Setting terminal recording to '{pval}'")
+          raise InterpreterPause(
+            unparsed=tree.meta.end_pos,
+            recording=RecordingParams(pval[1])
+          )
         else:
           raise ValueError(f"Unknown terminal parameter '{pname}'")
       else:
@@ -701,30 +729,30 @@ class Repl(Interpreter):
 class ReplParser(Parser):
   def __init__(self, repl:Repl):
     self.repl = repl
-  def parse(self, chunk:str) -> tuple[str,Utterance]:
+  def parse(self, chunk:str) -> ParsingResults:
     try:
       tree = PARSER.parse(chunk)
       self.repl.logger.dbg(tree)
       self.repl.visit(tree)
     except InterpreterPause as p:
-      return (chunk[p.unparsed:], p.utterance)
+      return ParsingResults(chunk[p.unparsed:], p.utterance, p.recording)
     except (RuntimeWarning,) as e:
       self.repl.logger.warn(str(e))
     except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
       self.repl.logger.err(str(e))
-    return ('', None)
+    return ParsingResults('', None)
 
 class PasteModeReplParser(Parser):
   def __init__(self, repl:Repl):
     self.repl = repl
-  def parse(self, chunk:str) -> tuple[str,bool]:
+  def parse(self, chunk:str) -> ParsingResults:
     assert self.repl.paste_mode is True
     if chunk.strip() != f'{CMD_PASTE} off':
       # self.repl.buffers[IN].append(chunk)
       bufferadd(self.repl.buffers[IN], chunk)
     else:
       self.repl.paste_mode = False
-    return ('', None)
+    return ParsingResults('', None)
 
 
 def read_configs(rcnames:list[str])->list[str]:
