@@ -360,6 +360,7 @@ class InterpreterPause(Exception):
   unparsed:int
   utterance:Utterance|None=None
   recording:RecordingParams|None=None
+  paste_mode:bool|None=None
 
 IN='in'
 OUT='out'
@@ -372,7 +373,6 @@ class Repl(Interpreter):
     self.actor_next = None
     self.rawbin = False
     self._reset()
-    self.paste_mode = False
     self.readline_prompt = owner.args.readline_prompt
     self.wlstate = WLState(None)
     self.logger = logger
@@ -671,7 +671,10 @@ class Repl(Interpreter):
         self.logger.info("Entering paste mode. Type '/paste off' to finish.")
       else:
         self.logger.info("Exiting paste mode.")
-      self.paste_mode = val
+      raise InterpreterPause(
+        unparsed=tree.meta.end_pos,
+        paste_mode=val
+      )
     elif command == CMD_REF:
       args = self.visit_children(tree)
       mimetype = as_str(args[2])
@@ -735,7 +738,7 @@ class ReplParser(Parser):
       self.repl.logger.dbg(tree)
       self.repl.visit(tree)
     except InterpreterPause as p:
-      return ParsingResults(chunk[p.unparsed:], p.utterance, p.recording)
+      return ParsingResults(chunk[p.unparsed:], p.utterance, p.recording, p.paste_mode)
     except (RuntimeWarning,) as e:
       self.repl.logger.warn(str(e))
     except (ValueError, RuntimeError, FileNotFoundError, LarkError) as e:
@@ -746,13 +749,12 @@ class PasteModeReplParser(Parser):
   def __init__(self, repl:Repl):
     self.repl = repl
   def parse(self, chunk:str) -> ParsingResults:
-    assert self.repl.paste_mode is True
-    if chunk.strip() != f'{CMD_PASTE} off':
-      # self.repl.buffers[IN].append(chunk)
-      bufferadd(self.repl.buffers[IN], chunk)
+    pattern = f'{CMD_PASTE} off'
+    if (off_index := (chunk.index(pattern) if (pattern in chunk) else None)) is not None:
+      return ParsingResults(chunk[off_index + len(pattern):], None, paste_mode=False)
     else:
-      self.repl.paste_mode = False
-    return ParsingResults('', None)
+      bufferadd(self.repl.buffers[IN], chunk)
+      return ParsingResults('', None)
 
 
 def read_configs(rcnames:list[str])->str:
@@ -948,17 +950,19 @@ class UserActor(Actor):
     self._sync2(av, cnv)
     normal_parser = ReplParser(self.repl)
     paste_parser = PasteModeReplParser(self.repl)
+    parser = normal_parser
 
     while True:
-      parser = paste_parser if self.repl.paste_mode else normal_parser
-      eof, utterance = self.file.process(parser, prompt=self.repl.readline_prompt)
+      eof, pres = self.file.process(parser, prompt=self.repl.readline_prompt)
+      if (paste_mode := pres.paste_mode) is not None:
+        parser = paste_parser if paste_mode else normal_parser
       if eof:
         print()
         return Utterance.init(
           name=self.name,
           intention=Intention.init(exit_flag=True)
         )
-      if utterance is not None:
+      if (utterance := pres.result) is not None:
         return utterance
 
   def set_options(self, opt:ActorOptions) -> None:

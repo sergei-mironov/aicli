@@ -455,17 +455,16 @@ class ReadUntilPatternParser(Parser):
       return ParsingResults(chunk[index+len(self.pattern):], self.buffer)
     except ValueError:
       self.buffer.append(chunk)
-      return ParsingResults('', None)
+    return ParsingResults('', [])
 
 
 def read_until_pattern(file:File, pattern:str, prompt:str) -> list[str]:
   parser = ReadUntilPatternParser(pattern)
-  response = []
   while True:
-    eof, response = file.process(parser, prompt=prompt)
-    if eof or response:
-      break
-  return response
+    eof, pres = file.process(parser, prompt=prompt)
+    if eof or pres.result:
+      return pres.result
+  return []
 
 
 def url2ext(url)->str|None:

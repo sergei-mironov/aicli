@@ -35,6 +35,7 @@ class ParsingResults:
   unparsed: str
   result: Any
   recording:RecordingParams|None = None
+  paste_mode:bool|None = None
 
 class Parser:
   """ A Stateful text stream parser """
@@ -46,7 +47,7 @@ class Parser:
 
 class File:
   """ Input file, e.g. stdin. """
-  def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
+  def process(self, parser:Parser, prompt:str) -> tuple[bool, ParsingResults]:
     """ Read and parse the contents using a Parser. Unparsed stream should be
     placed into a buffer and attempted on the next call. """
     raise NotImplementedError()

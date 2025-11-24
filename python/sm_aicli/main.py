@@ -186,11 +186,11 @@ class StdinFile(File):
     else:
       info(f"History file is not used")
 
-  def process(self, parser:Parser, prompt:str) -> tuple[bool, Any]:
+  def process(self, parser:Parser, prompt:str) -> tuple[bool, ParsingResults]:
     try:
       if len(self.stream) == 0:
         if self.batch_mode and not self.args.keep_running:
-          return True, None
+          return True, ParsingResults('', None)
         external_input = input(prompt) + '\n'
         self.recorder.record(external_input)
         self.stream = external_input
@@ -200,9 +200,9 @@ class StdinFile(File):
       self.stream = pres.unparsed
       if pres.recording is not None:
         self.recorder.update_params(pres.recording)
-      return False, pres.result
+      return False, pres
     except EOFError:
-      return True, None
+      return True, ParsingResults('', None)
 
 
 @dataclass
@@ -285,7 +285,7 @@ def main(cmdline=None, actor_factory_fn=None):
       try:
         utterance = st.actors[current_actor].react(st, cnv)
         assert utterance.actor_name == st.actors[current_actor].name, (
-          f"{utterance.actor_name} != {st.actors[current_actor].name}"
+          f"{current_actor}: {utterance.actor_name} != {st.actors[current_actor].name}"
         )
         cnv.utterances.append(utterance)
         intention = utterance.intention
