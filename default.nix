@@ -105,20 +105,6 @@ let
       ];
     });
 
-    vim-aicli = pkgs.vimUtils.buildVimPluginFrom2Nix rec {
-      pname = "vim-aicli";
-      version = fileContents ./semver.txt;
-      version_revision = if revision != null then
-        "${version}+g${builtins.substring 0 7 revision}" else
-        version;
-      src = builtins.filterSource (
-        path: type: !( baseNameOf path == "bin" && type == "directory" )) ./vim;
-      postInstall = ''
-        sed -i "s/version-to-be-filled-by-the-packager/${version_revision}/g" \
-          $target/plugin/aicli.vim
-      '';
-    };
-
     python-dev = python.withPackages (
       pp: let
         pylsp = pp.python-lsp-server;
@@ -188,7 +174,7 @@ let
 
     collection = rec {
       inherit shell gpt4all-src gpt4all-backend aicli python-dev python-aicli
-              vim-aicli openai-src;
+              openai-src;
     };
   };
 
