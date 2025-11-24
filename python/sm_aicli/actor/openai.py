@@ -234,7 +234,8 @@ class OpenAITextActor(Actor):
     self.logger.dbg(f"sau: {sau}")
     response = None
     if self.opt.replay:
-      response = IterableStream(read_until_pattern(self.file, CMD_ANS, 'OpenAI>>> '))
+      chunk = read_until_pattern(self.file, CMD_ANS, 'OpenAI>>> ')
+      response = IterableStream(chunk)
     else:
       try:
         chunks = self.client.chat.completions.create(

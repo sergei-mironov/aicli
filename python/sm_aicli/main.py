@@ -263,15 +263,16 @@ def main(cmdline=None, actor_factory_fn=None):
     args.readline_history = abspath(expanduser(args.readline_history))
 
   rcnames = environ.get('AICLI_RC', args.rc)
-  if rcnames is not None and len(rcnames)>0 and rcnames!='none':
+  if rcnames is not None and len(rcnames)>0 and rcnames.lower()!='none':
     configs = read_configs(rcnames.split(','))
   else:
     info("Skipping configuration files")
-    configs = []
+    configs = None
 
   recorder = UserRecorder()
   try:
-    file = StdinFile(args, args2script(args, configs), recorder=recorder)
+    script = args2script(args, configs)
+    file = StdinFile(args, script, recorder=recorder)
 
     cnv = Conversation.init()
     st = ActorStateImpl.init()

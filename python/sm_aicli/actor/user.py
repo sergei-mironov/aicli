@@ -755,8 +755,8 @@ class PasteModeReplParser(Parser):
     return ParsingResults('', None)
 
 
-def read_configs(rcnames:list[str])->list[str]:
-  acc = []
+def read_configs(rcnames:list[str])->str:
+  acc = StringIO()
   current_dir = abspath(getcwd())
   path_parts = current_dir.split(sep)
   last_dir = None
@@ -769,19 +769,18 @@ def read_configs(rcnames:list[str])->list[str]:
           info(f"Reading {candidate_file}")
           new_dir = dirname(candidate_file)
           if last_dir != new_dir:
-            acc.append(f"{CMD_CD} \"{new_dir}\"")
+            acc.write(f"{CMD_CD} \"{new_dir}\"\n")
             last_dir = new_dir
           for line in file.readlines():
-            acc.append(line.strip())
+            acc.write(line)
           if last_dir != getcwd():
-            acc.append(f"{CMD_CD} \"{getcwd()}\"")
+            acc.write(f"{CMD_CD} \"{getcwd()}\"\n")
             last_dir = getcwd()
-  return acc
+  return acc.getvalue()
 
-def args2script(args, configs:list[str]) -> str:
+def args2script(args, configs:str|None) -> str:
   header = StringIO()
-  for line in configs:
-    header.write(line+'\n')
+  header.write(configs or "")
   if args.model is not None:
     header.write(f"/model {ref_quote(args.model, PROVIDERS)}\n")
   if args.model_apikey is not None:
