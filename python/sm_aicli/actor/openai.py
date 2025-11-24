@@ -152,7 +152,7 @@ class OpenAITextActor(Actor):
   def __init__(self, name:ActorName, opt:ActorOptions, file:File, recorder:Recorder):
     assert isinstance(name, ModelName), name
     assert name.provider == "openai", f"Unsupported provider '{name.provider}'"
-    assert 'gpt-4' in name.model, f"Unsupported model '{name.model}'"
+    assert 'gpt-' in name.model, f"Unsupported model '{name.model}'"
 
     super().__init__(name, opt)
     self.logger = ConsoleLogger(self)
