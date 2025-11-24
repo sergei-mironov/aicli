@@ -406,6 +406,7 @@ command.1: /\/version/ | \
                                             /imgnum/ / +/ (NUMBER | DEF)) | \
                              (/term/ | /terminal/) / +/ (/rawbin/ / +/ BOOL | \
                                                          /prompt/ / +/ string | \
+                                                         /recording/ / +/ ref | \
                                                          /width/ / +/ (NUMBER | DEF) | \
                                                          /verbosity/ / +/ (NUMBER | DEF))) | \
            /\/cp/ / +/ ref / +/ ref | \
@@ -459,9 +460,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L9) | [Utterance](./python/sm_aicli/types.py#L154) |
-[Actor](./python/sm_aicli/types.py#L61) | [Intention](./python/sm_aicli/types.py#L89) |
-[Stream](./python/sm_aicli/types.py#L126)
+[Conversation](./python/sm_aicli/types.py#L9) | [Utterance](./python/sm_aicli/types.py#L172) | [Actor](./python/sm_aicli/types.py#L79) | [Intention](./python/sm_aicli/types.py#L107) | [Stream](./python/sm_aicli/types.py#L144)
 
 <!--noresult-->
 
