@@ -251,7 +251,7 @@ def traverse_stream(s:Stream,
                     handler:Callable[[Stream, ContentItem], Stream|None]
                     ) -> None:
   """ Read stream `s` of `ContentItem` items, call `handler` for every item and optionally dive into
-  the resulting stream. """
+  the expanded stream in case the item is a reference. """
   try:
     def _traverse(s):
       for item in s.gen():
@@ -279,20 +279,6 @@ def version():
   ver = VERSION
   rev = f"+g{REVISION[:7]}" if REVISION else ""
   return f"{ver}{rev}"
-
-# def words_with_spaces(text):
-#   """ Return words with leading spaces """
-#   word = ''
-#   for char in text:
-#     if char.isspace():
-#       if word:
-#         yield word
-#         word = ''
-#       word += char
-#     else:
-#       word += char
-#   if word and any((not c.isspace()) for c in word):
-#     yield word
 
 @dataclass
 class WLState:

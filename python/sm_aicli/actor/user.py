@@ -347,6 +347,7 @@ class UserRecorder(Recorder):
   def record(self, chunk:str) -> None:
     if self.recfile is not None:
       self.recfile.write(chunk)
+      self.recfile.flush()
   def update_params(self, recording:RecordingParams) ->None:
     if self.recfile is not None:
       self.recfile.write(f"{CMD_SET} model replay off\n")
@@ -354,6 +355,7 @@ class UserRecorder(Recorder):
     if recording.filename is not None:
       self.recfile = open(recording.filename, "w")
       self.recfile.write(f"{CMD_SET} model replay on\n")
+      self.recfile.flush()
     else:
       self.recfile = None
 
@@ -918,6 +920,7 @@ class UserActor(Actor):
             need_eol = not token.rstrip(' ').endswith("\n")
             self.repl._print(token, end='')
           elif isinstance(token, Reference):
+            # Will dereference a remote reference into a local reference
             token, sn = ast.deref(token)
             if sn.binary and not self.repl.rawbin:
               need_eol = True
