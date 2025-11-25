@@ -460,7 +460,7 @@ mdlink.py --file ./python/sm_aicli/types.py \
 ```-->
 
 <!--result-->
-[Conversation](./python/sm_aicli/types.py#L9) | [Utterance](./python/sm_aicli/types.py#L172) | [Actor](./python/sm_aicli/types.py#L79) | [Intention](./python/sm_aicli/types.py#L107) | [Stream](./python/sm_aicli/types.py#L144)
+[Conversation](./python/sm_aicli/types.py#L9) | [Utterance](./python/sm_aicli/types.py#L173) | [Actor](./python/sm_aicli/types.py#L80) | [Intention](./python/sm_aicli/types.py#L108) | [Stream](./python/sm_aicli/types.py#L145)
 
 <!--noresult-->
 

@@ -5,11 +5,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1763714011,
-        "narHash": "sha256-RdvIGnCYZ4WVWP8GW/7YAXxuhFA7Lm27jxiD4oOVvKw=",
+        "lastModified": 1764013202,
+        "narHash": "sha256-k+wD0ieE/wefoggVX4FFYcWBRs2d5hbbfOTcDLPyClM=",
         "ref": "refs/heads/main",
-        "rev": "158eff3fb4580545b3de16e4f39cd0264d34930d",
-        "revCount": 897,
+        "rev": "4557e2196b9ac412fec99750510a8f63269cf841",
+        "revCount": 898,
         "type": "git",
         "url": "file:/home/grwlf/proj/litrepl.vim/"
       },
