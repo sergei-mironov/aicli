@@ -1,3 +1,3 @@
 #!/bin/sh
 
-exec litrepl-aicli.sh --header "/model dummy" "$@"
+exec litrepl-aicli.py --header "/model dummy" "$@"

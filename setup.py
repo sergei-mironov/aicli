@@ -59,7 +59,7 @@ setup(
   install_requires=[gpt4all, 'openai', 'gnureadline', 'lark', 'pillow'],
   scripts=[
     join('.', 'python', 'aicli'),
-    join('.', 'sh', 'litrepl-aicli.sh'),
+    join('.', 'python', 'litrepl-aicli.py'),
   ],
   python_requires='>=3.12',
   author="Sergei Mironov",
