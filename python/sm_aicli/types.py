@@ -212,6 +212,8 @@ SAU = list[dict[str, str]]
 class Dereferencer(ABC):
   @abstractmethod
   def deref(self, Reference) -> tuple[Reference, Stream]:
+    """ Make reference locally-reproducible, that is, dereference a remote reference into a local
+    reference and return a stream to save locally """
     raise NotImplementedError()
 
 class ActorViewer(ABC):

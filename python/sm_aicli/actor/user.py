@@ -179,7 +179,8 @@ GRAMMAR = fr"""
   text: TEXT
 
   # Strings can start and end with a double-quote. Unquoted strings should not contain spaces.
-  string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | STRING_UNQUOTED
+  string:  "\"" "\"" | "\"" STRING_QUOTED "\"" | \
+           "'" "'" | "'" STRING_QUOTED2 "'" | STRING_UNQUOTED
 
   # Model references are strings with the provider prefix
   model_ref: (PROVIDER ":")? string ("(" ID ")")?
@@ -195,6 +196,7 @@ GRAMMAR = fr"""
   SCHEMA.4: {'|'.join([f"/{s}/" for s in SCHEMAS])}
   PROVIDER.4: {'|'.join([f"/{p}/" for p in PROVIDERS])}
   STRING_QUOTED.3: /[^"]+/
+  STRING_QUOTED2.3: /[^']+/
   STRING_UNQUOTED.3: /[^"\(\)][^ \(\)\n]*/
   TEXT.0: /([^#](?![\/]))*[^\/#]/
   ID: /[a-zA-Z_][a-zA-Z0-9_]*/
@@ -403,7 +405,7 @@ class Repl(Interpreter):
   def string(self, tree)->str:
     if tree.children:
       assert len(tree.children) == 1, tree
-      assert tree.children[0].type in ('STRING_QUOTED','STRING_UNQUOTED'), tree
+      assert tree.children[0].type in ('STRING_QUOTED2','STRING_QUOTED','STRING_UNQUOTED'), tree
       if tree.children[0].type == 'STRING_UNQUOTED':
         self._check_no_commands(tree.children[0].value, hint='string constant')
         return UnquotedString(tree.children[0].value)

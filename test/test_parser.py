@@ -119,6 +119,15 @@ def test_apikey():
           file
           string       key file
   ''')
+  _assert("/cat verbatim:'key\"file'", r'''
+    start
+      command
+        /cat
+
+        ref
+          verbatim
+          string       key"file
+  ''')
   _assert('/set model apikey verbatim:keydata', r'''
     start
       command
