@@ -23,7 +23,7 @@ from .user import CMD_ANS
 OpenAIFileID = str
 
 class TextChunkStream(TextStream):
-  def __init__(self, recorder:Recorder, chunks, ensure_eol):
+  def __init__(self, recorder:Recorder, chunks):
     def _gen():
       has_eol=False
       for c in chunks:
@@ -245,7 +245,7 @@ class OpenAITextActor(Actor):
           temperature=self.opt.temperature,
           seed=self.opt.seed,
         )
-        response = TextChunkStream(self.recorder, chunks, ensure_eol=True)
+        response = TextChunkStream(self.recorder, chunks)
       except OpenAIError as err:
         raise ConversationException(str(err)) from err
     assert response is not None
