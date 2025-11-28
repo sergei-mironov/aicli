@@ -4,6 +4,7 @@ import sys
 import argparse
 import subprocess
 
+from collections import OrderedDict
 from textwrap import dedent
 from contextlib import contextmanager
 from io import StringIO
@@ -56,7 +57,9 @@ def open_or_stdin(name, mode):
 def asline(text:str, prefix:str|None=None) -> str:
   return (' ' if prefix is None else prefix) + dedent(text).replace('\n', ' ').strip()
 
-def build_prompt(args, locations_paste, locations_raw, project_root: str, do_dedent: bool = True):
+SELECTION = 'selection'
+
+def build_prompt(args, locations, project_root: str, do_dedent: bool = True):
   """Build the complete prompt sent to litrepl (a), and compute indent prefix for later output
   reindentation (b). The function first collects any header/footer text (c), then incorporates
   pasted/file-based locations (d), followed by per-file context blocks (e), an optional user
@@ -67,7 +70,7 @@ def build_prompt(args, locations_paste, locations_raw, project_root: str, do_ded
 
   lines = StringIO()  # (a)
   reindent_prefix = ""
-  first_location = True
+  first_location = None
 
   if header:
     lines.write(header)  # (c)
@@ -75,14 +78,8 @@ def build_prompt(args, locations_paste, locations_raw, project_root: str, do_ded
 
   on, off = "on", "off"
 
-  # (d) locations: pasted and raw, both are NAME -> path/marker
-  def iter_locations():
-    for name, loc in (locations_paste or {}).items():
-      yield name, loc, True
-    for name, loc in (locations_raw or {}).items():
-      yield name, loc, False
-
-  for loc_name, loc_path, is_paste in iter_locations():
+  for loc_name, (loc_path, is_raw) in locations.items():
+    is_paste = not is_raw
     lines.write(dedent(f'''\
       Consider the following text snippet to which we refer as to '{loc_name}':
     '''))
@@ -95,9 +92,11 @@ def build_prompt(args, locations_paste, locations_raw, project_root: str, do_ded
     with open_or_stdin(loc_path, "r") as f:
       location_text = f.read()
 
-    if first_location and do_dedent:
-      reindent_prefix = compute_indent_prefix(location_text)  # (h)
-      location_text = dedent(location_text)
+    if first_location is None:
+      first_location = loc_name
+      if do_dedent:
+        reindent_prefix = compute_indent_prefix(location_text)  # (h)
+        location_text = dedent(location_text)
 
     lines.write(location_text)
     lines.write("\n")
@@ -111,11 +110,12 @@ def build_prompt(args, locations_paste, locations_raw, project_root: str, do_ded
     lines.write(dedent(f'''\
       (End of the '{loc_name}' snippet)
     '''))
-    first_location = False
 
   for file in args.files: # (e)
     if os.path.isfile(file):
       rel = projectlocal(file, project_root)
+      if first_location is None:
+        first_location = rel
       lines.write(dedent(f'''\
         Consider the contents of the file named "{rel}":
 
@@ -134,8 +134,9 @@ def build_prompt(args, locations_paste, locations_raw, project_root: str, do_ded
   lines.write("(")
 
   lines.write(
-    asline("Please do not generate any polite endings in your response.", prefix='')
+    asline(f"Please do not generate any polite endings in your response.", prefix='')
   ) # (g)
+
 
   ofmt = args.output_format
 
@@ -152,6 +153,10 @@ def build_prompt(args, locations_paste, locations_raw, project_root: str, do_ded
 
   if args.textwidth:
     lines.write(asline(f"Please avoid generating lines longer than {args.textwidth} characters."))
+
+  if SELECTION in locations is not None:
+    lines.write(asline(f"Generate a good replacement for '{SELECTION}' snippet."))
+    lines.write(asline(f"Consider other snippets as already existing."))
 
   lines.write(")")
 
@@ -192,16 +197,19 @@ def main():
   args = parser.parse_args()  # (a)
   cmd = args.command
 
-  locations_paste = dict(args.locations_paste or [])  # NAME -> LOC mapping
-  locations_raw = dict(args.locations_raw or [])  # NAME -> LOC mapping
-
   if args.selection_paste is not None and args.selection_raw is not None:
     raise ValueError("Only one of --selection-paste or --selection-raw may be used")
 
+  locations = OrderedDict()
+
   if args.selection_paste is not None:
-    locations_paste.update({"selection": args.selection_paste})
-  if args.selection_raw is not None:
-    locations_raw.update({"selection": args.selection_raw})
+    locations[SELECTION] = (args.selection_paste, False)
+  elif args.selection_raw is not None:
+    locations[SELECTION] = (args.selection_raw, True)
+  for key, value in (args.locations_paste or []):
+    locations[key] = (value, False)
+  for key, value in (args.locations_raw or []):
+    locations[key] = (value, True)
 
   if cmd != "eval-code":  # (b)
     run_args = [litrepl_path] + args.files + [cmd, "ai"]
@@ -209,8 +217,7 @@ def main():
 
   prompt_text, reindent_prefix = build_prompt(
     args,
-    locations_paste,
-    locations_raw,
+    locations,
     project_root,
     do_dedent=not args.no_reindent)  # (c)
 
