@@ -56,54 +56,62 @@ def open_or_stdin(name, mode):
 def asline(text:str, prefix:str|None=None) -> str:
   return (' ' if prefix is None else prefix) + dedent(text).replace('\n', ' ').strip()
 
-def build_prompt(args, project_root:str, do_dedent:bool=True):
+def build_prompt(args, locations_paste, locations_raw, project_root: str, do_dedent: bool = True):
   """Build the complete prompt sent to litrepl (a), and compute indent prefix for later output
   reindentation (b). The function first collects any header/footer text (c), then incorporates
-  either a pasted or file-based selection (d), followed by per-file context blocks (e), an
-  optional user prompt (f), and finally a set of meta-instructions controlling the model output
-  (g); at the end, it also prepares indentation information based on the captured selection lines
-  (h)."""
+  pasted/file-based locations (d), followed by per-file context blocks (e), an optional user
+  prompt (f), and finally a set of meta-instructions controlling the model output (g); at the end,
+  it also prepares indentation information based on the captured selection/location lines (h)."""
   header = args.header[0] if args.header else ""
   footer = args.footer[0] if args.footer else ""
 
-  lines = StringIO() # (a)
+  lines = StringIO()  # (a)
   reindent_prefix = ""
+  first_location = True
 
   if header:
-    lines.write(header) # (c)
+    lines.write(header)  # (c)
     lines.write("\n")
 
-  on,off = "on","off"
-  selection = args.selection_paste or args.selection_raw
+  on, off = "on", "off"
 
-  if selection: # (d)
+  # (d) locations: pasted and raw, both are NAME -> path/marker
+  def iter_locations():
+    for name, loc in (locations_paste or {}).items():
+      yield name, loc, True
+    for name, loc in (locations_raw or {}).items():
+      yield name, loc, False
+
+  for loc_name, loc_path, is_paste in iter_locations():
     lines.write(dedent(f'''\
-      Consider the following text snippet to which we refer as to 'selection':
+      Consider the following text snippet to which we refer as to '{loc_name}':
     '''))
-    if args.selection_paste:
+    if is_paste:
       lines.write(dedent(f'''\
         /paste {on}
       '''))
+      lines.write("\n")
 
-    lines.write('\n')
-    with open_or_stdin(selection, "r") as f:
-      selection_text = str(sys.stdin.read())
-      if do_dedent:
-        reindent_prefix = compute_indent_prefix(selection_text) # (h)
-        selection_text = dedent(selection_text)
-      lines.write(selection_text)
-    lines.write('\n')
+    with open_or_stdin(loc_path, "r") as f:
+      location_text = f.read()
 
-    if args.selection_paste:
-      if f"/paste {off}" in selection_text:
-        sys.stderr.write(f"WARNING: '/paste {off}' command found in the selection")
+    if first_location and do_dedent:
+      reindent_prefix = compute_indent_prefix(location_text)  # (h)
+      location_text = dedent(location_text)
+
+    lines.write(location_text)
+    lines.write("\n")
+
+    if is_paste:
+      if f"/paste {off}" in location_text:
+        sys.stderr.write(f"WARNING: '/paste {off}' command found in location '{loc_name}'\n")
       lines.write(dedent(f'''\
         /paste {off}
       '''))
     lines.write(dedent(f'''\
-      (End of the 'selection' snippet)
+      (End of the '{loc_name}' snippet)
     '''))
-
+    first_location = False
 
   for file in args.files: # (e)
     if os.path.isfile(file):
@@ -174,18 +182,37 @@ def main():
   parser.add_argument("--no-reindent", action="store_true")
   parser.add_argument("--header", dest="header", nargs=1, default=None)
   parser.add_argument("--footer", dest="footer", nargs=1, default=None)
+  parser.add_argument("--location", dest="locations_paste", nargs=2, action="append",
+                      metavar=("NAME", "LOC"))
+  parser.add_argument("--location-raw", dest="locations_raw", nargs=2, action="append",
+                      metavar=("NAME", "LOC"))
   parser.add_argument("command", nargs="?", default="eval-code")
   parser.add_argument("files", nargs=argparse.REMAINDER)
 
   args = parser.parse_args()  # (a)
   cmd = args.command
 
+  locations_paste = dict(args.locations_paste or [])  # NAME -> LOC mapping
+  locations_raw = dict(args.locations_raw or [])  # NAME -> LOC mapping
+
+  if args.selection_paste is not None and args.selection_raw is not None:
+    raise ValueError("Only one of --selection-paste or --selection-raw may be used")
+
+  if args.selection_paste is not None:
+    locations_paste.update({"selection": args.selection_paste})
+  if args.selection_raw is not None:
+    locations_raw.update({"selection": args.selection_raw})
+
   if cmd != "eval-code":  # (b)
     run_args = [litrepl_path] + args.files + [cmd, "ai"]
     os.execvp(litrepl_path, run_args)
 
   prompt_text, reindent_prefix = build_prompt(
-    args, project_root, do_dedent=not args.no_reindent)  # (c)
+    args,
+    locations_paste,
+    locations_raw,
+    project_root,
+    do_dedent=not args.no_reindent)  # (c)
 
   if args.debug:
     sys.stderr.write(f"REINDENT PREFIX (len {len(reindent_prefix)}):\n")
