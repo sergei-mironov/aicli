@@ -42,11 +42,6 @@ def compute_indent_prefix(selection_text:str) -> str:
     prefix = prefix[:min(len(prefix), len(ls))]  # (c)
   return prefix or ""
 
-def dedent_stream(stream, reindent_prefix:str):
-  """Prefix each output line with reindent_prefix if nonempty."""
-  reindent_prefix = reindent_prefix or ""
-  for line in stream:
-    sys.stdout.write(f"{reindent_prefix}{line}")
 
 @contextmanager
 def open_or_stdin(name, mode):
@@ -54,14 +49,14 @@ def open_or_stdin(name, mode):
     assert mode == 'r'
     yield sys.stdin
   else:
-    with open(name, "r") as f:
+    with open(name, mode) as f:
       yield f
 
 
 def asline(text:str, prefix:str|None=None) -> str:
   return (' ' if prefix is None else prefix) + dedent(text).replace('\n', ' ').strip()
 
-def build_prompt(args, project_root:str):
+def build_prompt(args, project_root:str, do_dedent:bool=True):
   """Build the complete prompt sent to litrepl (a), and compute indent prefix for later output
   reindentation (b). The function first collects any header/footer text (c), then incorporates
   either a pasted or file-based selection (d), followed by per-file context blocks (e), an
@@ -72,7 +67,7 @@ def build_prompt(args, project_root:str):
   footer = args.footer[0] if args.footer else ""
 
   lines = StringIO() # (a)
-  selection_text = ""
+  reindent_prefix = ""
 
   if header:
     lines.write(header) # (c)
@@ -92,7 +87,10 @@ def build_prompt(args, project_root:str):
 
     lines.write('\n')
     with open_or_stdin(selection, "r") as f:
-      selection_text = f.read()
+      selection_text = str(sys.stdin.read())
+      if do_dedent:
+        reindent_prefix = compute_indent_prefix(selection_text) # (h)
+        selection_text = dedent(selection_text)
       lines.write(selection_text)
     lines.write('\n')
 
@@ -106,7 +104,6 @@ def build_prompt(args, project_root:str):
       (End of the 'selection' snippet)
     '''))
 
-  reindent_prefix = compute_indent_prefix(selection_text) # (h)
 
   for file in args.files: # (e)
     if os.path.isfile(file):
@@ -187,25 +184,17 @@ def main():
     run_args = [litrepl_path] + args.files + [cmd, "ai"]
     os.execvp(litrepl_path, run_args)
 
-  if args.debug:
-    try:
-      subprocess.run(
-        [litrepl_path, "status"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-      )
-    except FileNotFoundError:
-      pass
+  prompt_text, reindent_prefix = build_prompt(
+    args, project_root, do_dedent=not args.no_reindent)  # (c)
 
-  prompt_text, reindent_prefix = build_prompt(args, project_root)  # (c)
+  if args.debug:
+    sys.stderr.write(f"REINDENT PREFIX (len {len(reindent_prefix)}):\n")
+    sys.stderr.write(reindent_prefix)
+    sys.stderr.write("\nPROMPT:\n")
+    sys.stderr.write(prompt_text)
 
   if args.dry_run:
-    sys.stderr.write(prompt_text)
     exit(0)
-
-  if args.no_reindent:
-    reindent_prefix = ''
 
   proc = subprocess.Popen(
     [litrepl_path, "eval-code", "ai"],
@@ -219,8 +208,8 @@ def main():
   except BrokenPipeError:
     stdout_data = ""
 
-  out_stream = StringIO(stdout_data)
-  dedent_stream(out_stream, reindent_prefix)  # (e)
+  for line in StringIO(stdout_data):
+    sys.stdout.write(f"{reindent_prefix}{line}") # (e)
 
   sys.exit(proc.returncode if proc.returncode is not None else 0)  # (d)
 
