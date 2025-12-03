@@ -191,7 +191,7 @@ def main():
                       metavar=("NAME", "LOC"))
   parser.add_argument("--location-raw", dest="locations_raw", nargs=2, action="append",
                       metavar=("NAME", "LOC"))
-  parser.add_argument("--command", target="command", type=str, default="eval-code")
+  parser.add_argument("--command", dest="command", type=str, default="eval-code")
   parser.add_argument("files", nargs=argparse.REMAINDER)
 
   args = parser.parse_args()  # (a)
