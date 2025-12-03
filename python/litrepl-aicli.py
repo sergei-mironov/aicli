@@ -169,13 +169,13 @@ def build_prompt(args, locations, project_root: str, do_dedent: bool = True):
   return lines.getvalue(), reindent_prefix # (b)
 
 
-litrepl_path = os.getenv("LITREPL", "litrepl")
-project_root = os.getenv("PROJECT_ROOT", "")
-
 def main():
   """Parse CLI options (a), handle non-eval commands via exec (b), build an AI prompt with
   optional selection-based indent (c), run litrepl eval-code (d), and reindent its output using
   the computed indent prefix (e)."""
+  litrepl_cmd = os.getenv("LITREPL", "litrepl").split(' ')
+  project_root = os.getenv("PROJECT_ROOT", "")
+
   parser = argparse.ArgumentParser(add_help=True)
   parser.add_argument("-P", "--prompt", dest="prompt_list", action="append", default=[], type=str)
   parser.add_argument("-s", "--selection-paste", dest="selection_paste", default=None, type=str)
@@ -213,8 +213,16 @@ def main():
     locations[key] = (value, True)
 
   if cmd != "eval-code":  # (b)
-    run_args = [litrepl_path] + args.files + [cmd, "ai"]
-    os.execvp(litrepl_path, run_args)
+    litrepl_cmd += cmd.split(' ')
+
+    if args.debug:
+      sys.stderr.write(f"\nLITREPL_CMD:\n")
+      sys.stderr.write(str(litrepl_cmd))
+
+    if args.dry_run:
+      exit(1)
+
+    os.execvp(litrepl_cmd[0], run_args)
 
   prompt_text, reindent_prefix = build_prompt(
     args,
@@ -222,17 +230,21 @@ def main():
     project_root,
     do_dedent=not args.no_reindent)  # (c)
 
+  litrepl_cmd += ["eval-code", "ai"]
+
   if args.debug:
-    sys.stderr.write(f"REINDENT PREFIX (len {len(reindent_prefix)}):\n")
-    sys.stderr.write(reindent_prefix)
+    sys.stderr.write(f"LITREPL_CMD:\n")
+    sys.stderr.write(str(litrepl_cmd)+"\n")
+    sys.stderr.write(f"\nREINDENT_PREFIX:\n")
+    sys.stderr.write(reindent_prefix+"(len "+str(len(reindent_prefix))+")")
     sys.stderr.write("\nPROMPT:\n")
     sys.stderr.write(prompt_text)
 
   if args.dry_run:
-    exit(0)
+    exit(1)
 
   proc = subprocess.Popen(
-    [litrepl_path, "eval-code", "ai"],
+    litrepl_cmd,
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     stderr=sys.stderr,
