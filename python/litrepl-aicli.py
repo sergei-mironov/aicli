@@ -154,7 +154,7 @@ def build_prompt(args, locations, project_root: str, do_dedent: bool = True):
   if args.textwidth:
     lines.write(asline(f"Please avoid generating lines longer than {args.textwidth} characters."))
 
-  if SELECTION in locations is not None:
+  if SELECTION in locations and len(locations)>1:
     lines.write(asline(f"Generate a good replacement for '{SELECTION}' snippet."))
     lines.write(asline(f"Consider other snippets as already existing."))
 
