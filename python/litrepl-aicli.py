@@ -176,8 +176,8 @@ def main():
   """Parse CLI options (a), handle non-eval commands via exec (b), build an AI prompt with
   optional selection-based indent (c), run litrepl eval-code (d), and reindent its output using
   the computed indent prefix (e)."""
-  parser = argparse.ArgumentParser(add_help=True)  # (a)
-  parser.add_argument("-P", "--prompt", dest="prompt", default="", type=str)
+  parser = argparse.ArgumentParser(add_help=True)
+  parser.add_argument("-P", "--prompt", dest="prompt_list", action="append", default=[], type=str)
   parser.add_argument("-s", "--selection-paste", dest="selection_paste", default=None, type=str)
   parser.add_argument("-S", "--selection-raw", dest="selection_raw", default=None, type=str)
   parser.add_argument("-f", "--output-format", dest="output_format", type=str)
@@ -197,6 +197,7 @@ def main():
   args = parser.parse_args()  # (a)
   cmd = args.command
 
+  setattr(args, 'prompt', " ".join(args.prompt_list) if args.prompt_list else "")
   if args.selection_paste is not None and args.selection_raw is not None:
     raise ValueError("Only one of --selection-paste or --selection-raw may be used")
 
