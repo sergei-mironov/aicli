@@ -755,6 +755,7 @@ class PasteModeReplParser(Parser):
   def parse(self, chunk:str) -> ParsingResults:
     pattern = f'{CMD_PASTE} off'
     if (off_index := (chunk.index(pattern) if (pattern in chunk) else None)) is not None:
+      bufferadd(self.repl.buffers[IN], chunk[:off_index])
       return ParsingResults(chunk[off_index + len(pattern):], None, paste_mode=False)
     else:
       bufferadd(self.repl.buffers[IN], chunk)
