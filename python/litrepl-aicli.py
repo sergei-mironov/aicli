@@ -222,7 +222,7 @@ def main():
       if args.dry_run:
           exit(1)
 
-      os.execvp(litrepl_cmd[0], litrepl_cmd[1:])
+      os.execvp(litrepl_cmd[0], litrepl_cmd)
 
   prompt_text, reindent_prefix = build_prompt(
     args,
