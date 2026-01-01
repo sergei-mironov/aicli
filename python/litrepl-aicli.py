@@ -213,16 +213,16 @@ def main():
     locations[key] = (value, True)
 
   if cmd != "eval-code":  # (b)
-    litrepl_cmd += cmd.split(' ')
+      litrepl_cmd += cmd.split(' ')
 
-    if args.debug:
-      sys.stderr.write(f"\nLITREPL_CMD:\n")
-      sys.stderr.write(str(litrepl_cmd))
+      if args.debug:
+          sys.stderr.write(f"\nLITREPL_CMD:\n")
+          sys.stderr.write(f"{litrepl_cmd}\n")
 
-    if args.dry_run:
-      exit(1)
+      if args.dry_run:
+          exit(1)
 
-    os.execvp(litrepl_cmd[0], run_args)
+      os.execvp(litrepl_cmd[0], litrepl_cmd[1:])
 
   prompt_text, reindent_prefix = build_prompt(
     args,
