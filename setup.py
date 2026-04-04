@@ -60,6 +60,7 @@ setup(
   scripts=[
     join('.', 'python', 'aicli'),
     join('.', 'python', 'litrepl-aicli.py'),
+    join('.', 'sh', 'aicli-tangle.sh'),
   ],
   python_requires='>=3.12',
   author="Sergei Mironov",
