@@ -9,11 +9,12 @@
     nixpkgs = {
       # url = "git+file:/home/nixcfg/nixpkgs/";
       # Author's favorite nixpkgs
-      url = "github:grwlf/nixpkgs/local17.2";
+      url = "github:sergei-mironov/nixpkgs/local19";
     };
 
     litrepl = {
-      url = "git+file:/home/grwlf/proj/litrepl.vim/";
+      url = "github:sergei-mironov/litrepl";
+      # url = "git+file:/home/grwlf/proj/litrepl.vim/";
     };
   };
 

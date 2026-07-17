@@ -20,7 +20,9 @@ from lark import Lark
 
 from sm_aicli import (Actor, Conversation, ActorState, ActorName, Utterance, UserName, Modality,
                       UserActor, ActorOptions, onematch, expanddir, OpenAIImageActor,
-                      OpenAITextActor, GPT4AllActor, DummyActor, Reference, RemoteReference,
+                      OpenAITextActor,
+                      # GPT4AllActor,
+                      DummyActor, Reference, RemoteReference,
                       LocalReference, Stream, info, err, with_sigint, args2script, File, Parser,
                       read_configs, ParsingResults, RecordingParams, Recorder, UserRecorder)
 
@@ -40,7 +42,7 @@ ARG_PARSER.add_argument(
 ARG_PARSER.add_argument(
   "--model", "-m",
   type=str,
-  help="Model to use. STR1 is 'gpt4all' (the default) or 'openai'. STR2 is the model name",
+  help="Model to use. STR1 is 'openai'. STR2 is the model name",
   metavar="[STR1:]STR2",
   # default="mistral-7b-instruct-v0.1.Q4_0.gguf",
   # default='/home/grwlf/.local/share/nomic.ai/GPT4All/Meta-Llama-3-8B-Instruct.Q4_0.gguf'
@@ -234,8 +236,8 @@ def actor_factory(name:ActorName, opt:ActorOptions, file:File, recorder:Recorder
         return OpenAIImageActor(name, opt, file=file)
       else:
         return OpenAITextActor(name, opt, file=file, recorder=recorder)
-    case "gpt4all":
-      return GPT4AllActor(name, opt)
+    # case "gpt4all":
+    #   return GPT4AllActor(name, opt)
     case "dummy":
       return DummyActor(name, opt, file)
     case _:

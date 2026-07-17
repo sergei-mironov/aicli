@@ -5,17 +5,17 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1764013202,
-        "narHash": "sha256-k+wD0ieE/wefoggVX4FFYcWBRs2d5hbbfOTcDLPyClM=",
-        "ref": "refs/heads/main",
-        "rev": "4557e2196b9ac412fec99750510a8f63269cf841",
-        "revCount": 898,
-        "type": "git",
-        "url": "file:/home/grwlf/proj/litrepl.vim/"
+        "lastModified": 1783709241,
+        "narHash": "sha256-6oQf9CsP0UvbxdWjmIE7qCSpKFlV2096bETlKI7AjbA=",
+        "owner": "sergei-mironov",
+        "repo": "litrepl",
+        "rev": "14fe43995d9dcfde69d6adfa2bc2a51f88de9f2b",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:/home/grwlf/proj/litrepl.vim/"
+        "owner": "sergei-mironov",
+        "repo": "litrepl",
+        "type": "github"
       }
     },
     "nixpkgs": {
@@ -36,16 +36,16 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1749811874,
-        "narHash": "sha256-ZzqBCS3Ux3/2kmmV2L+BiIQi6//A3me8JW7BP7ATcRM=",
-        "owner": "grwlf",
+        "lastModified": 1784281566,
+        "narHash": "sha256-Vyw1jK7FBSyUVW3fXcmU+2cyO1ESGa2NHf6PNRfkdvw=",
+        "owner": "sergei-mironov",
         "repo": "nixpkgs",
-        "rev": "5f9e00397381dac699e5d6225eab383eb9f90123",
+        "rev": "caf96c60c8647c155f42907e3b050d8efca34f45",
         "type": "github"
       },
       "original": {
-        "owner": "grwlf",
-        "ref": "local17.2",
+        "owner": "sergei-mironov",
+        "ref": "local19",
         "repo": "nixpkgs",
         "type": "github"
       }
