@@ -89,7 +89,7 @@ let
       version = fileContents "${src}/semver.txt";
       format = "setuptools";
       src = ./.;
-      nativeBuildInputs = with pp; [ pkgs.git ];
+      nativeBuildInputs = with pp; with pkgs; [ git ];
       propagatedBuildInputs = with pp; [
         gnureadline lark openai pillow socksio requests
       ];
@@ -103,6 +103,7 @@ let
       pythonImportsCheck = [
         "sm_aicli"
       ];
+      makeWrapperArgs  = [ "--unset PYTHONPATH" ];
     });
 
     python-dev = python.withPackages (
