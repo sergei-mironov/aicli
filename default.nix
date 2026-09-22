@@ -104,6 +104,10 @@ let
         "sm_aicli"
       ];
       makeWrapperArgs  = [ "--unset PYTHONPATH" ];
+
+      postInstall = ''
+        wrapProgram $out/bin/litrepl-aicli-tangle.sh
+      '';
     });
 
     python-dev = python.withPackages (
