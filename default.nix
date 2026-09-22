@@ -106,7 +106,8 @@ let
       makeWrapperArgs  = [ "--unset PYTHONPATH" ];
 
       postInstall = ''
-        wrapProgram $out/bin/litrepl-aicli-tangle.sh
+        wrapProgram $out/bin/litrepl-aicli-tangle.sh \
+          --prefix PATH : "${pkgs.bash}/bin"
       '';
     });
 

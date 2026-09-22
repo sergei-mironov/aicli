@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if test -z "$LITREPL" ; then
   LITREPL=litrepl
