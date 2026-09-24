@@ -31,8 +31,8 @@ tee >(
 {
 echo '/set model replay on'
 $LITREPL --python-interpreter=- --sh-interpreter=- \
-  tangle --before-code=$'/paste on\n' --after-code=$'\n/paste off\n/ask\n' \
-         --before-result='' --after-result=$'/ans\n' $LOC
+  tangle --before-code='' --after-code=$'\n/ask\n' \
+         --before-result='' --after-result=$'\n/ans\n' $LOC
 echo '/set model replay off'
 } | $LITREPL eval-code ai $TW >&2;
 )
